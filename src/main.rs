@@ -1,3 +1,4 @@
+mod cartridge;
 mod conf;
 mod cpu;
 mod mem;
