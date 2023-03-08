@@ -9,6 +9,8 @@ use crate::vm::*;
 
 fn main() -> Result<(), Error> {
     let mut vm = VM::new()?;
+
+    vm.setup()?;
     vm.run()?;
 
     Ok(())

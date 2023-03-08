@@ -5,6 +5,7 @@ pub struct Cpu {
     hl: u16,
     sp: u16,
     pc: u16,
+    mcycle: usize,
 }
 
 impl Cpu {
@@ -16,6 +17,8 @@ impl Cpu {
             hl: 0,
             sp: 0,
             pc: 0,
+            // To accomodate mem-read/exec 1-mcycle overlap ignore.
+            mcycle: 1,
         }
     }
 }

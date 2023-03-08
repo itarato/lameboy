@@ -31,5 +31,6 @@ pub const MEM_AREA_HRAM: usize = 0xFF80;
 pub const MEM_AREA_IE: usize = 0xFFFF;
 
 pub const MEM_LOC_BOOT_LOCK_REG: usize = 0xFF50;
+pub const BIOS_SIZE: usize = 0x100;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
