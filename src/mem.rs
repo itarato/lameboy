@@ -54,7 +54,7 @@ impl Mem {
             unimplemented!()
         } else if loc < MEM_AREA_HRAM {
             // MEM_AREA_IO:
-            unimplemented!()
+            Ok(self.data[loc - MEM_AREA_VRAM])
         } else if loc < MEM_AREA_IE {
             // MEM_AREA_HRAM:
             unimplemented!()
