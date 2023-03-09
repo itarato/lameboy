@@ -51,11 +51,11 @@ macro_rules! make_fn_set_flag {
 }
 
 pub struct Cpu {
-    af: u16,
-    bc: u16,
-    de: u16,
+    pub af: u16,
+    pub bc: u16,
+    pub de: u16,
     pub hl: u16,
-    sp: u16,
+    pub sp: u16,
     pub pc: u16,
     pub mcycle: usize,
 }

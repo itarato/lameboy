@@ -4,6 +4,7 @@ use std::io::Read;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::mem::*;
+use crate::util::*;
 
 pub struct VM {
     mem: Mem,
@@ -25,26 +26,33 @@ impl VM {
         let bios_read_len = bios_file.read(bios)?;
         assert_eq!(BIOS_SIZE, bios_read_len, "BIOS read size not match");
 
+        log::info!("VM setup");
+
         Ok(())
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
         self.reset();
 
+        log::info!("VM eval loop start");
+
         loop {
             self.exec_op()?;
-
-            unimplemented!()
         }
     }
 
-    fn reset(&mut self) {}
+    fn reset(&mut self) {
+        self.mem.reset();
+
+        log::info!("VM reset");
+    }
 
     fn exec_op(&mut self) -> Result<(), Error> {
         let op = self.read_op()?;
+        log::debug!("OP >> 0x{:2X?}", op);
 
-        if (op >> 6) == 0b01 {
-            if (op & 0b111) == 0b110 {
+        if u8_hi2(op) == 0b01 {
+            if u8_lo3(op) == 0b110 {
                 // LD r, (HL): Load register (indirect HL)
                 // Load to the 8-bit register r, data from the absolute address specified by the 16-bit register HL.
                 // Opcode 0b01xxx110/various
@@ -83,7 +91,7 @@ impl VM {
                 }
 
                 self.cpu.mcycle += 2;
-            } else if (op & 0b111) == 0b110 {
+            } else if u8_lo3(op) == 0b110 {
                 // LD (HL), r: Load from register (indirect HL)
                 // Load to the absolute address specified by the 16-bit register HL, data from the 8-bit register r.
                 // Opcode 0b01110xxx/various
@@ -308,7 +316,7 @@ impl VM {
 
                 self.cpu.mcycle += 1;
             }
-        } else if (op >> 6) == 0b00 && (op & 0b111) == 0b110 {
+        } else if u8_hi2(op) == 0b00 && u8_lo3(op) == 0b110 {
             // LD r, n: Load register (immediate)
             // Load to the 8-bit register r, the immediate data n.
             // Opcode 0b00xxx110/various + n
@@ -339,6 +347,32 @@ impl VM {
             }
 
             self.cpu.mcycle += 2;
+        } else if u8_hi2(op) == 0b00 && u8_lo4(op) == 0b0001 {
+            // LD rr, nn: Load 16-bit register / register pair
+            // Load to the 16-bit register rr, the immediate 16-bit data nn.
+            // Opcode 0b00xx0001/various + LSB of nn + MSB of nn
+            // Length 3 byte
+            // Duration 3 machine cycles
+
+            let imm16 = self.read_op_imm16()?;
+
+            if op == 0x01 {
+                // LD BC,nn 01 12
+                self.cpu.bc = imm16;
+            } else if op == 0x11 {
+                // LD DE,nn 11 12
+                self.cpu.de = imm16;
+            } else if op == 0x21 {
+                // LD HL,nn 21 12
+                self.cpu.hl = imm16;
+            } else if op == 0x31 {
+                // LD SP,nn 31 12
+                self.cpu.sp = imm16;
+            } else {
+                unimplemented!("Unhandled opcode (LD rr, nn): 0x{:2X}", op);
+            }
+
+            self.cpu.mcycle += 3;
         } else {
             unimplemented!("Unhandled opcode: 0x{:2X}", op);
         }
@@ -351,5 +385,12 @@ impl VM {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
 
         Ok(op)
+    }
+
+    fn read_op_imm16(&mut self) -> Result<u16, Error> {
+        let hi = self.read_op()?;
+        let lo = self.read_op()?;
+
+        Ok(((hi as u16) << 8) | lo as u16)
     }
 }
