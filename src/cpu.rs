@@ -32,6 +32,24 @@ macro_rules! make_fn_get_reg_lo {
     };
 }
 
+macro_rules! make_fn_get_flag {
+    ($name:ident, $offs:expr) => {
+        pub fn $name(&self) -> bool {
+            (self.af & (1 << $offs)) > 0
+        }
+    };
+}
+
+macro_rules! make_fn_set_flag {
+    ($name:ident, $offs:expr) => {
+        pub fn $name(&mut self, v: u8) {
+            assert!(v <= 0b1);
+            self.af &= 0xFFFF ^ (1 << $offs);
+            self.af |= (v << $offs) as u16;
+        }
+    };
+}
+
 pub struct Cpu {
     af: u16,
     bc: u16,
@@ -55,6 +73,16 @@ impl Cpu {
             mcycle: 1,
         }
     }
+
+    make_fn_get_flag!(is_fz, 7);
+    make_fn_get_flag!(is_fn, 6);
+    make_fn_get_flag!(is_fh, 5);
+    make_fn_get_flag!(is_fc, 4);
+
+    make_fn_set_flag!(set_fz, 7);
+    make_fn_set_flag!(set_fn, 6);
+    make_fn_set_flag!(set_fh, 5);
+    make_fn_set_flag!(set_fc, 4);
 
     make_fn_set_reg_hi!(set_a, af);
     make_fn_set_reg_hi!(set_b, bc);

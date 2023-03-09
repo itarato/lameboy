@@ -17,7 +17,7 @@ impl Mem {
     }
 
     pub fn reset(&mut self) {
-        self.force_write_absolute(MEM_LOC_BOOT_LOCK_REG, 0b0);
+        self.force_write_main_ram(MEM_LOC_BOOT_LOCK_REG, 0b0);
     }
 
     pub fn read_absolute(&self, loc: usize) -> Result<u8, Error> {
@@ -120,9 +120,13 @@ impl Mem {
         Ok(())
     }
 
-    fn force_write_absolute(&mut self, loc: usize, byte: u8) {
+    fn force_write_main_ram(&mut self, loc: usize, byte: u8) {
         assert!(loc >= MEM_AREA_VRAM, "Mem addr cannot write rom bank area");
         assert!(loc <= MEM_ADDR_MAX, "Mem addr cannot exceed limit");
+
+        if loc == MEM_LOC_DMA {
+            unimplemented!("DMA-CTRL write is not implemented yet.")
+        }
 
         // Set pointer relative to non-rom-bank area.
         let loc = loc - MEM_AREA_VRAM;
