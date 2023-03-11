@@ -20,11 +20,11 @@ impl Mem {
         self.force_write_main_ram(MEM_LOC_BOOT_LOCK_REG, 0b0);
     }
 
-    pub fn read_absolute(&self, loc: usize) -> Result<u8, Error> {
+    pub fn read_absolute(&self, loc: u16) -> Result<u8, Error> {
         if loc < MEM_AREA_ROM_BANK_N {
             // MEM_AREA_ROM_BANK_0:
-            if loc < BIOS_SIZE && self.is_bios_mounted() {
-                Ok(self.bios[loc])
+            if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
+                Ok(self.bios[loc as usize])
             } else {
                 unimplemented!()
             }
@@ -54,7 +54,7 @@ impl Mem {
             unimplemented!()
         } else if loc < MEM_AREA_HRAM {
             // MEM_AREA_IO:
-            Ok(self.data[loc - MEM_AREA_VRAM])
+            Ok(self.data[(loc - MEM_AREA_VRAM) as usize])
         } else if loc < MEM_AREA_IE {
             // MEM_AREA_HRAM:
             unimplemented!()
@@ -66,7 +66,7 @@ impl Mem {
         }
     }
 
-    pub fn write_absolute(&mut self, loc: usize, byte: u8) -> Result<(), Error> {
+    pub fn write_absolute(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         match loc {
             MEM_LOC_BOOT_LOCK_REG => {
                 // BOOT_OFF can only transition from 0b0 to 0b1, so once 0b1 has been written, the boot ROM is
@@ -120,7 +120,7 @@ impl Mem {
         Ok(())
     }
 
-    fn force_write_main_ram(&mut self, loc: usize, byte: u8) {
+    fn force_write_main_ram(&mut self, loc: u16, byte: u8) {
         assert!(loc >= MEM_AREA_VRAM, "Mem addr cannot write rom bank area");
         assert!(loc <= MEM_ADDR_MAX, "Mem addr cannot exceed limit");
 
@@ -131,7 +131,7 @@ impl Mem {
         // Set pointer relative to non-rom-bank area.
         let loc = loc - MEM_AREA_VRAM;
 
-        self.data[loc] = byte;
+        self.data[loc as usize] = byte;
     }
 
     fn is_bios_mounted(&self) -> bool {

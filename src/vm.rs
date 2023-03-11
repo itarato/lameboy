@@ -63,7 +63,7 @@ impl VM {
             0x02 => {
                 // LD (BC),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(self.cpu.bc as usize, byte)?;
+                self.mem.write_absolute(self.cpu.bc, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x03 => {
@@ -98,7 +98,7 @@ impl VM {
             }
             0x0A => {
                 // LD A,(BC) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.bc as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.bc)?;
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 2;
             }
@@ -135,7 +135,7 @@ impl VM {
             0x12 => {
                 // LD (DE),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(self.cpu.de as usize, byte)?;
+                self.mem.write_absolute(self.cpu.de, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x13 => {
@@ -170,7 +170,7 @@ impl VM {
             }
             0x1A => {
                 // LD A,(DE) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.de as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.de)?;
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 2;
             }
@@ -291,7 +291,7 @@ impl VM {
             0x36 => {
                 // LD (HL),d8 2 12 | - - - -
                 let byte = self.read_op()?;
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 3;
             }
             0x37 => {
@@ -308,7 +308,7 @@ impl VM {
             }
             0x3A => {
                 // LD A,(HL-) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.hl = self.cpu.hl.wrapping_sub(1);
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 2;
@@ -373,7 +373,7 @@ impl VM {
             }
             0x46 => {
                 // LD B,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_b(byte);
                 self.cpu.mcycle += 2;
             }
@@ -421,7 +421,7 @@ impl VM {
             }
             0x4E => {
                 // LD C,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_c(byte);
                 self.cpu.mcycle += 2;
             }
@@ -469,7 +469,7 @@ impl VM {
             }
             0x56 => {
                 // LD D,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_d(byte);
                 self.cpu.mcycle += 2;
             }
@@ -517,7 +517,7 @@ impl VM {
             }
             0x5E => {
                 // LD E,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_e(byte);
                 self.cpu.mcycle += 2;
             }
@@ -565,7 +565,7 @@ impl VM {
             }
             0x66 => {
                 // LD H,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_h(byte);
                 self.cpu.mcycle += 2;
             }
@@ -613,7 +613,7 @@ impl VM {
             }
             0x6E => {
                 // LD L,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_l(byte);
                 self.cpu.mcycle += 2;
             }
@@ -626,37 +626,37 @@ impl VM {
             0x70 => {
                 // LD (HL),B 1 8 | - - - -
                 let byte = self.cpu.get_b();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x71 => {
                 // LD (HL),C 1 8 | - - - -
                 let byte = self.cpu.get_c();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x72 => {
                 // LD (HL),D 1 8 | - - - -
                 let byte = self.cpu.get_d();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x73 => {
                 // LD (HL),E 1 8 | - - - -
                 let byte = self.cpu.get_e();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x74 => {
                 // LD (HL),H 1 8 | - - - -
                 let byte = self.cpu.get_h();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x75 => {
                 // LD (HL),L 1 8 | - - - -
                 let byte = self.cpu.get_l();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x76 => {
@@ -666,7 +666,7 @@ impl VM {
             0x77 => {
                 // LD (HL),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.mem.write_absolute(self.cpu.hl, byte)?;
                 self.cpu.mcycle += 2;
             }
             0x78 => {
@@ -707,7 +707,7 @@ impl VM {
             }
             0x7E => {
                 // LD A,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                let byte = self.mem.read_absolute(self.cpu.hl)?;
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 2;
             }
@@ -2139,7 +2139,7 @@ impl VM {
                 // LDH (a8),A 2 12 | - - - -
                 let byte = self.cpu.get_a();
                 let word = 0xFF00u16 | self.read_op()? as u16;
-                self.mem.write_absolute(word as usize, byte)?;
+                self.mem.write_absolute(word, byte)?;
                 self.cpu.mcycle += 3;
             }
             0xE1 => {
@@ -2150,7 +2150,7 @@ impl VM {
                 // LD (C),A 2 8 | - - - -
                 let byte = self.cpu.get_a();
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
-                self.mem.write_absolute(word as usize, byte)?;
+                self.mem.write_absolute(word, byte)?;
                 self.cpu.mcycle += 2;
             }
             0xE3 => {
@@ -2185,7 +2185,7 @@ impl VM {
                 // LD (a16),A 3 16 | - - - -
                 let word = self.read_op_imm16()?;
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(word as usize, byte)?;
+                self.mem.write_absolute(word, byte)?;
                 self.cpu.mcycle += 4;
             }
             0xEB => {
@@ -2211,7 +2211,7 @@ impl VM {
             0xF0 => {
                 // LDH A,(a8) 2 12 | - - - -
                 let word = 0xFF00u16 | self.read_op()? as u16;
-                let byte = self.mem.read_absolute(word as usize)?;
+                let byte = self.mem.read_absolute(word)?;
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 3;
             }
@@ -2222,7 +2222,7 @@ impl VM {
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
-                let byte = self.mem.read_absolute(word as usize)?;
+                let byte = self.mem.read_absolute(word)?;
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 2;
             }
@@ -2257,7 +2257,7 @@ impl VM {
             0xFA => {
                 // LD A,(a16) 3 16 | - - - -
                 let word = self.read_op_imm16()?;
-                let byte = self.mem.read_absolute(word as usize)?;
+                let byte = self.mem.read_absolute(word)?;
                 self.cpu.set_a(byte);
                 self.cpu.mcycle += 4;
             }
@@ -2287,7 +2287,7 @@ impl VM {
     }
 
     fn read_op(&mut self) -> Result<u8, Error> {
-        let op = self.mem.read_absolute(self.cpu.pc as usize)?;
+        let op = self.mem.read_absolute(self.cpu.pc)?;
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
 
         Ok(op)
