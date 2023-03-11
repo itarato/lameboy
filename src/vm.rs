@@ -78,7 +78,9 @@ impl VM {
             }
             0x06 => {
                 // LD B,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x06 (LD B,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_b(byte);
+                self.cpu.mcycle += 2;
             }
             0x07 => {
                 // RLCA 1 4 | 0 0 0 C
@@ -110,7 +112,9 @@ impl VM {
             }
             0x0E => {
                 // LD C,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x0E (LD C,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_c(byte);
+                self.cpu.mcycle += 2;
             }
             0x0F => {
                 // RRCA 1 4 | 0 0 0 C
@@ -142,7 +146,9 @@ impl VM {
             }
             0x16 => {
                 // LD D,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x16 (LD D,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_d(byte);
+                self.cpu.mcycle += 2;
             }
             0x17 => {
                 // RLA 1 4 | 0 0 0 C
@@ -174,7 +180,9 @@ impl VM {
             }
             0x1E => {
                 // LD E,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x1E (LD E,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_e(byte);
+                self.cpu.mcycle += 2;
             }
             0x1F => {
                 // RRA 1 4 | 0 0 0 C
@@ -206,7 +214,9 @@ impl VM {
             }
             0x26 => {
                 // LD H,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x26 (LD H,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_h(byte);
+                self.cpu.mcycle += 2;
             }
             0x27 => {
                 // DAA 1 4 | Z - 0 C
@@ -238,7 +248,9 @@ impl VM {
             }
             0x2E => {
                 // LD L,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x2E (LD L,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_l(byte);
+                self.cpu.mcycle += 2;
             }
             0x2F => {
                 // CPL 1 4 | - 1 1 -
@@ -302,7 +314,9 @@ impl VM {
             }
             0x3E => {
                 // LD A,d8 2 8 | - - - -
-                unimplemented!("Opcode 0x3E (LD A,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 2;
             }
             0x3F => {
                 // CCF 1 4 | - 0 0 C
