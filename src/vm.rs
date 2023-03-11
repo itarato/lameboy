@@ -2142,7 +2142,10 @@ impl VM {
             }
             0xE2 => {
                 // LD (C),A 2 8 | - - - -
-                unimplemented!("Opcode 0xE2 (LD (C),A 2 8) not implemented");
+                let byte = self.cpu.get_a();
+                let word = 0xFF00u16 | self.cpu.get_c() as u16;
+                self.mem.write_absolute(word as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0xE3 => {
                 // Invalid | - - - -
@@ -2174,7 +2177,10 @@ impl VM {
             }
             0xEA => {
                 // LD (a16),A 3 16 | - - - -
-                unimplemented!("Opcode 0xEA (LD (a16),A 3 16) not implemented");
+                let word = self.read_op_imm16()?;
+                let byte = self.cpu.get_a();
+                self.mem.write_absolute(word as usize, byte)?;
+                self.cpu.mcycle += 4;
             }
             0xEB => {
                 // Invalid | - - - -
@@ -2198,7 +2204,10 @@ impl VM {
             }
             0xF0 => {
                 // LDH A,(a8) 2 12 | - - - -
-                unimplemented!("Opcode 0xF0 (LDH A,(a8) 2 12) not implemented");
+                let word = 0xFF00u16 | self.read_op()? as u16;
+                let byte = self.mem.read_absolute(word as usize)?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 3;
             }
             0xF1 => {
                 // POP AF 1 12 | Z N H C
@@ -2206,7 +2215,10 @@ impl VM {
             }
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
-                unimplemented!("Opcode 0xF2 (LD A,(C) 2 8) not implemented");
+                let word = 0xFF00u16 | self.cpu.get_c() as u16;
+                let byte = self.mem.read_absolute(word as usize)?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 2;
             }
             0xF3 => {
                 // DI 1 4 | - - - -
@@ -2238,7 +2250,10 @@ impl VM {
             }
             0xFA => {
                 // LD A,(a16) 3 16 | - - - -
-                unimplemented!("Opcode 0xFA (LD A,(a16) 3 16) not implemented");
+                let word = self.read_op_imm16()?;
+                let byte = self.mem.read_absolute(word as usize)?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 4;
             }
             0xFB => {
                 // EI 1 4 | - - - -
@@ -2273,8 +2288,8 @@ impl VM {
     }
 
     fn read_op_imm16(&mut self) -> Result<u16, Error> {
-        let hi = self.read_op()?;
         let lo = self.read_op()?;
+        let hi = self.read_op()?;
 
         Ok(((hi as u16) << 8) | lo as u16)
     }
