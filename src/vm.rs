@@ -89,7 +89,8 @@ impl VM {
             }
             0x08 => {
                 // LD (a16),SP 3 20 | - - - -
-                unimplemented!("Opcode 0x08 (LD (a16),SP 3 20) not implemented");
+                let word = self.read_op_imm16()?;
+                self.mem.write_u16(word, self.cpu.sp)?;
             }
             0x09 => {
                 // ADD HL,BC 1 8 | - 0 H C

@@ -134,6 +134,16 @@ impl Mem {
         self.data[loc as usize] = byte;
     }
 
+    pub fn write_u16(&mut self, loc: u16, word: u16) -> Result<(), Error> {
+        let hi = (word >> 8) as u8;
+        let lo = (word & 0xFF) as u8;
+
+        self.write(loc, lo)?;
+        self.write(loc + 1, hi)?;
+
+        Ok(())
+    }
+
     fn is_bios_mounted(&self) -> bool {
         self.read(MEM_LOC_BOOT_LOCK_REG).unwrap() == 0b0
     }
