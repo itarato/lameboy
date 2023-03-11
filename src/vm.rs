@@ -58,7 +58,8 @@ impl VM {
             }
             0x01 => {
                 // LD BC,d16 3 12 | - - - -
-                unimplemented!("Opcode 0x01 (LD BC,d16 3 12) not implemented");
+                let word = self.read_op_imm16()?;
+                self.cpu.bc = word;
             }
             0x02 => {
                 // LD (BC),A 1 8 | - - - -
@@ -126,7 +127,8 @@ impl VM {
             }
             0x11 => {
                 // LD DE,d16 3 12 | - - - -
-                unimplemented!("Opcode 0x11 (LD DE,d16 3 12) not implemented");
+                let word = self.read_op_imm16()?;
+                self.cpu.de = word;
             }
             0x12 => {
                 // LD (DE),A 1 8 | - - - -
@@ -194,11 +196,14 @@ impl VM {
             }
             0x21 => {
                 // LD HL,d16 3 12 | - - - -
-                unimplemented!("Opcode 0x21 (LD HL,d16 3 12) not implemented");
+                let word = self.read_op_imm16()?;
+                self.cpu.hl = word;
             }
             0x22 => {
                 // LD (HL+),A 1 8 | - - - -
-                unimplemented!("Opcode 0x22 (LD (HL+),A 1 8) not implemented");
+                let byte = self.cpu.get_a();
+                self.mem.write(self.cpu.hl, byte)?;
+                self.cpu.hl = self.cpu.hl.wrapping_add(1);
             }
             0x23 => {
                 // INC HL 1 8 | - - - -
@@ -262,7 +267,8 @@ impl VM {
             }
             0x31 => {
                 // LD SP,d16 3 12 | - - - -
-                unimplemented!("Opcode 0x31 (LD SP,d16 3 12) not implemented");
+                let word = self.read_op_imm16()?;
+                self.cpu.sp = word;
             }
             0x32 => {
                 // LD (HL-),A 1 8 | - - - -
