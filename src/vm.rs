@@ -308,7 +308,10 @@ impl VM {
             }
             0x3A => {
                 // LD A,(HL-) 1 8 | - - - -
-                unimplemented!("Opcode 0x3A (LD A,(HL-) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.hl = self.cpu.hl.wrapping_sub(1);
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 2;
             }
             0x3B => {
                 // DEC SP 1 8 | - - - -
@@ -2134,7 +2137,10 @@ impl VM {
             }
             0xE0 => {
                 // LDH (a8),A 2 12 | - - - -
-                unimplemented!("Opcode 0xE0 (LDH (a8),A 2 12) not implemented");
+                let byte = self.cpu.get_a();
+                let word = 0xFF00u16 | self.read_op()? as u16;
+                self.mem.write_absolute(word as usize, byte)?;
+                self.cpu.mcycle += 3;
             }
             0xE1 => {
                 // POP HL 1 12 | - - - -
