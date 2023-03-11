@@ -612,27 +612,39 @@ impl VM {
             }
             0x70 => {
                 // LD (HL),B 1 8 | - - - -
-                unimplemented!("Opcode 0x70 (LD (HL),B 1 8) not implemented");
+                let byte = self.cpu.get_b();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x71 => {
                 // LD (HL),C 1 8 | - - - -
-                unimplemented!("Opcode 0x71 (LD (HL),C 1 8) not implemented");
+                let byte = self.cpu.get_c();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x72 => {
                 // LD (HL),D 1 8 | - - - -
-                unimplemented!("Opcode 0x72 (LD (HL),D 1 8) not implemented");
+                let byte = self.cpu.get_d();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x73 => {
                 // LD (HL),E 1 8 | - - - -
-                unimplemented!("Opcode 0x73 (LD (HL),E 1 8) not implemented");
+                let byte = self.cpu.get_e();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x74 => {
                 // LD (HL),H 1 8 | - - - -
-                unimplemented!("Opcode 0x74 (LD (HL),H 1 8) not implemented");
+                let byte = self.cpu.get_h();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x75 => {
                 // LD (HL),L 1 8 | - - - -
-                unimplemented!("Opcode 0x75 (LD (HL),L 1 8) not implemented");
+                let byte = self.cpu.get_l();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x76 => {
                 // HALT 1 4 | - - - -
@@ -640,7 +652,9 @@ impl VM {
             }
             0x77 => {
                 // LD (HL),A 1 8 | - - - -
-                unimplemented!("Opcode 0x77 (LD (HL),A 1 8) not implemented");
+                let byte = self.cpu.get_a();
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 2;
             }
             0x78 => {
                 // LD A,B 1 4 | - - - -
