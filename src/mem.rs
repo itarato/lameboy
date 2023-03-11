@@ -17,10 +17,10 @@ impl Mem {
     }
 
     pub fn reset(&mut self) {
-        self.force_write_main_ram(MEM_LOC_BOOT_LOCK_REG, 0b0);
+        self.write_unchecked(MEM_LOC_BOOT_LOCK_REG, 0b0);
     }
 
-    pub fn read_absolute(&self, loc: u16) -> Result<u8, Error> {
+    pub fn read(&self, loc: u16) -> Result<u8, Error> {
         if loc < MEM_AREA_ROM_BANK_N {
             // MEM_AREA_ROM_BANK_0:
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
@@ -66,7 +66,7 @@ impl Mem {
         }
     }
 
-    pub fn write_absolute(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+    pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         match loc {
             MEM_LOC_BOOT_LOCK_REG => {
                 // BOOT_OFF can only transition from 0b0 to 0b1, so once 0b1 has been written, the boot ROM is
@@ -120,7 +120,7 @@ impl Mem {
         Ok(())
     }
 
-    fn force_write_main_ram(&mut self, loc: u16, byte: u8) {
+    fn write_unchecked(&mut self, loc: u16, byte: u8) {
         assert!(loc >= MEM_AREA_VRAM, "Mem addr cannot write rom bank area");
         assert!(loc <= MEM_ADDR_MAX, "Mem addr cannot exceed limit");
 
@@ -135,6 +135,6 @@ impl Mem {
     }
 
     fn is_bios_mounted(&self) -> bool {
-        self.read_absolute(MEM_LOC_BOOT_LOCK_REG).unwrap() == 0b0
+        self.read(MEM_LOC_BOOT_LOCK_REG).unwrap() == 0b0
     }
 }

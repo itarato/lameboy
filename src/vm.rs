@@ -63,8 +63,7 @@ impl VM {
             0x02 => {
                 // LD (BC),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(self.cpu.bc, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.bc, byte)?;
             }
             0x03 => {
                 // INC BC 1 8 | - - - -
@@ -82,7 +81,6 @@ impl VM {
                 // LD B,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 2;
             }
             0x07 => {
                 // RLCA 1 4 | 0 0 0 C
@@ -98,9 +96,8 @@ impl VM {
             }
             0x0A => {
                 // LD A,(BC) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.bc)?;
+                let byte = self.mem.read(self.cpu.bc)?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 2;
             }
             0x0B => {
                 // DEC BC 1 8 | - - - -
@@ -118,7 +115,6 @@ impl VM {
                 // LD C,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 2;
             }
             0x0F => {
                 // RRCA 1 4 | 0 0 0 C
@@ -135,8 +131,7 @@ impl VM {
             0x12 => {
                 // LD (DE),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(self.cpu.de, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.de, byte)?;
             }
             0x13 => {
                 // INC DE 1 8 | - - - -
@@ -154,7 +149,6 @@ impl VM {
                 // LD D,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 2;
             }
             0x17 => {
                 // RLA 1 4 | 0 0 0 C
@@ -170,9 +164,8 @@ impl VM {
             }
             0x1A => {
                 // LD A,(DE) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.de)?;
+                let byte = self.mem.read(self.cpu.de)?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 2;
             }
             0x1B => {
                 // DEC DE 1 8 | - - - -
@@ -190,7 +183,6 @@ impl VM {
                 // LD E,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 2;
             }
             0x1F => {
                 // RRA 1 4 | 0 0 0 C
@@ -224,7 +216,6 @@ impl VM {
                 // LD H,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 2;
             }
             0x27 => {
                 // DAA 1 4 | Z - 0 C
@@ -240,7 +231,9 @@ impl VM {
             }
             0x2A => {
                 // LD A,(HL+) 1 8 | - - - -
-                unimplemented!("Opcode 0x2A (LD A,(HL+) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.set_a(byte);
+                self.cpu.hl = self.cpu.hl.wrapping_add(1);
             }
             0x2B => {
                 // DEC HL 1 8 | - - - -
@@ -258,7 +251,6 @@ impl VM {
                 // LD L,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 2;
             }
             0x2F => {
                 // CPL 1 4 | - 1 1 -
@@ -276,9 +268,8 @@ impl VM {
                 // LD (HL-),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
                 let word = self.cpu.hl;
-                self.mem.write_absolute(word, byte)?;
+                self.mem.write(word, byte)?;
                 self.cpu.hl = self.cpu.hl.wrapping_sub(1);
-                self.cpu.mcycle += 2;
             }
             0x33 => {
                 // INC SP 1 8 | - - - -
@@ -295,8 +286,7 @@ impl VM {
             0x36 => {
                 // LD (HL),d8 2 12 | - - - -
                 let byte = self.read_op()?;
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 3;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x37 => {
                 // SCF 1 4 | - 0 0 1
@@ -312,10 +302,9 @@ impl VM {
             }
             0x3A => {
                 // LD A,(HL-) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.hl = self.cpu.hl.wrapping_sub(1);
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 2;
             }
             0x3B => {
                 // DEC SP 1 8 | - - - -
@@ -333,7 +322,6 @@ impl VM {
                 // LD A,d8 2 8 | - - - -
                 let byte = self.read_op()?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 2;
             }
             0x3F => {
                 // CCF 1 4 | - 0 0 C
@@ -343,325 +331,271 @@ impl VM {
                 // LD B,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x41 => {
                 // LD B,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x42 => {
                 // LD B,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x43 => {
                 // LD B,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x44 => {
                 // LD B,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x45 => {
                 // LD B,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x46 => {
                 // LD B,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 2;
             }
             0x47 => {
                 // LD B,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_b(byte);
-                self.cpu.mcycle += 1;
             }
             0x48 => {
                 // LD C,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x49 => {
                 // LD C,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x4A => {
                 // LD C,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x4B => {
                 // LD C,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x4C => {
                 // LD C,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x4D => {
                 // LD C,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x4E => {
                 // LD C,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 2;
             }
             0x4F => {
                 // LD C,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_c(byte);
-                self.cpu.mcycle += 1;
             }
             0x50 => {
                 // LD D,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x51 => {
                 // LD D,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x52 => {
                 // LD D,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x53 => {
                 // LD D,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x54 => {
                 // LD D,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x55 => {
                 // LD D,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x56 => {
                 // LD D,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 2;
             }
             0x57 => {
                 // LD D,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_d(byte);
-                self.cpu.mcycle += 1;
             }
             0x58 => {
                 // LD E,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x59 => {
                 // LD E,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x5A => {
                 // LD E,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x5B => {
                 // LD E,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x5C => {
                 // LD E,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x5D => {
                 // LD E,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x5E => {
                 // LD E,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 2;
             }
             0x5F => {
                 // LD E,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_e(byte);
-                self.cpu.mcycle += 1;
             }
             0x60 => {
                 // LD H,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x61 => {
                 // LD H,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x62 => {
                 // LD H,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x63 => {
                 // LD H,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x64 => {
                 // LD H,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x65 => {
                 // LD H,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x66 => {
                 // LD H,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 2;
             }
             0x67 => {
                 // LD H,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_h(byte);
-                self.cpu.mcycle += 1;
             }
             0x68 => {
                 // LD L,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x69 => {
                 // LD L,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x6A => {
                 // LD L,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x6B => {
                 // LD L,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x6C => {
                 // LD L,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x6D => {
                 // LD L,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x6E => {
                 // LD L,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 2;
             }
             0x6F => {
                 // LD L,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_l(byte);
-                self.cpu.mcycle += 1;
             }
             0x70 => {
                 // LD (HL),B 1 8 | - - - -
                 let byte = self.cpu.get_b();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x71 => {
                 // LD (HL),C 1 8 | - - - -
                 let byte = self.cpu.get_c();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x72 => {
                 // LD (HL),D 1 8 | - - - -
                 let byte = self.cpu.get_d();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x73 => {
                 // LD (HL),E 1 8 | - - - -
                 let byte = self.cpu.get_e();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x74 => {
                 // LD (HL),H 1 8 | - - - -
                 let byte = self.cpu.get_h();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x75 => {
                 // LD (HL),L 1 8 | - - - -
                 let byte = self.cpu.get_l();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x76 => {
                 // HALT 1 4 | - - - -
@@ -670,56 +604,47 @@ impl VM {
             0x77 => {
                 // LD (HL),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(self.cpu.hl, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(self.cpu.hl, byte)?;
             }
             0x78 => {
                 // LD A,B 1 4 | - - - -
                 let byte = self.cpu.get_b();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x79 => {
                 // LD A,C 1 4 | - - - -
                 let byte = self.cpu.get_c();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x7A => {
                 // LD A,D 1 4 | - - - -
                 let byte = self.cpu.get_d();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x7B => {
                 // LD A,E 1 4 | - - - -
                 let byte = self.cpu.get_e();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x7C => {
                 // LD A,H 1 4 | - - - -
                 let byte = self.cpu.get_h();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x7D => {
                 // LD A,L 1 4 | - - - -
                 let byte = self.cpu.get_l();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x7E => {
                 // LD A,(HL) 1 8 | - - - -
-                let byte = self.mem.read_absolute(self.cpu.hl)?;
+                let byte = self.mem.read(self.cpu.hl)?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 2;
             }
             0x7F => {
                 // LD A,A 1 4 | - - - -
                 let byte = self.cpu.get_a();
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 1;
             }
             0x80 => {
                 // ADD A,B 1 4 | Z 0 H C
@@ -2058,6 +1983,8 @@ impl VM {
                         unimplemented!("Prefix CB opcode 0xFF (SET 7,A 2 8) not implemented");
                     }
                 };
+
+                self.cpu.mcycle += opcode_mcycle_prefix[op_cb as usize] as usize;
             }
             0xCC => {
                 // CALL Z,a16 3 24/12 | - - - -
@@ -2143,8 +2070,7 @@ impl VM {
                 // LDH (a8),A 2 12 | - - - -
                 let byte = self.cpu.get_a();
                 let word = 0xFF00u16 | self.read_op()? as u16;
-                self.mem.write_absolute(word, byte)?;
-                self.cpu.mcycle += 3;
+                self.mem.write(word, byte)?;
             }
             0xE1 => {
                 // POP HL 1 12 | - - - -
@@ -2154,8 +2080,7 @@ impl VM {
                 // LD (C),A 2 8 | - - - -
                 let byte = self.cpu.get_a();
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
-                self.mem.write_absolute(word, byte)?;
-                self.cpu.mcycle += 2;
+                self.mem.write(word, byte)?;
             }
             0xE3 => {
                 // Invalid | - - - -
@@ -2189,8 +2114,7 @@ impl VM {
                 // LD (a16),A 3 16 | - - - -
                 let word = self.read_op_imm16()?;
                 let byte = self.cpu.get_a();
-                self.mem.write_absolute(word, byte)?;
-                self.cpu.mcycle += 4;
+                self.mem.write(word, byte)?;
             }
             0xEB => {
                 // Invalid | - - - -
@@ -2215,9 +2139,8 @@ impl VM {
             0xF0 => {
                 // LDH A,(a8) 2 12 | - - - -
                 let word = 0xFF00u16 | self.read_op()? as u16;
-                let byte = self.mem.read_absolute(word)?;
+                let byte = self.mem.read(word)?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 3;
             }
             0xF1 => {
                 // POP AF 1 12 | Z N H C
@@ -2226,9 +2149,8 @@ impl VM {
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
-                let byte = self.mem.read_absolute(word)?;
+                let byte = self.mem.read(word)?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 2;
             }
             0xF3 => {
                 // DI 1 4 | - - - -
@@ -2261,9 +2183,8 @@ impl VM {
             0xFA => {
                 // LD A,(a16) 3 16 | - - - -
                 let word = self.read_op_imm16()?;
-                let byte = self.mem.read_absolute(word)?;
+                let byte = self.mem.read(word)?;
                 self.cpu.set_a(byte);
-                self.cpu.mcycle += 4;
             }
             0xFB => {
                 // EI 1 4 | - - - -
@@ -2287,11 +2208,13 @@ impl VM {
             }
         };
 
+        self.cpu.mcycle += opcode_mcycle[op as usize] as usize;
+
         Ok(())
     }
 
     fn read_op(&mut self) -> Result<u8, Error> {
-        let op = self.mem.read_absolute(self.cpu.pc)?;
+        let op = self.mem.read(self.cpu.pc)?;
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
 
         Ok(op)
