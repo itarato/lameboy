@@ -96,7 +96,9 @@ impl VM {
             }
             0x0A => {
                 // LD A,(BC) 1 8 | - - - -
-                unimplemented!("Opcode 0x0A (LD A,(BC) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.bc as usize)?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 2;
             }
             0x0B => {
                 // DEC BC 1 8 | - - - -
@@ -164,7 +166,9 @@ impl VM {
             }
             0x1A => {
                 // LD A,(DE) 1 8 | - - - -
-                unimplemented!("Opcode 0x1A (LD A,(DE) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.de as usize)?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 2;
             }
             0x1B => {
                 // DEC DE 1 8 | - - - -
@@ -282,7 +286,9 @@ impl VM {
             }
             0x36 => {
                 // LD (HL),d8 2 12 | - - - -
-                unimplemented!("Opcode 0x36 (LD (HL),d8 2 12) not implemented");
+                let byte = self.read_op()?;
+                self.mem.write_absolute(self.cpu.hl as usize, byte)?;
+                self.cpu.mcycle += 3;
             }
             0x37 => {
                 // SCF 1 4 | - 0 0 1
