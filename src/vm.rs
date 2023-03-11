@@ -274,7 +274,11 @@ impl VM {
             }
             0x32 => {
                 // LD (HL-),A 1 8 | - - - -
-                unimplemented!("Opcode 0x32 (LD (HL-),A 1 8) not implemented");
+                let byte = self.cpu.get_a();
+                let word = self.cpu.hl;
+                self.mem.write_absolute(word, byte)?;
+                self.cpu.hl = self.cpu.hl.wrapping_sub(1);
+                self.cpu.mcycle += 2;
             }
             0x33 => {
                 // INC SP 1 8 | - - - -
