@@ -360,7 +360,9 @@ impl VM {
             }
             0x46 => {
                 // LD B,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x46 (LD B,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_b(byte);
+                self.cpu.mcycle += 2;
             }
             0x47 => {
                 // LD B,A 1 4 | - - - -
@@ -406,7 +408,9 @@ impl VM {
             }
             0x4E => {
                 // LD C,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x4E (LD C,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_c(byte);
+                self.cpu.mcycle += 2;
             }
             0x4F => {
                 // LD C,A 1 4 | - - - -
@@ -452,7 +456,9 @@ impl VM {
             }
             0x56 => {
                 // LD D,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x56 (LD D,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_d(byte);
+                self.cpu.mcycle += 2;
             }
             0x57 => {
                 // LD D,A 1 4 | - - - -
@@ -498,7 +504,9 @@ impl VM {
             }
             0x5E => {
                 // LD E,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x5E (LD E,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_e(byte);
+                self.cpu.mcycle += 2;
             }
             0x5F => {
                 // LD E,A 1 4 | - - - -
@@ -544,7 +552,9 @@ impl VM {
             }
             0x66 => {
                 // LD H,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x66 (LD H,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_h(byte);
+                self.cpu.mcycle += 2;
             }
             0x67 => {
                 // LD H,A 1 4 | - - - -
@@ -590,7 +600,9 @@ impl VM {
             }
             0x6E => {
                 // LD L,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x6E (LD L,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_l(byte);
+                self.cpu.mcycle += 2;
             }
             0x6F => {
                 // LD L,A 1 4 | - - - -
@@ -668,7 +680,9 @@ impl VM {
             }
             0x7E => {
                 // LD A,(HL) 1 8 | - - - -
-                unimplemented!("Opcode 0x7E (LD A,(HL) 1 8) not implemented");
+                let byte = self.mem.read_absolute(self.cpu.hl as usize)?;
+                self.cpu.set_a(byte);
+                self.cpu.mcycle += 2;
             }
             0x7F => {
                 // LD A,A 1 4 | - - - -
