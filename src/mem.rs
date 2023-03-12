@@ -116,8 +116,6 @@ impl Mem {
         } else {
             return Err("Write outside of memory".into());
         }
-
-        Ok(())
     }
 
     fn write_unchecked(&mut self, loc: u16, byte: u8) {

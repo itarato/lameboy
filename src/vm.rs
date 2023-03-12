@@ -931,7 +931,10 @@ impl VM {
             }
             0xC5 => {
                 // PUSH BC 1 16 | - - - -
-                unimplemented!("Opcode 0xC5 (PUSH BC 1 16) not implemented");
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_b())?;
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_c())?;
             }
             0xC6 => {
                 // ADD A,d8 2 8 | Z 0 H C
@@ -2031,7 +2034,10 @@ impl VM {
             }
             0xD5 => {
                 // PUSH DE 1 16 | - - - -
-                unimplemented!("Opcode 0xD5 (PUSH DE 1 16) not implemented");
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_d())?;
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_e())?;
             }
             0xD6 => {
                 // SUB d8 2 8 | Z 1 H C
@@ -2099,7 +2105,10 @@ impl VM {
             }
             0xE5 => {
                 // PUSH HL 1 16 | - - - -
-                unimplemented!("Opcode 0xE5 (PUSH HL 1 16) not implemented");
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_h())?;
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_l())?;
             }
             0xE6 => {
                 // AND d8 2 8 | Z 0 1 0
@@ -2169,7 +2178,10 @@ impl VM {
             }
             0xF5 => {
                 // PUSH AF 1 16 | - - - -
-                unimplemented!("Opcode 0xF5 (PUSH AF 1 16) not implemented");
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_a())?;
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
+                self.mem.write(self.cpu.sp, self.cpu.get_f())?;
             }
             0xF6 => {
                 // OR d8 2 8 | Z 0 0 0
@@ -2181,11 +2193,19 @@ impl VM {
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
-                unimplemented!("Opcode 0xF8 (LD HL,SP+r8 2 12) not implemented");
+                let byte = self.read_op()?;
+                let is_carry = is_carry_add_u16(self.cpu.sp, byte);
+                let is_half_carry = is_half_carry_add_u16(self.cpu.sp, byte);
+                self.cpu.hl = self.cpu.sp.wrapping_add(byte as u16);
+
+                self.cpu.set_fc(is_carry);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
             }
             0xF9 => {
                 // LD SP,HL 1 8 | - - - -
-                unimplemented!("Opcode 0xF9 (LD SP,HL 1 8) not implemented");
+                self.cpu.sp = self.cpu.hl;
             }
             0xFA => {
                 // LD A,(a16) 3 16 | - - - -

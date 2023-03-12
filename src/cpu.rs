@@ -42,7 +42,8 @@ macro_rules! make_fn_get_flag {
 
 macro_rules! make_fn_set_flag {
     ($name:ident, $offs:expr) => {
-        pub fn $name(&mut self, v: u8) {
+        pub fn $name(&mut self, is_on: bool) {
+            let v = if is_on { 1 } else { 0 };
             assert!(v <= 0b1);
             self.af &= 0xFFFF ^ (1 << $offs);
             self.af |= (v << $offs) as u16;
