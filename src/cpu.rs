@@ -1,3 +1,5 @@
+use crate::util::*;
+
 macro_rules! make_fn_set_reg_hi {
     ($name:ident, $reg:ident) => {
         pub fn $name(&mut self, byte: u8) {
@@ -34,8 +36,12 @@ macro_rules! make_fn_get_reg_lo {
 
 macro_rules! make_fn_get_flag {
     ($name:ident, $offs:expr) => {
-        pub fn $name(&self) -> bool {
-            (self.af & (1 << $offs)) > 0
+        pub fn $name(&self) -> u8 {
+            if (self.af & (1 << $offs)) > 0 {
+                1
+            } else {
+                0
+            }
         }
     };
 }
@@ -75,10 +81,10 @@ impl Cpu {
         }
     }
 
-    make_fn_get_flag!(is_fz, 7);
-    make_fn_get_flag!(is_fn, 6);
-    make_fn_get_flag!(is_fh, 5);
-    make_fn_get_flag!(is_fc, 4);
+    make_fn_get_flag!(get_fz, 7);
+    make_fn_get_flag!(get_fn, 6);
+    make_fn_get_flag!(get_fh, 5);
+    make_fn_get_flag!(get_fc, 4);
 
     make_fn_set_flag!(set_fz, 7);
     make_fn_set_flag!(set_fn, 6);
@@ -104,4 +110,18 @@ impl Cpu {
     make_fn_get_reg_lo!(get_c, bc);
     make_fn_get_reg_lo!(get_e, de);
     make_fn_get_reg_lo!(get_l, hl);
+
+    pub fn add(&mut self, add: u8) {
+        let is_half_carry = is_half_carry_add_u8(self.get_a(), add);
+        let is_carry = is_carry_add_u8(self.get_a(), add);
+
+        let byte = self.get_a().wrapping_add(add);
+
+        self.set_a(byte);
+
+        self.set_fz(byte == 0);
+        self.set_fn(false);
+        self.set_fh(is_half_carry);
+        self.set_fc(is_carry);
+    }
 }

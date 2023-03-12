@@ -655,124 +655,83 @@ impl VM {
             }
             0x80 => {
                 // ADD A,B 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_b();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_b());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_b());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_b();
+                self.cpu.add(byte);
             }
             0x81 => {
                 // ADD A,C 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_c();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_c());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_c());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_c();
+                self.cpu.add(byte);
             }
             0x82 => {
                 // ADD A,D 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_d();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_d());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_d());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_d();
+                self.cpu.add(byte);
             }
             0x83 => {
                 // ADD A,E 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_e();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_e());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_e());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_e();
+                self.cpu.add(byte);
             }
             0x84 => {
                 // ADD A,H 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_h();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_h());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_h());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_h();
+                self.cpu.add(byte);
             }
             0x85 => {
                 // ADD A,L 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_l();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_l());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_l());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_l();
+                self.cpu.add(byte);
             }
             0x86 => {
                 // ADD A,(HL) 1 8 | Z 0 H C
-                let add = self.mem.read(self.cpu.hl)?;
-                let byte = self.cpu.get_a() + add;
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), add);
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), add);
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.add(byte);
             }
             0x87 => {
                 // ADD A,A 1 4 | Z 0 H C
-                let byte = self.cpu.get_a() + self.cpu.get_a();
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), self.cpu.get_a());
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), self.cpu.get_a());
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.cpu.get_a();
+                self.cpu.add(byte);
             }
             0x88 => {
                 // ADC A,B 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x88 (ADC A,B 1 4) not implemented");
+                let byte = self.cpu.get_b().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x89 => {
                 // ADC A,C 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x89 (ADC A,C 1 4) not implemented");
+                let byte = self.cpu.get_c().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x8A => {
                 // ADC A,D 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x8A (ADC A,D 1 4) not implemented");
+                let byte = self.cpu.get_d().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x8B => {
                 // ADC A,E 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x8B (ADC A,E 1 4) not implemented");
+                let byte = self.cpu.get_e().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x8C => {
                 // ADC A,H 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x8C (ADC A,H 1 4) not implemented");
+                let byte = self.cpu.get_h().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x8D => {
                 // ADC A,L 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x8D (ADC A,L 1 4) not implemented");
+                let byte = self.cpu.get_l().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x8E => {
                 // ADC A,(HL) 1 8 | Z 0 H C
-                unimplemented!("Opcode 0x8E (ADC A,(HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.add(byte);
             }
             0x8F => {
                 // ADC A,A 1 4 | Z 0 H C
-                unimplemented!("Opcode 0x8F (ADC A,A 1 4) not implemented");
+                let byte = self.cpu.get_a().wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0x90 => {
                 // SUB B 1 4 | Z 1 H C
@@ -994,15 +953,8 @@ impl VM {
             }
             0xC6 => {
                 // ADD A,d8 2 8 | Z 0 H C
-                let add = self.read_op()?;
-                let byte = self.cpu.get_a() + add;
-                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), add);
-                let is_carry = is_carry_add_u8(self.cpu.get_a(), add);
-                self.cpu.set_a(byte);
-                self.cpu.set_fz(byte == 0);
-                self.cpu.set_fn(false);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fc(is_carry);
+                let byte = self.read_op()?;
+                self.cpu.add(byte);
             }
             0xC7 => {
                 // RST 00H 1 16 | - - - -
