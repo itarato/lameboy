@@ -721,7 +721,15 @@ impl VM {
             }
             0x86 => {
                 // ADD A,(HL) 1 8 | Z 0 H C
-                unimplemented!("Opcode 0x86 (ADD A,(HL) 1 8) not implemented");
+                let add = self.mem.read(self.cpu.hl)?;
+                let byte = self.cpu.get_a() + add;
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), add);
+                let is_carry = is_carry_add_u8(self.cpu.get_a(), add);
+                self.cpu.set_a(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fc(is_carry);
             }
             0x87 => {
                 // ADD A,A 1 4 | Z 0 H C
@@ -986,7 +994,15 @@ impl VM {
             }
             0xC6 => {
                 // ADD A,d8 2 8 | Z 0 H C
-                unimplemented!("Opcode 0xC6 (ADD A,d8 2 8) not implemented");
+                let add = self.read_op()?;
+                let byte = self.cpu.get_a() + add;
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), add);
+                let is_carry = is_carry_add_u8(self.cpu.get_a(), add);
+                self.cpu.set_a(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fc(is_carry);
             }
             0xC7 => {
                 // RST 00H 1 16 | - - - -
