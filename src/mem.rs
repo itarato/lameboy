@@ -66,6 +66,12 @@ impl Mem {
         }
     }
 
+    pub fn read_u16(&mut self, loc: u16) -> Result<u16, Error> {
+        let lo = self.read(loc)?;
+        let hi = self.read(loc + 1)?;
+        Ok(((hi as u16) << 8) | lo as u16)
+    }
+
     pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         match loc {
             MEM_LOC_BOOT_LOCK_REG => {
