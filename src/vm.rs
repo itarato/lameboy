@@ -2022,7 +2022,8 @@ impl VM {
             }
             0xCE => {
                 // ADC A,d8 2 8 | Z 0 H C
-                unimplemented!("Opcode 0xCE (ADC A,d8 2 8) not implemented");
+                let byte = self.read_op()?.wrapping_add(self.cpu.get_fc());
+                self.cpu.add(byte);
             }
             0xCF => {
                 // RST 08H 1 16 | - - - -
