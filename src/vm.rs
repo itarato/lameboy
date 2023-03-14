@@ -735,27 +735,33 @@ impl VM {
             }
             0x90 => {
                 // SUB B 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x90 (SUB B 1 4) not implemented");
+                let byte = self.cpu.get_b();
+                self.cpu.sub(byte);
             }
             0x91 => {
                 // SUB C 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x91 (SUB C 1 4) not implemented");
+                let byte = self.cpu.get_c();
+                self.cpu.sub(byte);
             }
             0x92 => {
                 // SUB D 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x92 (SUB D 1 4) not implemented");
+                let byte = self.cpu.get_d();
+                self.cpu.sub(byte);
             }
             0x93 => {
                 // SUB E 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x93 (SUB E 1 4) not implemented");
+                let byte = self.cpu.get_e();
+                self.cpu.sub(byte);
             }
             0x94 => {
                 // SUB H 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x94 (SUB H 1 4) not implemented");
+                let byte = self.cpu.get_h();
+                self.cpu.sub(byte);
             }
             0x95 => {
                 // SUB L 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x95 (SUB L 1 4) not implemented");
+                let byte = self.cpu.get_l();
+                self.cpu.sub(byte);
             }
             0x96 => {
                 // SUB (HL) 1 8 | Z 1 H C
@@ -763,7 +769,8 @@ impl VM {
             }
             0x97 => {
                 // SUB A 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x97 (SUB A 1 4) not implemented");
+                let byte = self.cpu.get_a();
+                self.cpu.sub(byte);
             }
             0x98 => {
                 // SBC A,B 1 4 | Z 1 H C
@@ -2207,10 +2214,10 @@ impl VM {
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
-                let byte = self.read_op()?;
-                let is_carry = is_carry_add_u16(self.cpu.sp, byte);
-                let is_half_carry = is_half_carry_add_u16(self.cpu.sp, byte);
-                self.cpu.hl = self.cpu.sp.wrapping_add(byte as u16);
+                let word = self.read_op()? as u16;
+                let is_carry = is_carry_add_u16(self.cpu.sp, word);
+                let is_half_carry = is_half_carry_add_u16(self.cpu.sp, word);
+                self.cpu.hl = self.cpu.sp.wrapping_add(word);
 
                 self.cpu.set_fc(is_carry);
                 self.cpu.set_fh(is_half_carry);
