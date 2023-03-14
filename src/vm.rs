@@ -765,7 +765,8 @@ impl VM {
             }
             0x96 => {
                 // SUB (HL) 1 8 | Z 1 H C
-                unimplemented!("Opcode 0x96 (SUB (HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.sub(byte);
             }
             0x97 => {
                 // SUB A 1 4 | Z 1 H C
@@ -774,35 +775,43 @@ impl VM {
             }
             0x98 => {
                 // SBC A,B 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x98 (SBC A,B 1 4) not implemented");
+                let byte = self.cpu.get_b().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0x99 => {
                 // SBC A,C 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x99 (SBC A,C 1 4) not implemented");
+                let byte = self.cpu.get_c().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0x9A => {
                 // SBC A,D 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x9A (SBC A,D 1 4) not implemented");
+                let byte = self.cpu.get_d().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0x9B => {
                 // SBC A,E 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x9B (SBC A,E 1 4) not implemented");
+                let byte = self.cpu.get_e().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0x9C => {
                 // SBC A,H 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x9C (SBC A,H 1 4) not implemented");
+                let byte = self.cpu.get_h().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0x9D => {
                 // SBC A,L 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x9D (SBC A,L 1 4) not implemented");
+                let byte = self.cpu.get_l().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0x9E => {
                 // SBC A,(HL) 1 8 | Z 1 H C
-                unimplemented!("Opcode 0x9E (SBC A,(HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.sub(byte);
             }
             0x9F => {
                 // SBC A,A 1 4 | Z 1 H C
-                unimplemented!("Opcode 0x9F (SBC A,A 1 4) not implemented");
+                let byte = self.cpu.get_a().wrapping_sub(self.cpu.get_fc());
+                self.cpu.sub(byte);
             }
             0xA0 => {
                 // AND B 1 4 | Z 0 1 0
@@ -902,35 +911,43 @@ impl VM {
             }
             0xB8 => {
                 // CP B 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xB8 (CP B 1 4) not implemented");
+                let byte = self.cpu.get_b();
+                self.cpu.cp(byte);
             }
             0xB9 => {
                 // CP C 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xB9 (CP C 1 4) not implemented");
+                let byte = self.cpu.get_c();
+                self.cpu.cp(byte);
             }
             0xBA => {
                 // CP D 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xBA (CP D 1 4) not implemented");
+                let byte = self.cpu.get_d();
+                self.cpu.cp(byte);
             }
             0xBB => {
                 // CP E 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xBB (CP E 1 4) not implemented");
+                let byte = self.cpu.get_e();
+                self.cpu.cp(byte);
             }
             0xBC => {
                 // CP H 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xBC (CP H 1 4) not implemented");
+                let byte = self.cpu.get_h();
+                self.cpu.cp(byte);
             }
             0xBD => {
                 // CP L 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xBD (CP L 1 4) not implemented");
+                let byte = self.cpu.get_l();
+                self.cpu.cp(byte);
             }
             0xBE => {
                 // CP (HL) 1 8 | Z 1 H C
-                unimplemented!("Opcode 0xBE (CP (HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.cp(byte);
             }
             0xBF => {
                 // CP A 1 4 | Z 1 H C
-                unimplemented!("Opcode 0xBF (CP A 1 4) not implemented");
+                let byte = self.cpu.get_a();
+                self.cpu.cp(byte);
             }
             0xC0 => {
                 // RET NZ 1 20/8 | - - - -
@@ -2064,7 +2081,8 @@ impl VM {
             }
             0xD6 => {
                 // SUB d8 2 8 | Z 1 H C
-                unimplemented!("Opcode 0xD6 (SUB d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.sub(byte);
             }
             0xD7 => {
                 // RST 10H 1 16 | - - - -
@@ -2096,7 +2114,8 @@ impl VM {
             }
             0xDE => {
                 // SBC A,d8 2 8 | Z 1 H C
-                unimplemented!("Opcode 0xDE (SBC A,d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.sub(byte);
             }
             0xDF => {
                 // RST 18H 1 16 | - - - -
@@ -2248,7 +2267,8 @@ impl VM {
             }
             0xFE => {
                 // CP d8 2 8 | Z 1 H C
-                unimplemented!("Opcode 0xFE (CP d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.cp(byte);
             }
             0xFF => {
                 // RST 38H 1 16 | - - - -

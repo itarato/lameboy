@@ -125,17 +125,21 @@ impl Cpu {
         self.set_fc(is_carry);
     }
 
-    pub fn sub(&mut self, sub: u8) {
+    pub fn cp(&mut self, sub: u8) -> u8 {
         let is_half_carry = is_half_carry_sub_u8(self.get_a(), sub);
         let is_carry = is_carry_sub_u8(self.get_a(), sub);
+        let is_zero = self.get_a() == sub;
 
-        let byte = self.get_a().wrapping_sub(sub);
-
-        self.set_a(byte);
-
-        self.set_fz(byte == 0);
+        self.set_fz(is_zero);
         self.set_fn(true);
         self.set_fh(is_half_carry);
         self.set_fc(is_carry);
+
+        self.get_a().wrapping_sub(sub)
+    }
+
+    pub fn sub(&mut self, sub: u8) {
+        let byte = self.cp(sub);
+        self.set_a(byte);
     }
 }
