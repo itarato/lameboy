@@ -26,41 +26,41 @@ impl Mem {
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
                 Ok(self.bios[loc as usize])
             } else {
-                unimplemented!()
+                unimplemented!("Read from MEM_AREA_ROM_BANK_0 not handled yet")
             }
         } else if loc < MEM_AREA_VRAM {
             // MEM_AREA_ROM_BANK_N:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_ROM_BANK_N not handled yet")
         } else if loc < MEM_AREA_EXTERNAL {
             // MEM_AREA_VRAM:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_VRAM not handled yet")
         } else if loc < MEM_AREA_WRAM {
             // MEM_AREA_EXTERNAL:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_EXTERNAL not handled yet")
         } else if loc < MEM_AREA_WRAM_CGB {
             // MEM_AREA_WRAM:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_WRAM not handled yet")
         } else if loc < MEM_AREA_ECHO {
             // MEM_AREA_WRAM_CGB:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_WRAM_CGB not handled yet")
         } else if loc < MEM_AREA_OAM {
             // MEM_AREA_ECHO:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_ECHO not handled yet")
         } else if loc < MEM_AREA_PROHIBITED {
             // MEM_AREA_OAM:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_OAM not handled yet")
         } else if loc < MEM_AREA_IO {
             // MEM_AREA_PROHIBITED:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_PROHIBITED not handled yet")
         } else if loc < MEM_AREA_HRAM {
             // MEM_AREA_IO:
             Ok(self.data[(loc - MEM_AREA_VRAM) as usize])
         } else if loc < MEM_AREA_IE {
             // MEM_AREA_HRAM:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_HRAM not handled yet")
         } else if loc == MEM_AREA_IE {
             // MEM_AREA_IE:
-            unimplemented!()
+            unimplemented!("Read from MEM_AREA_IE not handled yet")
         } else {
             Err("Read outside of memory".into())
         }
@@ -91,34 +91,34 @@ impl Mem {
             return Err("Cannot write to ROM (N)".into());
         } else if loc < MEM_AREA_EXTERNAL {
             // MEM_AREA_VRAM:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_VRAM is not implemented")
         } else if loc < MEM_AREA_WRAM {
             // MEM_AREA_EXTERNAL:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
         } else if loc < MEM_AREA_WRAM_CGB {
             // MEM_AREA_WRAM:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_WRAM is not implemented")
         } else if loc < MEM_AREA_ECHO {
             // MEM_AREA_WRAM_CGB:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_WRAM_CGB is not implemented")
         } else if loc < MEM_AREA_OAM {
             // MEM_AREA_ECHO:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_ECHO is not implemented")
         } else if loc < MEM_AREA_PROHIBITED {
             // MEM_AREA_OAM:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_OAM is not implemented")
         } else if loc < MEM_AREA_IO {
             // MEM_AREA_PROHIBITED:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_PROHIBITED is not implemented")
         } else if loc < MEM_AREA_HRAM {
             // MEM_AREA_IO:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_IO is not implemented")
         } else if loc < MEM_AREA_IE {
             // MEM_AREA_HRAM:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_HRAM is not implemented")
         } else if loc == MEM_AREA_IE {
             // MEM_AREA_IE:
-            unimplemented!()
+            unimplemented!("Write to MEM_AREA_IE is not implemented")
         } else {
             return Err("Write outside of memory".into());
         }
