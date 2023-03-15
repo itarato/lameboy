@@ -142,4 +142,34 @@ impl Cpu {
         let byte = self.cp(sub);
         self.set_a(byte);
     }
+
+    pub fn and(&mut self, and: u8) {
+        let byte = self.get_a() & and;
+        self.set_a(byte);
+
+        self.set_fz(byte == 0);
+        self.set_fn(false);
+        self.set_fh(true);
+        self.set_fc(false);
+    }
+
+    pub fn or(&mut self, or: u8) {
+        let byte = self.get_a() | or;
+        self.set_a(byte);
+
+        self.set_fz(byte == 0);
+        self.set_fn(false);
+        self.set_fh(false);
+        self.set_fc(false);
+    }
+
+    pub fn xor(&mut self, xor: u8) {
+        let byte = self.get_a() | xor;
+        self.set_a(byte);
+
+        self.set_fz(byte == 0);
+        self.set_fn(false);
+        self.set_fh(false);
+        self.set_fc(false);
+    }
 }

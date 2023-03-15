@@ -911,99 +911,123 @@ impl VM {
             }
             0xA0 => {
                 // AND B 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA0 (AND B 1 4) not implemented");
+                let byte = self.cpu.get_b();
+                self.cpu.and(byte);
             }
             0xA1 => {
                 // AND C 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA1 (AND C 1 4) not implemented");
+                let byte = self.cpu.get_c();
+                self.cpu.and(byte);
             }
             0xA2 => {
                 // AND D 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA2 (AND D 1 4) not implemented");
+                let byte = self.cpu.get_d();
+                self.cpu.and(byte);
             }
             0xA3 => {
                 // AND E 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA3 (AND E 1 4) not implemented");
+                let byte = self.cpu.get_e();
+                self.cpu.and(byte);
             }
             0xA4 => {
                 // AND H 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA4 (AND H 1 4) not implemented");
+                let byte = self.cpu.get_h();
+                self.cpu.and(byte);
             }
             0xA5 => {
                 // AND L 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA5 (AND L 1 4) not implemented");
+                let byte = self.cpu.get_l();
+                self.cpu.and(byte);
             }
             0xA6 => {
                 // AND (HL) 1 8 | Z 0 1 0
-                unimplemented!("Opcode 0xA6 (AND (HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.and(byte);
             }
             0xA7 => {
                 // AND A 1 4 | Z 0 1 0
-                unimplemented!("Opcode 0xA7 (AND A 1 4) not implemented");
+                let byte = self.cpu.get_a();
+                self.cpu.and(byte);
             }
             0xA8 => {
                 // XOR B 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xA8 (XOR B 1 4) not implemented");
+                let byte = self.cpu.get_b();
+                self.cpu.xor(byte);
             }
             0xA9 => {
                 // XOR C 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xA9 (XOR C 1 4) not implemented");
+                let byte = self.cpu.get_c();
+                self.cpu.xor(byte);
             }
             0xAA => {
                 // XOR D 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xAA (XOR D 1 4) not implemented");
+                let byte = self.cpu.get_d();
+                self.cpu.xor(byte);
             }
             0xAB => {
                 // XOR E 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xAB (XOR E 1 4) not implemented");
+                let byte = self.cpu.get_e();
+                self.cpu.xor(byte);
             }
             0xAC => {
                 // XOR H 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xAC (XOR H 1 4) not implemented");
+                let byte = self.cpu.get_h();
+                self.cpu.xor(byte);
             }
             0xAD => {
                 // XOR L 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xAD (XOR L 1 4) not implemented");
+                let byte = self.cpu.get_l();
+                self.cpu.xor(byte);
             }
             0xAE => {
                 // XOR (HL) 1 8 | Z 0 0 0
-                unimplemented!("Opcode 0xAE (XOR (HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.xor(byte);
             }
             0xAF => {
                 // XOR A 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xAF (XOR A 1 4) not implemented");
+                let byte = self.cpu.get_a();
+                self.cpu.xor(byte);
             }
             0xB0 => {
                 // OR B 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB0 (OR B 1 4) not implemented");
+                let byte = self.cpu.get_b();
+                self.cpu.or(byte);
             }
             0xB1 => {
                 // OR C 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB1 (OR C 1 4) not implemented");
+                let byte = self.cpu.get_c();
+                self.cpu.or(byte);
             }
             0xB2 => {
                 // OR D 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB2 (OR D 1 4) not implemented");
+                let byte = self.cpu.get_d();
+                self.cpu.or(byte);
             }
             0xB3 => {
                 // OR E 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB3 (OR E 1 4) not implemented");
+                let byte = self.cpu.get_e();
+                self.cpu.or(byte);
             }
             0xB4 => {
                 // OR H 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB4 (OR H 1 4) not implemented");
+                let byte = self.cpu.get_h();
+                self.cpu.or(byte);
             }
             0xB5 => {
                 // OR L 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB5 (OR L 1 4) not implemented");
+                let byte = self.cpu.get_l();
+                self.cpu.or(byte);
             }
             0xB6 => {
                 // OR (HL) 1 8 | Z 0 0 0
-                unimplemented!("Opcode 0xB6 (OR (HL) 1 8) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                self.cpu.or(byte);
             }
             0xB7 => {
                 // OR A 1 4 | Z 0 0 0
-                unimplemented!("Opcode 0xB7 (OR A 1 4) not implemented");
+                let byte = self.cpu.get_a();
+                self.cpu.or(byte);
             }
             0xB8 => {
                 // CP B 1 4 | Z 1 H C
@@ -2249,7 +2273,8 @@ impl VM {
             }
             0xE6 => {
                 // AND d8 2 8 | Z 0 1 0
-                unimplemented!("Opcode 0xE6 (AND d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.and(byte);
             }
             0xE7 => {
                 // RST 20H 1 16 | - - - -
@@ -2283,7 +2308,8 @@ impl VM {
             }
             0xEE => {
                 // XOR d8 2 8 | Z 0 0 0
-                unimplemented!("Opcode 0xEE (XOR d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.xor(byte);
             }
             0xEF => {
                 // RST 28H 1 16 | - - - -
@@ -2321,7 +2347,8 @@ impl VM {
             }
             0xF6 => {
                 // OR d8 2 8 | Z 0 0 0
-                unimplemented!("Opcode 0xF6 (OR d8 2 8) not implemented");
+                let byte = self.read_op()?;
+                self.cpu.or(byte);
             }
             0xF7 => {
                 // RST 30H 1 16 | - - - -
