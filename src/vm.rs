@@ -68,15 +68,27 @@ impl VM {
             }
             0x03 => {
                 // INC BC 1 8 | - - - -
-                unimplemented!("Opcode 0x03 (INC BC 1 8) not implemented");
+                self.cpu.bc = self.cpu.bc.wrapping_add(1);
             }
             0x04 => {
                 // INC B 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x04 (INC B 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_b(), 1);
+                let byte = self.cpu.get_b().wrapping_add(1);
+
+                self.cpu.set_b(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x05 => {
                 // DEC B 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x05 (DEC B 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_b(), 1);
+                let byte = self.cpu.get_b().wrapping_sub(1);
+
+                self.cpu.set_b(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x06 => {
                 // LD B,d8 2 8 | - - - -
@@ -103,15 +115,27 @@ impl VM {
             }
             0x0B => {
                 // DEC BC 1 8 | - - - -
-                unimplemented!("Opcode 0x0B (DEC BC 1 8) not implemented");
+                self.cpu.bc = self.cpu.bc.wrapping_sub(1);
             }
             0x0C => {
                 // INC C 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x0C (INC C 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_c(), 1);
+                let byte = self.cpu.get_c().wrapping_add(1);
+
+                self.cpu.set_c(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x0D => {
                 // DEC C 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x0D (DEC C 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_c(), 1);
+                let byte = self.cpu.get_c().wrapping_sub(1);
+
+                self.cpu.set_c(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x0E => {
                 // LD C,d8 2 8 | - - - -
@@ -138,15 +162,27 @@ impl VM {
             }
             0x13 => {
                 // INC DE 1 8 | - - - -
-                unimplemented!("Opcode 0x13 (INC DE 1 8) not implemented");
+                self.cpu.de = self.cpu.de.wrapping_add(1);
             }
             0x14 => {
                 // INC D 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x14 (INC D 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_d(), 1);
+                let byte = self.cpu.get_d().wrapping_add(1);
+
+                self.cpu.set_d(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x15 => {
                 // DEC D 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x15 (DEC D 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_d(), 1);
+                let byte = self.cpu.get_d().wrapping_sub(1);
+
+                self.cpu.set_d(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x16 => {
                 // LD D,d8 2 8 | - - - -
@@ -172,15 +208,27 @@ impl VM {
             }
             0x1B => {
                 // DEC DE 1 8 | - - - -
-                unimplemented!("Opcode 0x1B (DEC DE 1 8) not implemented");
+                self.cpu.de = self.cpu.de.wrapping_sub(1);
             }
             0x1C => {
                 // INC E 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x1C (INC E 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_e(), 1);
+                let byte = self.cpu.get_e().wrapping_add(1);
+
+                self.cpu.set_e(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x1D => {
                 // DEC E 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x1D (DEC E 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_e(), 1);
+                let byte = self.cpu.get_e().wrapping_sub(1);
+
+                self.cpu.set_e(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x1E => {
                 // LD E,d8 2 8 | - - - -
@@ -208,15 +256,27 @@ impl VM {
             }
             0x23 => {
                 // INC HL 1 8 | - - - -
-                unimplemented!("Opcode 0x23 (INC HL 1 8) not implemented");
+                self.cpu.hl = self.cpu.hl.wrapping_add(1);
             }
             0x24 => {
                 // INC H 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x24 (INC H 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_h(), 1);
+                let byte = self.cpu.get_h().wrapping_add(1);
+
+                self.cpu.set_h(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x25 => {
                 // DEC H 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x25 (DEC H 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_h(), 1);
+                let byte = self.cpu.get_h().wrapping_sub(1);
+
+                self.cpu.set_h(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x26 => {
                 // LD H,d8 2 8 | - - - -
@@ -243,15 +303,27 @@ impl VM {
             }
             0x2B => {
                 // DEC HL 1 8 | - - - -
-                unimplemented!("Opcode 0x2B (DEC HL 1 8) not implemented");
+                self.cpu.hl = self.cpu.hl.wrapping_sub(1);
             }
             0x2C => {
                 // INC L 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x2C (INC L 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_l(), 1);
+                let byte = self.cpu.get_l().wrapping_add(1);
+
+                self.cpu.set_l(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x2D => {
                 // DEC L 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x2D (DEC L 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_l(), 1);
+                let byte = self.cpu.get_l().wrapping_sub(1);
+
+                self.cpu.set_l(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x2E => {
                 // LD L,d8 2 8 | - - - -
@@ -280,15 +352,27 @@ impl VM {
             }
             0x33 => {
                 // INC SP 1 8 | - - - -
-                unimplemented!("Opcode 0x33 (INC SP 1 8) not implemented");
+                self.cpu.sp = self.cpu.sp.wrapping_add(1);
             }
             0x34 => {
                 // INC (HL) 1 12 | Z 0 H -
-                unimplemented!("Opcode 0x34 (INC (HL) 1 12) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                let is_half_carry = is_half_carry_add_u8(byte, 1);
+
+                self.mem.write(self.cpu.hl, byte.wrapping_add(1))?;
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x35 => {
                 // DEC (HL) 1 12 | Z 1 H -
-                unimplemented!("Opcode 0x35 (DEC (HL) 1 12) not implemented");
+                let byte = self.mem.read(self.cpu.hl)?;
+                let is_half_carry = is_half_carry_sub_u8(byte, 1);
+
+                self.mem.write(self.cpu.hl, byte.wrapping_sub(1))?;
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x36 => {
                 // LD (HL),d8 2 12 | - - - -
@@ -315,15 +399,27 @@ impl VM {
             }
             0x3B => {
                 // DEC SP 1 8 | - - - -
-                unimplemented!("Opcode 0x3B (DEC SP 1 8) not implemented");
+                self.cpu.sp = self.cpu.sp.wrapping_sub(1);
             }
             0x3C => {
                 // INC A 1 4 | Z 0 H -
-                unimplemented!("Opcode 0x3C (INC A 1 4) not implemented");
+                let is_half_carry = is_half_carry_add_u8(self.cpu.get_a(), 1);
+                let byte = self.cpu.get_a().wrapping_add(1);
+
+                self.cpu.set_a(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
             }
             0x3D => {
                 // DEC A 1 4 | Z 1 H -
-                unimplemented!("Opcode 0x3D (DEC A 1 4) not implemented");
+                let is_half_carry = is_half_carry_sub_u8(self.cpu.get_a(), 1);
+                let byte = self.cpu.get_a().wrapping_sub(1);
+
+                self.cpu.set_a(byte);
+                self.cpu.set_fz(byte == 0);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(is_half_carry);
             }
             0x3E => {
                 // LD A,d8 2 8 | - - - -
