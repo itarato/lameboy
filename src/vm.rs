@@ -1136,8 +1136,8 @@ impl VM {
             }
             0xC1 => {
                 // POP BC 1 12 | - - - -
-                self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.bc = self.cpu.sp.wrapping_add(2);
+                self.cpu.bc = self.mem.read_u16(self.cpu.sp)?;
+                self.cpu.sp = self.cpu.sp.wrapping_add(2);
             }
             0xC2 => {
                 // JP NZ,a16 3 16/12 | - - - -
@@ -1155,7 +1155,16 @@ impl VM {
             }
             0xC4 => {
                 // CALL NZ,a16 3 24/12 | - - - -
-                unimplemented!("Opcode 0xC4 (CALL NZ,a16 3 24/12) not implemented");
+                let addr = self.read_op_imm16()?;
+
+                if !self.cpu.is_fz() {
+                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xC5 => {
                 // PUSH BC 1 16 | - - - -
@@ -2226,11 +2235,25 @@ impl VM {
             }
             0xCC => {
                 // CALL Z,a16 3 24/12 | - - - -
-                unimplemented!("Opcode 0xCC (CALL Z,a16 3 24/12) not implemented");
+                let addr = self.read_op_imm16()?;
+
+                if self.cpu.is_fz() {
+                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xCD => {
                 // CALL a16 3 24 | - - - -
-                unimplemented!("Opcode 0xCD (CALL a16 3 24) not implemented");
+                let addr = self.read_op_imm16()?;
+
+                self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+                self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
+
+                self.cpu.pc = addr;
             }
             0xCE => {
                 // ADC A,d8 2 8 | Z 0 H C
@@ -2247,8 +2270,8 @@ impl VM {
             }
             0xD1 => {
                 // POP DE 1 12 | - - - -
-                self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.de = self.cpu.sp.wrapping_add(2);
+                self.cpu.de = self.mem.read_u16(self.cpu.sp)?;
+                self.cpu.sp = self.cpu.sp.wrapping_add(2);
             }
             0xD2 => {
                 // JP NC,a16 3 16/12 | - - - -
@@ -2262,7 +2285,16 @@ impl VM {
             0xD3 => panic!("Opcode 0xD3 is invalid"),
             0xD4 => {
                 // CALL NC,a16 3 24/12 | - - - -
-                unimplemented!("Opcode 0xD4 (CALL NC,a16 3 24/12) not implemented");
+                let addr = self.read_op_imm16()?;
+
+                if !self.cpu.is_fc() {
+                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xD5 => {
                 // PUSH DE 1 16 | - - - -
@@ -2298,7 +2330,16 @@ impl VM {
             0xDB => panic!("Opcode 0xDB is invalid"),
             0xDC => {
                 // CALL C,a16 3 24/12 | - - - -
-                unimplemented!("Opcode 0xDC (CALL C,a16 3 24/12) not implemented");
+                let addr = self.read_op_imm16()?;
+
+                if self.cpu.is_fc() {
+                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xDD => panic!("Opcode 0xDD is invalid"),
             0xDE => {
@@ -2318,8 +2359,8 @@ impl VM {
             }
             0xE1 => {
                 // POP HL 1 12 | - - - -
-                self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.hl = self.cpu.sp.wrapping_add(2);
+                self.cpu.hl = self.mem.read_u16(self.cpu.sp)?;
+                self.cpu.sp = self.cpu.sp.wrapping_add(2);
             }
             0xE2 => {
                 // LD (C),A 2 8 | - - - -
@@ -2378,8 +2419,8 @@ impl VM {
             }
             0xF1 => {
                 // POP AF 1 12 | Z N H C
-                self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.af = self.cpu.sp.wrapping_add(2);
+                self.cpu.af = self.mem.read_u16(self.cpu.sp)?;
+                self.cpu.sp = self.cpu.sp.wrapping_add(2);
             }
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
