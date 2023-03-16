@@ -54,7 +54,6 @@ impl VM {
         match op {
             0x00 => {
                 // NOP 1 4 | - - - -
-                unimplemented!("Opcode 0x00 (NOP 1 4) not implemented");
             }
             0x01 => {
                 // LD BC,d16 3 12 | - - - -
@@ -2458,7 +2457,7 @@ impl VM {
             }
             0xF3 => {
                 // DI 1 4 | - - - -
-                unimplemented!("Opcode 0xF3 (DI 1 4) not implemented");
+                self.mem.write(MEM_LOC_IE, 0);
             }
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
@@ -2499,7 +2498,7 @@ impl VM {
             }
             0xFB => {
                 // EI 1 4 | - - - -
-                unimplemented!("Opcode 0xFB (EI 1 4) not implemented");
+                self.mem.write(MEM_LOC_IE, 1);
             }
             0xFC => panic!("Opcode 0xFC is invalid"),
             0xFD => panic!("Opcode 0xFD is invalid"),
