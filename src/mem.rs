@@ -91,7 +91,7 @@ impl Mem {
             return Err("Cannot write to ROM (N)".into());
         } else if loc < MEM_AREA_EXTERNAL {
             // MEM_AREA_VRAM:
-            unimplemented!("Write to MEM_AREA_VRAM is not implemented")
+            Ok(self.write_unchecked(loc, byte))
         } else if loc < MEM_AREA_WRAM {
             // MEM_AREA_EXTERNAL:
             unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
