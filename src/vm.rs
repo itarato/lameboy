@@ -195,7 +195,8 @@ impl VM {
             }
             0x18 => {
                 // JR r8 2 12 | - - - -
-                unimplemented!("Opcode 0x18 (JR r8 2 12) not implemented");
+                let offs = self.read_op() as i8;
+                self.cpu.pc += offs;
             }
             0x19 => {
                 // ADD HL,DE 1 8 | - 0 H C
@@ -241,7 +242,12 @@ impl VM {
             }
             0x20 => {
                 // JR NZ,r8 2 12/8 | - - - -
-                unimplemented!("Opcode 0x20 (JR NZ,r8 2 12/8) not implemented");
+                let offs = self.read_op() as i8;
+                if !self.cpu.is_fz() {
+                    self.cpu.pc += offs;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0x21 => {
                 // LD HL,d16 3 12 | - - - -
@@ -316,7 +322,12 @@ impl VM {
             }
             0x28 => {
                 // JR Z,r8 2 12/8 | - - - -
-                unimplemented!("Opcode 0x28 (JR Z,r8 2 12/8) not implemented");
+                let offs = self.read_op() as i8;
+                if self.cpu.is_fz() {
+                    self.cpu.pc += offs;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0x29 => {
                 // ADD HL,HL 1 8 | - 0 H C
@@ -366,7 +377,12 @@ impl VM {
             }
             0x30 => {
                 // JR NC,r8 2 12/8 | - - - -
-                unimplemented!("Opcode 0x30 (JR NC,r8 2 12/8) not implemented");
+                let offs = self.read_op() as i8;
+                if !self.cpu.is_fc() {
+                    self.cpu.pc += offs;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0x31 => {
                 // LD SP,d16 3 12 | - - - -
@@ -417,7 +433,12 @@ impl VM {
             }
             0x38 => {
                 // JR C,r8 2 12/8 | - - - -
-                unimplemented!("Opcode 0x38 (JR C,r8 2 12/8) not implemented");
+                let offs = self.read_op() as i8;
+                if self.cpu.is_fc() {
+                    self.cpu.pc += offs;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0x39 => {
                 // ADD HL,SP 1 8 | - 0 H C
