@@ -1132,7 +1132,14 @@ impl VM {
             }
             0xC0 => {
                 // RET NZ 1 20/8 | - - - -
-                unimplemented!("Opcode 0xC0 (RET NZ 1 20/8) not implemented");
+                if !self.cpu.is_fz() {
+                    let addr = self.mem.read_u16(self.cpu.sp)?;
+                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xC1 => {
                 // POP BC 1 12 | - - - -
@@ -1182,11 +1189,21 @@ impl VM {
             }
             0xC8 => {
                 // RET Z 1 20/8 | - - - -
-                unimplemented!("Opcode 0xC8 (RET Z 1 20/8) not implemented");
+                if self.cpu.is_fz() {
+                    let addr = self.mem.read_u16(self.cpu.sp)?;
+                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xC9 => {
                 // RET 1 16 | - - - -
-                unimplemented!("Opcode 0xC9 (RET 1 16) not implemented");
+                let addr = self.mem.read_u16(self.cpu.sp)?;
+                self.cpu.sp = self.cpu.sp.wrapping_add(2);
+
+                self.cpu.pc = addr;
             }
             0xCA => {
                 // JP Z,a16 3 16/12 | - - - -
@@ -2266,7 +2283,14 @@ impl VM {
             }
             0xD0 => {
                 // RET NC 1 20/8 | - - - -
-                unimplemented!("Opcode 0xD0 (RET NC 1 20/8) not implemented");
+                if !self.cpu.is_fc() {
+                    let addr = self.mem.read_u16(self.cpu.sp)?;
+                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xD1 => {
                 // POP DE 1 12 | - - - -
@@ -2312,11 +2336,22 @@ impl VM {
             }
             0xD8 => {
                 // RET C 1 20/8 | - - - -
-                unimplemented!("Opcode 0xD8 (RET C 1 20/8) not implemented");
+                if self.cpu.is_fc() {
+                    let addr = self.mem.read_u16(self.cpu.sp)?;
+                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
+
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 3;
+                }
             }
             0xD9 => {
                 // RETI 1 16 | - - - -
-                unimplemented!("Opcode 0xD9 (RETI 1 16) not implemented");
+                let addr = self.mem.read_u16(self.cpu.sp)?;
+                self.cpu.sp = self.cpu.sp.wrapping_add(2);
+
+                self.cpu.pc = addr;
+                self.mem.write(MEM_LOC_IE, 1);
             }
             0xDA => {
                 // JP C,a16 3 16/12 | - - - -
