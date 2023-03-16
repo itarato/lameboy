@@ -1165,9 +1165,7 @@ impl VM {
                 let addr = self.read_op_imm16()?;
 
                 if !self.cpu.is_fz() {
-                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
-
+                    self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -1175,8 +1173,7 @@ impl VM {
             }
             0xC5 => {
                 // PUSH BC 1 16 | - - - -
-                self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                self.mem.write_u16(self.cpu.sp, self.cpu.bc)?;
+                self.push_u16(self.cpu.bc)?;
             }
             0xC6 => {
                 // ADD A,d8 2 8 | Z 0 H C
@@ -1185,7 +1182,8 @@ impl VM {
             }
             0xC7 => {
                 // RST 00H 1 16 | - - - -
-                unimplemented!("Opcode 0xC7 (RST 00H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xC8 => {
                 // RET Z 1 20/8 | - - - -
@@ -2255,9 +2253,7 @@ impl VM {
                 let addr = self.read_op_imm16()?;
 
                 if self.cpu.is_fz() {
-                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
-
+                    self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -2267,9 +2263,7 @@ impl VM {
                 // CALL a16 3 24 | - - - -
                 let addr = self.read_op_imm16()?;
 
-                self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
-
+                self.push_u16(self.cpu.pc)?;
                 self.cpu.pc = addr;
             }
             0xCE => {
@@ -2279,7 +2273,8 @@ impl VM {
             }
             0xCF => {
                 // RST 08H 1 16 | - - - -
-                unimplemented!("Opcode 0xCF (RST 08H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xD0 => {
                 // RET NC 1 20/8 | - - - -
@@ -2312,9 +2307,7 @@ impl VM {
                 let addr = self.read_op_imm16()?;
 
                 if !self.cpu.is_fc() {
-                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
-
+                    self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -2322,8 +2315,7 @@ impl VM {
             }
             0xD5 => {
                 // PUSH DE 1 16 | - - - -
-                self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                self.mem.write_u16(self.cpu.sp, self.cpu.de)?;
+                self.push_u16(self.cpu.de)?;
             }
             0xD6 => {
                 // SUB d8 2 8 | Z 1 H C
@@ -2332,7 +2324,8 @@ impl VM {
             }
             0xD7 => {
                 // RST 10H 1 16 | - - - -
-                unimplemented!("Opcode 0xD7 (RST 10H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xD8 => {
                 // RET C 1 20/8 | - - - -
@@ -2368,9 +2361,7 @@ impl VM {
                 let addr = self.read_op_imm16()?;
 
                 if self.cpu.is_fc() {
-                    self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                    self.mem.write_u16(self.cpu.sp, self.cpu.pc)?;
-
+                    self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -2384,7 +2375,8 @@ impl VM {
             }
             0xDF => {
                 // RST 18H 1 16 | - - - -
-                unimplemented!("Opcode 0xDF (RST 18H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xE0 => {
                 // LDH (a8),A 2 12 | - - - -
@@ -2407,8 +2399,7 @@ impl VM {
             0xE4 => panic!("Opcode 0xE4 is invalid"),
             0xE5 => {
                 // PUSH HL 1 16 | - - - -
-                self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                self.mem.write_u16(self.cpu.sp, self.cpu.hl)?;
+                self.push_u16(self.cpu.hl)?;
             }
             0xE6 => {
                 // AND d8 2 8 | Z 0 1 0
@@ -2417,7 +2408,8 @@ impl VM {
             }
             0xE7 => {
                 // RST 20H 1 16 | - - - -
-                unimplemented!("Opcode 0xE7 (RST 20H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xE8 => {
                 // ADD SP,r8 2 16 | 0 0 H C
@@ -2444,7 +2436,8 @@ impl VM {
             }
             0xEF => {
                 // RST 28H 1 16 | - - - -
-                unimplemented!("Opcode 0xEF (RST 28H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xF0 => {
                 // LDH A,(a8) 2 12 | - - - -
@@ -2470,8 +2463,7 @@ impl VM {
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
                 // PUSH AF 1 16 | - - - -
-                self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-                self.mem.write_u16(self.cpu.sp, self.cpu.af)?;
+                self.push_u16(self.cpu.af)?;
             }
             0xF6 => {
                 // OR d8 2 8 | Z 0 0 0
@@ -2480,7 +2472,8 @@ impl VM {
             }
             0xF7 => {
                 // RST 30H 1 16 | - - - -
-                unimplemented!("Opcode 0xF7 (RST 30H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
@@ -2517,7 +2510,8 @@ impl VM {
             }
             0xFF => {
                 // RST 38H 1 16 | - - - -
-                unimplemented!("Opcode 0xFF (RST 38H 1 16) not implemented");
+                self.push_u16(self.cpu.pc)?;
+                self.cpu.pc = (op - 0xC7) as u16;
             }
         };
 
@@ -2538,5 +2532,16 @@ impl VM {
         let hi = self.read_op()?;
 
         Ok(((hi as u16) << 8) | lo as u16)
+    }
+
+    fn push_u16(&mut self, word: u16) -> Result<(), Error> {
+        self.cpu.sp = self.cpu.sp.wrapping_sub(2);
+        self.mem.write_u16(self.cpu.sp, word)
+    }
+
+    fn pop_u16(&mut self) -> Result<u16, Error> {
+        let word = self.mem.read_u16(self.cpu.sp)?;
+        self.cpu.sp = self.cpu.sp.wrapping_add(2);
+        Ok(word)
     }
 }
