@@ -381,7 +381,9 @@ impl VM {
             }
             0x37 => {
                 // SCF 1 4 | - 0 0 1
-                unimplemented!("Opcode 0x37 (SCF 1 4) not implemented");
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(false);
+                self.cpu.set_fc(true);
             }
             0x38 => {
                 // JR C,r8 2 12/8 | - - - -
@@ -389,7 +391,12 @@ impl VM {
             }
             0x39 => {
                 // ADD HL,SP 1 8 | - 0 H C
-                unimplemented!("Opcode 0x39 (ADD HL,SP 1 8) not implemented");
+                let is_carry = is_carry_add_u16(self.cpu.hl, self.cpu.sp);
+                let is_half_carry = is_half_carry_add_u16(self.cpu.hl, self.cpu.sp);
+                self.cpu.hl = self.cpu.hl.wrapping_add(self.cpu.sp);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fc(is_carry);
             }
             0x3A => {
                 // LD A,(HL-) 1 8 | - - - -
@@ -428,7 +435,10 @@ impl VM {
             }
             0x3F => {
                 // CCF 1 4 | - 0 0 C
-                unimplemented!("Opcode 0x3F (CCF 1 4) not implemented");
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(false);
+                let is_c = self.cpu.get_fc() > 0;
+                self.cpu.set_fc(!is_c);
             }
             0x40 => {
                 // LD B,B 1 4 | - - - -
@@ -2182,10 +2192,7 @@ impl VM {
                 // JP NC,a16 3 16/12 | - - - -
                 unimplemented!("Opcode 0xD2 (JP NC,a16 3 16/12) not implemented");
             }
-            0xD3 => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xD3 (Invalid) not implemented");
-            }
+            0xD3 => panic!("Opcode 0xD3 is invalid"),
             0xD4 => {
                 // CALL NC,a16 3 24/12 | - - - -
                 unimplemented!("Opcode 0xD4 (CALL NC,a16 3 24/12) not implemented");
@@ -2216,18 +2223,12 @@ impl VM {
                 // JP C,a16 3 16/12 | - - - -
                 unimplemented!("Opcode 0xDA (JP C,a16 3 16/12) not implemented");
             }
-            0xDB => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xDB (Invalid) not implemented");
-            }
+            0xDB => panic!("Opcode 0xDB is invalid"),
             0xDC => {
                 // CALL C,a16 3 24/12 | - - - -
                 unimplemented!("Opcode 0xDC (CALL C,a16 3 24/12) not implemented");
             }
-            0xDD => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xDD (Invalid) not implemented");
-            }
+            0xDD => panic!("Opcode 0xDD is invalid"),
             0xDE => {
                 // SBC A,d8 2 8 | Z 1 H C
                 let byte = self.read_op()?;
@@ -2254,14 +2255,8 @@ impl VM {
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
                 self.mem.write(word, byte)?;
             }
-            0xE3 => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xE3 (Invalid) not implemented");
-            }
-            0xE4 => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xE4 (Invalid) not implemented");
-            }
+            0xE3 => panic!("Opcode 0xE3 is invalid"),
+            0xE4 => panic!("Opcode 0xE4 is invalid"),
             0xE5 => {
                 // PUSH HL 1 16 | - - - -
                 self.cpu.sp = self.cpu.sp.wrapping_sub(2);
@@ -2290,18 +2285,9 @@ impl VM {
                 let byte = self.cpu.get_a();
                 self.mem.write(word, byte)?;
             }
-            0xEB => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xEB (Invalid) not implemented");
-            }
-            0xEC => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xEC (Invalid) not implemented");
-            }
-            0xED => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xED (Invalid) not implemented");
-            }
+            0xEB => panic!("Opcode 0xEB is invalid"),
+            0xEC => panic!("Opcode 0xEC is invalid"),
+            0xED => panic!("Opcode 0xED is invalid"),
             0xEE => {
                 // XOR d8 2 8 | Z 0 0 0
                 let byte = self.read_op()?;
@@ -2332,10 +2318,7 @@ impl VM {
                 // DI 1 4 | - - - -
                 unimplemented!("Opcode 0xF3 (DI 1 4) not implemented");
             }
-            0xF4 => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xF4 (Invalid) not implemented");
-            }
+            0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
                 // PUSH AF 1 16 | - - - -
                 self.cpu.sp = self.cpu.sp.wrapping_sub(2);
@@ -2376,14 +2359,8 @@ impl VM {
                 // EI 1 4 | - - - -
                 unimplemented!("Opcode 0xFB (EI 1 4) not implemented");
             }
-            0xFC => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xFC (Invalid) not implemented");
-            }
-            0xFD => {
-                // Invalid | - - - -
-                unimplemented!("Opcode 0xFD (Invalid) not implemented");
-            }
+            0xFC => panic!("Opcode 0xFC is invalid"),
+            0xFD => panic!("Opcode 0xFD is invalid"),
             0xFE => {
                 // CP d8 2 8 | Z 1 H C
                 let byte = self.read_op()?;
