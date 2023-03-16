@@ -359,7 +359,10 @@ impl VM {
             }
             0x2F => {
                 // CPL 1 4 | - 1 1 -
-                unimplemented!("Opcode 0x2F (CPL 1 4) not implemented");
+                let a = self.cpu.get_a();
+                self.cpu.set_a(!a);
+                self.cpu.set_fn(true);
+                self.cpu.set_fh(true);
             }
             0x30 => {
                 // JR NC,r8 2 12/8 | - - - -
@@ -1117,11 +1120,17 @@ impl VM {
             }
             0xC2 => {
                 // JP NZ,a16 3 16/12 | - - - -
-                unimplemented!("Opcode 0xC2 (JP NZ,a16 3 16/12) not implemented");
+                let addr = self.read_op_imm16()?;
+                if !self.cpu.is_fz() {
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0xC3 => {
                 // JP a16 3 16 | - - - -
-                unimplemented!("Opcode 0xC3 (JP a16 3 16) not implemented");
+                let addr = self.read_op_imm16()?;
+                self.cpu.pc = addr;
             }
             0xC4 => {
                 // CALL NZ,a16 3 24/12 | - - - -
@@ -1151,7 +1160,12 @@ impl VM {
             }
             0xCA => {
                 // JP Z,a16 3 16/12 | - - - -
-                unimplemented!("Opcode 0xCA (JP Z,a16 3 16/12) not implemented");
+                let addr = self.read_op_imm16()?;
+                if self.cpu.is_fz() {
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0xCB => {
                 // PREFIX CB 1 4 | - - - -
@@ -2217,7 +2231,12 @@ impl VM {
             }
             0xD2 => {
                 // JP NC,a16 3 16/12 | - - - -
-                unimplemented!("Opcode 0xD2 (JP NC,a16 3 16/12) not implemented");
+                let addr = self.read_op_imm16()?;
+                if !self.cpu.is_fc() {
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0xD3 => panic!("Opcode 0xD3 is invalid"),
             0xD4 => {
@@ -2248,7 +2267,12 @@ impl VM {
             }
             0xDA => {
                 // JP C,a16 3 16/12 | - - - -
-                unimplemented!("Opcode 0xDA (JP C,a16 3 16/12) not implemented");
+                let addr = self.read_op_imm16()?;
+                if self.cpu.is_fc() {
+                    self.cpu.pc = addr;
+                } else {
+                    self.cpu.mcycle -= 1;
+                }
             }
             0xDB => panic!("Opcode 0xDB is invalid"),
             0xDC => {
@@ -2304,7 +2328,8 @@ impl VM {
             }
             0xE9 => {
                 // JP (HL) 1 4 | - - - -
-                unimplemented!("Opcode 0xE9 (JP (HL) 1 4) not implemented");
+                let addr = self.cpu.hl;
+                self.cpu.pc = addr;
             }
             0xEA => {
                 // LD (a16),A 3 16 | - - - -
