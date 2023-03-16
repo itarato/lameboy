@@ -285,7 +285,34 @@ impl VM {
             }
             0x27 => {
                 // DAA 1 4 | Z - 0 C
-                unimplemented!("Opcode 0x27 (DAA 1 4) not implemented");
+                if !self.cpu.is_fn() {
+                    // It was addition before.
+                    if self.cpu.is_fc() || self.cpu.get_a() > 0x99 {
+                        let a = self.cpu.get_a();
+                        self.cpu.set_a(a.wrapping_add(0x60));
+                        self.cpu.set_fc(true);
+                    }
+
+                    if self.cpu.is_fh() || (self.cpu.get_a() & 0xf) > 0x9 {
+                        let a = self.cpu.get_a();
+                        self.cpu.set_a(a.wrapping_add(0x6));
+                    }
+                } else {
+                    // It was substraction before.
+                    if self.cpu.is_fc() {
+                        let a = self.cpu.get_a();
+                        self.cpu.set_a(a.wrapping_sub(0x60));
+                    }
+
+                    if self.cpu.is_fh() {
+                        let a = self.cpu.get_a();
+                        self.cpu.set_a(a.wrapping_sub(0x6));
+                    }
+                }
+
+                let a = self.cpu.get_a();
+                self.cpu.set_fz(a == 0);
+                self.cpu.set_fh(false);
             }
             0x28 => {
                 // JR Z,r8 2 12/8 | - - - -

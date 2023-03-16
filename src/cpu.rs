@@ -46,6 +46,14 @@ macro_rules! make_fn_get_flag {
     };
 }
 
+macro_rules! make_fn_is_flag {
+    ($name:ident, $offs:expr) => {
+        pub fn $name(&self) -> bool {
+            (self.af & (1 << $offs)) > 0
+        }
+    };
+}
+
 macro_rules! make_fn_set_flag {
     ($name:ident, $offs:expr) => {
         pub fn $name(&mut self, is_on: bool) {
@@ -80,6 +88,11 @@ impl Cpu {
             mcycle: 1,
         }
     }
+
+    make_fn_is_flag!(is_fz, 7);
+    make_fn_is_flag!(is_fn, 6);
+    make_fn_is_flag!(is_fh, 5);
+    make_fn_is_flag!(is_fc, 4);
 
     make_fn_get_flag!(get_fz, 7);
     make_fn_get_flag!(get_fn, 6);
