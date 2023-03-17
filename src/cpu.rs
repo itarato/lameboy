@@ -185,4 +185,24 @@ impl Cpu {
         self.set_fh(false);
         self.set_fc(false);
     }
+
+    pub fn set_flags(&mut self, z: bool, n: bool, h: bool, c: bool) {
+        self.af &= 0b1111_1111_0000_1111;
+        let mut mask = 0u16;
+
+        if z {
+            mask |= 0b1000_0000;
+        }
+        if n {
+            mask |= 0b0100_0000;
+        }
+        if h {
+            mask |= 0b0010_0000;
+        }
+        if c {
+            mask |= 0b0001_0000;
+        }
+
+        self.af |= mask;
+    }
 }

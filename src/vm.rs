@@ -1446,35 +1446,68 @@ impl VM {
                     }
                     0x10 => {
                         // RL B 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x10 (RL B 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_b(), 1);
+                        let byte = self.cpu.get_b().rotate_left(1);
+
+                        self.cpu.set_b(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x11 => {
                         // RL C 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x11 (RL C 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_c(), 1);
+                        let byte = self.cpu.get_c().rotate_left(1);
+
+                        self.cpu.set_c(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x12 => {
                         // RL D 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x12 (RL D 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_d(), 1);
+                        let byte = self.cpu.get_d().rotate_left(1);
+
+                        self.cpu.set_d(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x13 => {
                         // RL E 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x13 (RL E 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_e(), 1);
+                        let byte = self.cpu.get_e().rotate_left(1);
+
+                        self.cpu.set_e(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x14 => {
                         // RL H 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x14 (RL H 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_h(), 1);
+                        let byte = self.cpu.get_h().rotate_left(1);
+
+                        self.cpu.set_h(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x15 => {
                         // RL L 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x15 (RL L 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_l(), 1);
+                        let byte = self.cpu.get_l().rotate_left(1);
+
+                        self.cpu.set_l(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x16 => {
                         // RL (HL) 2 16 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x16 (RL (HL) 2 16) not implemented");
+                        let byte = self.read_hl()?;
+                        let is_carry = is_carry_rot_left_u8(byte, 1);
+                        let new_byte = byte.rotate_left(1);
+
+                        self.cpu.set_a(new_byte);
+                        self.cpu.set_flags(new_byte == 0, false, false, is_carry);
                     }
                     0x17 => {
                         // RL A 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x17 (RL A 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                        let byte = self.cpu.get_a().rotate_left(1);
+
+                        self.cpu.set_a(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x18 => {
                         // RR B 2 8 | Z 0 0 C
@@ -2690,6 +2723,10 @@ impl VM {
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
 
         Ok(op)
+    }
+
+    fn read_hl(&self) -> Result<u8, Error> {
+        self.mem.read(self.cpu.hl)
     }
 
     fn read_op_imm16(&mut self) -> Result<u16, Error> {
