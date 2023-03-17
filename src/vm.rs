@@ -96,7 +96,13 @@ impl VM {
             }
             0x07 => {
                 // RLCA 1 4 | 0 0 0 C
-                unimplemented!("Opcode 0x07 (RLCA 1 4) not implemented");
+                let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                let new_a = self.cpu.get_a().rotate_left(1);
+                self.cpu.set_a(new_a);
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(false);
+                self.cpu.set_fc(is_carry);
             }
             0x08 => {
                 // LD (a16),SP 3 20 | - - - -
@@ -105,7 +111,14 @@ impl VM {
             }
             0x09 => {
                 // ADD HL,BC 1 8 | - 0 H C
-                unimplemented!("Opcode 0x09 (ADD HL,BC 1 8) not implemented");
+                let is_half_carry = is_half_carry_add_u16(self.cpu.hl, self.cpu.bc);
+                let is_carry = is_carry_add_u16(self.cpu.hl, self.cpu.bc);
+
+                self.cpu.hl = self.cpu.hl.wrapping_add(self.cpu.bc);
+
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fc(is_carry);
             }
             0x0A => {
                 // LD A,(BC) 1 8 | - - - -
@@ -143,7 +156,13 @@ impl VM {
             }
             0x0F => {
                 // RRCA 1 4 | 0 0 0 C
-                unimplemented!("Opcode 0x0F (RRCA 1 4) not implemented");
+                let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
+                let new_a = self.cpu.get_a().rotate_right(1);
+                self.cpu.set_a(new_a);
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(false);
+                self.cpu.set_fc(is_carry);
             }
             0x10 => {
                 // STOP 0 2 4 | - - - -
@@ -190,16 +209,31 @@ impl VM {
             }
             0x17 => {
                 // RLA 1 4 | 0 0 0 C
-                unimplemented!("Opcode 0x17 (RLA 1 4) not implemented");
+                let old_carry = self.cpu.get_fc();
+                let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                let new_a = self.cpu.get_a().rotate_left(1) | old_carry;
+
+                self.cpu.set_a(new_a);
+
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(false);
+                self.cpu.set_fc(is_carry);
             }
             0x18 => {
                 // JR r8 2 12 | - - - -
-                let offs = self.read_op() as i8;
-                self.cpu.pc += offs;
+                self.cpu.pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
             }
             0x19 => {
                 // ADD HL,DE 1 8 | - 0 H C
-                unimplemented!("Opcode 0x19 (ADD HL,DE 1 8) not implemented");
+                let is_half_carry = is_half_carry_add_u16(self.cpu.hl, self.cpu.de);
+                let is_carry = is_carry_add_u16(self.cpu.hl, self.cpu.de);
+
+                self.cpu.hl = self.cpu.hl.wrapping_add(self.cpu.de);
+
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fc(is_carry);
             }
             0x1A => {
                 // LD A,(DE) 1 8 | - - - -
@@ -237,13 +271,22 @@ impl VM {
             }
             0x1F => {
                 // RRA 1 4 | 0 0 0 C
-                unimplemented!("Opcode 0x1F (RRA 1 4) not implemented");
+                let old_carry = self.cpu.get_fc();
+                let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
+                let new_a = self.cpu.get_a().rotate_right(1) | (old_carry << 7);
+
+                self.cpu.set_a(new_a);
+
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(false);
+                self.cpu.set_fc(is_carry);
             }
             0x20 => {
                 // JR NZ,r8 2 12/8 | - - - -
-                let offs = self.read_op() as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
                 if !self.cpu.is_fz() {
-                    self.cpu.pc += offs;
+                    self.cpu.pc = new_pc;
                 } else {
                     self.cpu.mcycle -= 1;
                 }
@@ -321,16 +364,23 @@ impl VM {
             }
             0x28 => {
                 // JR Z,r8 2 12/8 | - - - -
-                let offs = self.read_op() as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
                 if self.cpu.is_fz() {
-                    self.cpu.pc += offs;
+                    self.cpu.pc = new_pc;
                 } else {
                     self.cpu.mcycle -= 1;
                 }
             }
             0x29 => {
                 // ADD HL,HL 1 8 | - 0 H C
-                unimplemented!("Opcode 0x29 (ADD HL,HL 1 8) not implemented");
+                let is_half_carry = is_half_carry_add_u16(self.cpu.hl, self.cpu.hl);
+                let is_carry = is_carry_add_u16(self.cpu.hl, self.cpu.hl);
+
+                self.cpu.hl = self.cpu.hl.wrapping_add(self.cpu.hl);
+
+                self.cpu.set_fn(false);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fc(is_carry);
             }
             0x2A => {
                 // LD A,(HL+) 1 8 | - - - -
@@ -376,9 +426,9 @@ impl VM {
             }
             0x30 => {
                 // JR NC,r8 2 12/8 | - - - -
-                let offs = self.read_op() as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
                 if !self.cpu.is_fc() {
-                    self.cpu.pc += offs;
+                    self.cpu.pc = new_pc;
                 } else {
                     self.cpu.mcycle -= 1;
                 }
@@ -432,9 +482,9 @@ impl VM {
             }
             0x38 => {
                 // JR C,r8 2 12/8 | - - - -
-                let offs = self.read_op() as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
                 if self.cpu.is_fc() {
-                    self.cpu.pc += offs;
+                    self.cpu.pc = new_pc;
                 } else {
                     self.cpu.mcycle -= 1;
                 }
@@ -1132,9 +1182,7 @@ impl VM {
             0xC0 => {
                 // RET NZ 1 20/8 | - - - -
                 if !self.cpu.is_fz() {
-                    let addr = self.mem.read_u16(self.cpu.sp)?;
-                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
-
+                    let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -1142,8 +1190,7 @@ impl VM {
             }
             0xC1 => {
                 // POP BC 1 12 | - - - -
-                self.cpu.bc = self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.sp = self.cpu.sp.wrapping_add(2);
+                self.cpu.bc = self.pop_u16()?;
             }
             0xC2 => {
                 // JP NZ,a16 3 16/12 | - - - -
@@ -1187,9 +1234,7 @@ impl VM {
             0xC8 => {
                 // RET Z 1 20/8 | - - - -
                 if self.cpu.is_fz() {
-                    let addr = self.mem.read_u16(self.cpu.sp)?;
-                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
-
+                    let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -1197,9 +1242,7 @@ impl VM {
             }
             0xC9 => {
                 // RET 1 16 | - - - -
-                let addr = self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.sp = self.cpu.sp.wrapping_add(2);
-
+                let addr = self.pop_u16()?;
                 self.cpu.pc = addr;
             }
             0xCA => {
@@ -2278,9 +2321,7 @@ impl VM {
             0xD0 => {
                 // RET NC 1 20/8 | - - - -
                 if !self.cpu.is_fc() {
-                    let addr = self.mem.read_u16(self.cpu.sp)?;
-                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
-
+                    let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -2288,8 +2329,7 @@ impl VM {
             }
             0xD1 => {
                 // POP DE 1 12 | - - - -
-                self.cpu.de = self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.sp = self.cpu.sp.wrapping_add(2);
+                self.cpu.de = self.pop_u16()?;
             }
             0xD2 => {
                 // JP NC,a16 3 16/12 | - - - -
@@ -2329,9 +2369,7 @@ impl VM {
             0xD8 => {
                 // RET C 1 20/8 | - - - -
                 if self.cpu.is_fc() {
-                    let addr = self.mem.read_u16(self.cpu.sp)?;
-                    self.cpu.sp = self.cpu.sp.wrapping_add(2);
-
+                    let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
                     self.cpu.mcycle -= 3;
@@ -2339,11 +2377,9 @@ impl VM {
             }
             0xD9 => {
                 // RETI 1 16 | - - - -
-                let addr = self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.sp = self.cpu.sp.wrapping_add(2);
-
+                let addr = self.pop_u16()?;
                 self.cpu.pc = addr;
-                self.mem.write(MEM_LOC_IE, 1);
+                self.mem.write(MEM_LOC_IE, 1)?;
             }
             0xDA => {
                 // JP C,a16 3 16/12 | - - - -
@@ -2385,8 +2421,7 @@ impl VM {
             }
             0xE1 => {
                 // POP HL 1 12 | - - - -
-                self.cpu.hl = self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.sp = self.cpu.sp.wrapping_add(2);
+                self.cpu.hl = self.pop_u16()?;
             }
             0xE2 => {
                 // LD (C),A 2 8 | - - - -
@@ -2412,7 +2447,18 @@ impl VM {
             }
             0xE8 => {
                 // ADD SP,r8 2 16 | 0 0 H C
-                unimplemented!("Opcode 0xE8 (ADD SP,r8 2 16) not implemented");
+                let word = wrapping_add_u16_i8(self.cpu.sp, self.read_op()? as i8);
+                let is_carry;
+                let is_half_carry;
+
+                is_carry = is_carry_add_u16(self.cpu.sp, word as u16);
+                is_half_carry = is_half_carry_add_u16(self.cpu.sp, word as u16);
+                self.cpu.sp = self.cpu.sp.wrapping_add(word as u16);
+
+                self.cpu.set_fc(is_carry);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
             }
             0xE9 => {
                 // JP (HL) 1 4 | - - - -
@@ -2446,8 +2492,7 @@ impl VM {
             }
             0xF1 => {
                 // POP AF 1 12 | Z N H C
-                self.cpu.af = self.mem.read_u16(self.cpu.sp)?;
-                self.cpu.sp = self.cpu.sp.wrapping_add(2);
+                self.cpu.af = self.pop_u16()?;
             }
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
@@ -2457,7 +2502,7 @@ impl VM {
             }
             0xF3 => {
                 // DI 1 4 | - - - -
-                self.mem.write(MEM_LOC_IE, 0);
+                self.mem.write(MEM_LOC_IE, 0)?;
             }
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
@@ -2476,10 +2521,13 @@ impl VM {
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
-                let word = self.read_op()? as u16;
-                let is_carry = is_carry_add_u16(self.cpu.sp, word);
-                let is_half_carry = is_half_carry_add_u16(self.cpu.sp, word);
-                self.cpu.hl = self.cpu.sp.wrapping_add(word);
+                let word = wrapping_add_u16_i8(self.cpu.sp, self.read_op()? as i8);
+                let is_carry;
+                let is_half_carry;
+
+                is_carry = is_carry_add_u16(self.cpu.sp, word as u16);
+                is_half_carry = is_half_carry_add_u16(self.cpu.sp, word as u16);
+                self.cpu.hl = self.cpu.sp.wrapping_add(word as u16);
 
                 self.cpu.set_fc(is_carry);
                 self.cpu.set_fh(is_half_carry);
@@ -2498,7 +2546,7 @@ impl VM {
             }
             0xFB => {
                 // EI 1 4 | - - - -
-                self.mem.write(MEM_LOC_IE, 1);
+                self.mem.write(MEM_LOC_IE, 1)?;
             }
             0xFC => panic!("Opcode 0xFC is invalid"),
             0xFD => panic!("Opcode 0xFD is invalid"),
