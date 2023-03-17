@@ -1264,67 +1264,185 @@ impl VM {
                 match op_cb {
                     0x00 => {
                         // RLC B 2 8F | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x00 (RLC B 2 8F) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_b(), 1);
+                        let new_b = self.cpu.get_b().rotate_left(1);
+
+                        self.cpu.set_b(new_b);
+                        self.cpu.set_fz(new_b == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x01 => {
                         // RLC C 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x01 (RLC C 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_c(), 1);
+                        let new_c = self.cpu.get_c().rotate_left(1);
+
+                        self.cpu.set_c(new_c);
+                        self.cpu.set_fz(new_c == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x02 => {
                         // RLC D 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x02 (RLC D 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_d(), 1);
+                        let new_d = self.cpu.get_d().rotate_left(1);
+
+                        self.cpu.set_d(new_d);
+                        self.cpu.set_fz(new_d == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x03 => {
                         // RLC E 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x03 (RLC E 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_e(), 1);
+                        let new_e = self.cpu.get_e().rotate_left(1);
+
+                        self.cpu.set_e(new_e);
+                        self.cpu.set_fz(new_e == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x04 => {
                         // RLC H 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x04 (RLC H 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_h(), 1);
+                        let new_h = self.cpu.get_h().rotate_left(1);
+
+                        self.cpu.set_h(new_h);
+                        self.cpu.set_fz(new_h == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x05 => {
                         // RLC L 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x05 (RLC L 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_l(), 1);
+                        let new_l = self.cpu.get_l().rotate_left(1);
+
+                        self.cpu.set_l(new_l);
+                        self.cpu.set_fz(new_l == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x06 => {
                         // RLC (HL) 2 16 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x06 (RLC (HL) 2 16) not implemented");
+                        let byte = self.mem.read(self.cpu.hl)?;
+
+                        let is_carry = is_carry_rot_left_u8(byte, 1);
+                        let new_byte = byte.rotate_left(1);
+
+                        self.mem.write(self.cpu.hl, new_byte)?;
+
+                        self.cpu.set_fz(new_byte == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x07 => {
                         // RLC A 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x07 (RLC A 2 8) not implemented");
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                        let new_a = self.cpu.get_a().rotate_left(1);
+
+                        self.cpu.set_a(new_a);
+                        self.cpu.set_fz(new_a == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x08 => {
                         // RRC B 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x08 (RRC B 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_b(), 1);
+                        let new_b = self.cpu.get_b().rotate_right(1);
+
+                        self.cpu.set_b(new_b);
+                        self.cpu.set_fz(new_b == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x09 => {
                         // RRC C 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x09 (RRC C 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_c(), 1);
+                        let new_c = self.cpu.get_c().rotate_right(1);
+
+                        self.cpu.set_c(new_c);
+                        self.cpu.set_fz(new_c == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x0A => {
                         // RRC D 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x0A (RRC D 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_d(), 1);
+                        let new_d = self.cpu.get_d().rotate_right(1);
+
+                        self.cpu.set_d(new_d);
+                        self.cpu.set_fz(new_d == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x0B => {
                         // RRC E 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x0B (RRC E 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_e(), 1);
+                        let new_e = self.cpu.get_e().rotate_right(1);
+
+                        self.cpu.set_e(new_e);
+                        self.cpu.set_fz(new_e == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x0C => {
                         // RRC H 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x0C (RRC H 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_h(), 1);
+                        let new_h = self.cpu.get_h().rotate_right(1);
+
+                        self.cpu.set_h(new_h);
+                        self.cpu.set_fz(new_h == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x0D => {
                         // RRC L 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x0D (RRC L 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_l(), 1);
+                        let new_l = self.cpu.get_l().rotate_right(1);
+
+                        self.cpu.set_l(new_l);
+                        self.cpu.set_fz(new_l == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x0E => {
                         // RRC (HL) 2 16 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x0E (RRC (HL) 2 16) not implemented");
+                        let byte = self.mem.read(self.cpu.hl)?;
+
+                        let is_carry = is_carry_rot_right_u8(byte, 1);
+                        let new_byte = byte.rotate_right(1);
+
+                        self.mem.write(self.cpu.hl, new_byte)?;
+
+                        self.cpu.set_fz(new_byte == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x0F => {
                         // RRC A 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x0F (RRC A 2 8) not implemented");
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
+                        let new_a = self.cpu.get_a().rotate_right(1);
+
+                        self.cpu.set_a(new_a);
+                        self.cpu.set_fz(new_a == 0);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(false);
+                        self.cpu.set_fc(is_carry);
                     }
                     0x10 => {
                         // RL B 2 8 | Z 0 0 C
