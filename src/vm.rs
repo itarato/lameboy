@@ -49,7 +49,17 @@ impl VM {
 
     fn exec_op(&mut self) -> Result<(), Error> {
         let op = self.read_op()?;
-        log::debug!("0x{:2X?} [_] >> {}", op, opcode_name[op as usize]);
+        log::debug!(
+            "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
+            self.cpu.af,
+            self.cpu.bc,
+            self.cpu.de,
+            self.cpu.hl,
+            self.cpu.sp,
+            self.cpu.pc - 1,
+            op,
+            opcode_name[op as usize]
+        );
 
         match op {
             0x00 => {
@@ -1259,7 +1269,17 @@ impl VM {
 
                 let op_cb = self.read_op()?;
 
-                log::debug!("0x{:2X?} [P] >> {}", op_cb, opcode_cb_name[op_cb as usize]);
+                log::debug!(
+                    "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
+                    self.cpu.af,
+                    self.cpu.bc,
+                    self.cpu.de,
+                    self.cpu.hl,
+                    self.cpu.sp,
+                    self.cpu.pc - 1,
+                    op_cb,
+                    opcode_cb_name[op_cb as usize]
+                );
 
                 match op_cb {
                     0x00 => {
