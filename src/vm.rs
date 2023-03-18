@@ -1,21 +1,28 @@
 use std::fs::File;
+use std::io::stdin;
+use std::io::stdout;
 use std::io::Read;
+use std::io::Write;
 
 use crate::conf::*;
 use crate::cpu::*;
+use crate::debugger::DebugCmd;
+use crate::debugger::Debugger;
 use crate::mem::*;
 use crate::util::*;
 
 pub struct VM {
     mem: Mem,
     cpu: Cpu,
+    debugger: Debugger,
 }
 
 impl VM {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new(debugger: Debugger) -> Result<Self, Error> {
         Ok(VM {
             mem: Mem::new()?,
             cpu: Cpu::new(),
+            debugger,
         })
     }
 
@@ -37,6 +44,16 @@ impl VM {
         log::info!("VM eval loop start");
 
         loop {
+            if self.debugger.should_stop(self.cpu.pc) {
+                loop {
+                    match self.read_repl()? {
+                        Some(DebugCmd::Quit) => return Ok(()),
+                        Some(DebugCmd::Next) => break,
+                        None => (),
+                    };
+                }
+            }
+
             self.exec_op()?;
         }
     }
@@ -3229,5 +3246,14 @@ impl VM {
         let word = self.mem.read_u16(self.cpu.sp)?;
         self.cpu.sp = self.cpu.sp.wrapping_add(2);
         Ok(word)
+    }
+
+    fn read_repl(&self) -> Result<Option<DebugCmd>, Error> {
+        let mut buf = String::new();
+        print!("{:#04X}> ", self.cpu.pc);
+        stdout().flush()?;
+        stdin().read_line(&mut buf)?;
+
+        Ok(DebugCmd::parse(buf))
     }
 }

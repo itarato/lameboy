@@ -21,10 +21,10 @@ impl Mem {
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
-        if loc < MEM_AREA_ROM_BANK_N {
+        let byte = if loc < MEM_AREA_ROM_BANK_N {
             // MEM_AREA_ROM_BANK_0:
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
-                Ok(self.bios[loc as usize])
+                self.bios[loc as usize]
             } else {
                 unimplemented!("Read from MEM_AREA_ROM_BANK_0 not handled yet")
             }
@@ -54,7 +54,7 @@ impl Mem {
             unimplemented!("Read from MEM_AREA_PROHIBITED not handled yet")
         } else if loc < MEM_AREA_HRAM {
             // MEM_AREA_IO:
-            Ok(self.data[(loc - MEM_AREA_VRAM) as usize])
+            self.data[(loc - MEM_AREA_VRAM) as usize]
         } else if loc < MEM_AREA_IE {
             // MEM_AREA_HRAM:
             unimplemented!("Read from MEM_AREA_HRAM not handled yet")
@@ -62,7 +62,19 @@ impl Mem {
             // MEM_AREA_IE:
             unimplemented!("Read from MEM_AREA_IE not handled yet")
         } else {
-            Err("Read outside of memory".into())
+            return Err("Read outside of memory".into());
+        };
+
+        log::debug!("Read: {:#06X} = #{:#04X}", loc, byte);
+
+        Ok(byte)
+    }
+
+    fn read_unchecked(&self, loc: u16) -> Result<u8, Error> {
+        if loc >= MEM_AREA_VRAM && loc <= MEM_ADDR_MAX {
+            Ok(self.data[(loc - MEM_AREA_VRAM) as usize])
+        } else {
+            panic!("Unexpected unchecked read on: {:#06X}", loc)
         }
     }
 
@@ -73,6 +85,8 @@ impl Mem {
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+        log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
+
         match loc {
             MEM_LOC_BOOT_LOCK_REG => {
                 // BOOT_OFF can only transition from 0b0 to 0b1, so once 0b1 has been written, the boot ROM is
@@ -149,6 +163,6 @@ impl Mem {
     }
 
     fn is_bios_mounted(&self) -> bool {
-        self.read(MEM_LOC_BOOT_LOCK_REG).unwrap() == 0b0
+        self.read_unchecked(MEM_LOC_BOOT_LOCK_REG).unwrap() == 0b0
     }
 }
