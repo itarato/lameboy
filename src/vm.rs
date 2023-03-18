@@ -2579,259 +2579,323 @@ impl VM {
                     }
                     0xC0 => {
                         // SET 0,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC0 (SET 0,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 0, true);
+                        self.cpu.set_b(byte);
                     }
                     0xC1 => {
                         // SET 0,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC1 (SET 0,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 0, true);
+                        self.cpu.set_c(byte);
                     }
                     0xC2 => {
                         // SET 0,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC2 (SET 0,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 0, true);
+                        self.cpu.set_d(byte);
                     }
                     0xC3 => {
                         // SET 0,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC3 (SET 0,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 0, true);
+                        self.cpu.set_e(byte);
                     }
                     0xC4 => {
                         // SET 0,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC4 (SET 0,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 0, true);
+                        self.cpu.set_h(byte);
                     }
                     0xC5 => {
                         // SET 0,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC5 (SET 0,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 0, true);
+                        self.cpu.set_l(byte);
                     }
                     0xC6 => {
                         // SET 0,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC6 (SET 0,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 0, true);
+                        self.write_hl(byte)?;
                     }
                     0xC7 => {
                         // SET 0,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC7 (SET 0,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 0, true);
+                        self.cpu.set_a(byte);
                     }
                     0xC8 => {
                         // SET 1,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC8 (SET 1,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 1, true);
+                        self.cpu.set_b(byte);
                     }
                     0xC9 => {
                         // SET 1,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xC9 (SET 1,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 1, true);
+                        self.cpu.set_c(byte);
                     }
                     0xCA => {
                         // SET 1,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xCA (SET 1,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 1, true);
+                        self.cpu.set_d(byte);
                     }
                     0xCB => {
                         // SET 1,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xCB (SET 1,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 1, true);
+                        self.cpu.set_e(byte);
                     }
                     0xCC => {
                         // SET 1,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xCC (SET 1,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 1, true);
+                        self.cpu.set_h(byte);
                     }
                     0xCD => {
                         // SET 1,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xCD (SET 1,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 1, true);
+                        self.cpu.set_l(byte);
                     }
                     0xCE => {
                         // SET 1,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xCE (SET 1,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 1, true);
+                        self.write_hl(byte)?;
                     }
                     0xCF => {
                         // SET 1,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xCF (SET 1,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 1, true);
+                        self.cpu.set_a(byte);
                     }
                     0xD0 => {
                         // SET 2,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD0 (SET 2,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 2, true);
+                        self.cpu.set_b(byte);
                     }
                     0xD1 => {
                         // SET 2,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD1 (SET 2,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 2, true);
+                        self.cpu.set_c(byte);
                     }
                     0xD2 => {
                         // SET 2,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD2 (SET 2,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 2, true);
+                        self.cpu.set_d(byte);
                     }
                     0xD3 => {
                         // SET 2,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD3 (SET 2,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 2, true);
+                        self.cpu.set_e(byte);
                     }
                     0xD4 => {
                         // SET 2,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD4 (SET 2,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 2, true);
+                        self.cpu.set_h(byte);
                     }
                     0xD5 => {
                         // SET 2,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD5 (SET 2,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 2, true);
+                        self.cpu.set_l(byte);
                     }
                     0xD6 => {
                         // SET 2,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD6 (SET 2,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 2, true);
+                        self.write_hl(byte)?;
                     }
                     0xD7 => {
                         // SET 2,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD7 (SET 2,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 2, true);
+                        self.cpu.set_a(byte);
                     }
                     0xD8 => {
                         // SET 3,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD8 (SET 3,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 3, true);
+                        self.cpu.set_b(byte);
                     }
                     0xD9 => {
                         // SET 3,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xD9 (SET 3,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 3, true);
+                        self.cpu.set_c(byte);
                     }
                     0xDA => {
                         // SET 3,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xDA (SET 3,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 3, true);
+                        self.cpu.set_d(byte);
                     }
                     0xDB => {
                         // SET 3,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xDB (SET 3,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 3, true);
+                        self.cpu.set_e(byte);
                     }
                     0xDC => {
                         // SET 3,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xDC (SET 3,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 3, true);
+                        self.cpu.set_h(byte);
                     }
                     0xDD => {
                         // SET 3,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xDD (SET 3,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 3, true);
+                        self.cpu.set_l(byte);
                     }
                     0xDE => {
                         // SET 3,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xDE (SET 3,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 3, true);
+                        self.write_hl(byte)?;
                     }
                     0xDF => {
                         // SET 3,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xDF (SET 3,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 3, true);
+                        self.cpu.set_a(byte);
                     }
                     0xE0 => {
                         // SET 4,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE0 (SET 4,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 4, true);
+                        self.cpu.set_b(byte);
                     }
                     0xE1 => {
                         // SET 4,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE1 (SET 4,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 4, true);
+                        self.cpu.set_c(byte);
                     }
                     0xE2 => {
                         // SET 4,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE2 (SET 4,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 4, true);
+                        self.cpu.set_d(byte);
                     }
                     0xE3 => {
                         // SET 4,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE3 (SET 4,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 4, true);
+                        self.cpu.set_e(byte);
                     }
                     0xE4 => {
                         // SET 4,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE4 (SET 4,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 4, true);
+                        self.cpu.set_h(byte);
                     }
                     0xE5 => {
                         // SET 4,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE5 (SET 4,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 4, true);
+                        self.cpu.set_l(byte);
                     }
                     0xE6 => {
                         // SET 4,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE6 (SET 4,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 4, true);
+                        self.write_hl(byte)?;
                     }
                     0xE7 => {
                         // SET 4,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE7 (SET 4,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 4, true);
+                        self.cpu.set_a(byte);
                     }
                     0xE8 => {
                         // SET 5,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE8 (SET 5,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 5, true);
+                        self.cpu.set_b(byte);
                     }
                     0xE9 => {
                         // SET 5,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xE9 (SET 5,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 5, true);
+                        self.cpu.set_c(byte);
                     }
                     0xEA => {
                         // SET 5,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xEA (SET 5,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 5, true);
+                        self.cpu.set_d(byte);
                     }
                     0xEB => {
                         // SET 5,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xEB (SET 5,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 5, true);
+                        self.cpu.set_e(byte);
                     }
                     0xEC => {
                         // SET 5,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xEC (SET 5,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 5, true);
+                        self.cpu.set_h(byte);
                     }
                     0xED => {
                         // SET 5,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xED (SET 5,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 5, true);
+                        self.cpu.set_l(byte);
                     }
                     0xEE => {
                         // SET 5,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xEE (SET 5,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 5, true);
+                        self.write_hl(byte)?;
                     }
                     0xEF => {
                         // SET 5,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xEF (SET 5,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 5, true);
+                        self.cpu.set_a(byte);
                     }
                     0xF0 => {
                         // SET 6,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF0 (SET 6,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 6, true);
+                        self.cpu.set_b(byte);
                     }
                     0xF1 => {
                         // SET 6,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF1 (SET 6,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 6, true);
+                        self.cpu.set_c(byte);
                     }
                     0xF2 => {
                         // SET 6,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF2 (SET 6,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 6, true);
+                        self.cpu.set_d(byte);
                     }
                     0xF3 => {
                         // SET 6,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF3 (SET 6,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 6, true);
+                        self.cpu.set_e(byte);
                     }
                     0xF4 => {
                         // SET 6,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF4 (SET 6,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 6, true);
+                        self.cpu.set_h(byte);
                     }
                     0xF5 => {
                         // SET 6,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF5 (SET 6,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 6, true);
+                        self.cpu.set_l(byte);
                     }
                     0xF6 => {
                         // SET 6,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF6 (SET 6,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 6, true);
+                        self.write_hl(byte)?;
                     }
                     0xF7 => {
                         // SET 6,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF7 (SET 6,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 6, true);
+                        self.cpu.set_a(byte);
                     }
                     0xF8 => {
                         // SET 7,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF8 (SET 7,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 7, true);
+                        self.cpu.set_b(byte);
                     }
                     0xF9 => {
                         // SET 7,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xF9 (SET 7,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 7, true);
+                        self.cpu.set_c(byte);
                     }
                     0xFA => {
                         // SET 7,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xFA (SET 7,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 7, true);
+                        self.cpu.set_d(byte);
                     }
                     0xFB => {
                         // SET 7,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xFB (SET 7,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 7, true);
+                        self.cpu.set_e(byte);
                     }
                     0xFC => {
                         // SET 7,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xFC (SET 7,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 7, true);
+                        self.cpu.set_h(byte);
                     }
                     0xFD => {
                         // SET 7,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xFD (SET 7,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 7, true);
+                        self.cpu.set_l(byte);
                     }
                     0xFE => {
                         // SET 7,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xFE (SET 7,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 7, true);
+                        self.write_hl(byte)?;
                     }
                     0xFF => {
                         // SET 7,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xFF (SET 7,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 7, true);
+                        self.cpu.set_a(byte);
                     }
                 };
 
