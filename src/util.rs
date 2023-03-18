@@ -22,6 +22,14 @@ pub fn is_carry_rot_right_u8(acc: u8, n: u8) -> bool {
     (acc << (8 - n)) > 0
 }
 
+pub fn is_carry_shift_left_u8(acc: u8, n: u8) -> bool {
+    is_carry_rot_left_u8(acc, n)
+}
+
+pub fn is_carry_shift_right_u8(acc: u8, n: u8) -> bool {
+    is_carry_rot_right_u8(acc, n)
+}
+
 pub fn is_half_carry_add_u8(acc: u8, n: u8) -> bool {
     (acc & 0xF) + (n & 0xF) > 0xF
 }
@@ -36,6 +44,22 @@ pub fn is_half_carry_sub_u8(acc: u8, sub: u8) -> bool {
 
 pub fn is_half_carry_sub_u16(acc: u16, sub: u16) -> bool {
     (acc & 0xF000) < (sub & 0xF000)
+}
+
+pub fn shift_left_a(byte: u8) -> u8 {
+    (byte as i8).wrapping_shl(1) as u8
+}
+
+pub fn shift_right_a(byte: u8) -> u8 {
+    (byte as i8).wrapping_shr(1) as u8
+}
+
+pub fn shift_left_l(byte: u8) -> u8 {
+    byte << 1
+}
+
+pub fn shift_right_l(byte: u8) -> u8 {
+    byte >> 1
 }
 
 pub fn wrapping_add_u16_i8(lhs: u16, rhs: i8) -> u16 {
