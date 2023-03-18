@@ -1641,35 +1641,59 @@ impl VM {
                     }
                     0x28 => {
                         // SRA B 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x28 (SRA B 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_b());
+
+                        self.cpu.set_b(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x29 => {
                         // SRA C 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x29 (SRA C 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_c());
+
+                        self.cpu.set_c(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2A => {
                         // SRA D 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x2A (SRA D 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_d());
+
+                        self.cpu.set_d(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2B => {
                         // SRA E 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x2B (SRA E 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_e());
+
+                        self.cpu.set_e(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2C => {
                         // SRA H 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x2C (SRA H 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_h());
+
+                        self.cpu.set_h(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2D => {
                         // SRA L 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x2D (SRA L 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_l());
+
+                        self.cpu.set_l(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2E => {
                         // SRA (HL) 2 16 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x2E (SRA (HL) 2 16) not implemented");
+                        let byte = shift_left_a(self.read_hl()?);
+
+                        self.cpu.set_a(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2F => {
                         // SRA A 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x2F (SRA A 2 8) not implemented");
+                        let byte = shift_right_a(self.cpu.get_a());
+
+                        self.cpu.set_a(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x30 => {
                         // SWAP B 2 8 | Z 0 0 0
