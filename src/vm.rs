@@ -1697,67 +1697,116 @@ impl VM {
                     }
                     0x30 => {
                         // SWAP B 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x30 (SWAP B 2 8) not implemented");
+                        let byte = swap(self.cpu.get_b());
+                        self.cpu.set_b(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x31 => {
                         // SWAP C 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x31 (SWAP C 2 8) not implemented");
+                        let byte = swap(self.cpu.get_c());
+                        self.cpu.set_c(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x32 => {
                         // SWAP D 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x32 (SWAP D 2 8) not implemented");
+                        let byte = swap(self.cpu.get_d());
+                        self.cpu.set_d(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x33 => {
                         // SWAP E 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x33 (SWAP E 2 8) not implemented");
+                        let byte = swap(self.cpu.get_e());
+                        self.cpu.set_e(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x34 => {
                         // SWAP H 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x34 (SWAP H 2 8) not implemented");
+                        let byte = swap(self.cpu.get_h());
+                        self.cpu.set_h(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x35 => {
                         // SWAP L 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x35 (SWAP L 2 8) not implemented");
+                        let byte = swap(self.cpu.get_l());
+                        self.cpu.set_l(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x36 => {
                         // SWAP (HL) 2 16 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x36 (SWAP (HL) 2 16) not implemented");
+                        let byte = swap(self.read_hl()?);
+                        self.cpu.set_l(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x37 => {
                         // SWAP A 2 8 | Z 0 0 0
-                        unimplemented!("Prefix CB opcode 0x37 (SWAP A 2 8) not implemented");
+                        let byte = swap(self.cpu.get_a());
+                        self.cpu.set_a(byte);
+                        self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x38 => {
                         // SRL B 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x38 (SRL B 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_b(), 1);
+                        let byte = shift_right_l(self.cpu.get_b());
+
+                        self.cpu.set_b(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x39 => {
                         // SRL C 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x39 (SRL C 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_c(), 1);
+                        let byte = shift_right_l(self.cpu.get_c());
+
+                        self.cpu.set_c(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x3A => {
                         // SRL D 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x3A (SRL D 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_d(), 1);
+                        let byte = shift_right_l(self.cpu.get_d());
+
+                        self.cpu.set_d(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x3B => {
                         // SRL E 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x3B (SRL E 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_e(), 1);
+                        let byte = shift_right_l(self.cpu.get_e());
+
+                        self.cpu.set_e(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x3C => {
                         // SRL H 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x3C (SRL H 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_h(), 1);
+                        let byte = shift_right_l(self.cpu.get_h());
+
+                        self.cpu.set_h(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x3D => {
                         // SRL L 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x3D (SRL L 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_l(), 1);
+                        let byte = shift_right_l(self.cpu.get_l());
+
+                        self.cpu.set_l(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x3E => {
                         // SRL (HL) 2 16 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x3E (SRL (HL) 2 16) not implemented");
+                        let byte = self.read_hl()?;
+                        let is_carry = is_carry_shift_right_u8(byte, 1);
+                        let new_byte = shift_right_l(byte);
+
+                        self.cpu.set_l(new_byte);
+                        self.cpu.set_flags(new_byte == 0, false, false, is_carry);
                     }
                     0x3F => {
                         // SRL A 2 8 | Z 0 0 C
-                        unimplemented!("Prefix CB opcode 0x3F (SRL A 2 8) not implemented");
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_a(), 1);
+                        let byte = shift_right_l(self.cpu.get_a());
+
+                        self.cpu.set_a(byte);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x40 => {
                         // BIT 0,B 2 8 | Z 0 1 -

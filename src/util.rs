@@ -70,6 +70,10 @@ pub fn wrapping_add_u16_i8(lhs: u16, rhs: i8) -> u16 {
     }
 }
 
+pub fn swap(byte: u8) -> u8 {
+    (byte << 4) | (byte >> 4)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::util::*;
@@ -95,5 +99,10 @@ mod tests {
         assert!(is_carry_rot_right_u8(0b0100_0010, 5));
         assert!(is_carry_rot_right_u8(0b0100_0010, 6));
         assert!(is_carry_rot_right_u8(0b0100_0010, 7));
+    }
+
+    #[test]
+    fn test_swap() {
+        assert_eq!(0b0110_1001, swap(0b1001_0110));
     }
 }
