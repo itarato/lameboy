@@ -74,8 +74,16 @@ pub fn swap(byte: u8) -> u8 {
     (byte << 4) | (byte >> 4)
 }
 
-pub fn is_bit_n(byte: u8, n: u8) -> bool {
+pub fn is_bit(byte: u8, n: u8) -> bool {
     ((byte >> n) & 0b1) > 0
+}
+
+pub fn set_bit(mut byte: u8, n: u8, is_on: bool) -> u8 {
+    byte &= !(1 << n);
+    if is_on {
+        byte |= 1 << n;
+    }
+    byte
 }
 
 #[cfg(test)]
@@ -111,9 +119,9 @@ mod tests {
     }
 
     #[test]
-    fn test_is_bit_n() {
-        assert!(is_bit_n(0b0000_1000, 3));
-        assert!(!is_bit_n(0b0000_1000, 4));
-        assert!(!is_bit_n(0b0000_1000, 2));
+    fn test_is_bit() {
+        assert!(is_bit(0b0000_1000, 3));
+        assert!(!is_bit(0b0000_1000, 4));
+        assert!(!is_bit(0b0000_1000, 2));
     }
 }

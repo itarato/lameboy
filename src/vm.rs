@@ -1498,7 +1498,7 @@ impl VM {
                         let is_carry = is_carry_rot_left_u8(byte, 1);
                         let new_byte = byte.rotate_left(1);
 
-                        self.cpu.set_a(new_byte);
+                        self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
                     }
                     0x17 => {
@@ -1563,7 +1563,7 @@ impl VM {
                         let is_carry = is_carry_rot_right_u8(byte, 1);
                         let new_byte = byte.rotate_right(1);
 
-                        self.cpu.set_a(new_byte);
+                        self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
                     }
                     0x1F => {
@@ -1628,7 +1628,7 @@ impl VM {
                         let is_carry = is_carry_shift_left_u8(self.cpu.get_a(), 1);
                         let new_byte = shift_left_a(byte);
 
-                        self.cpu.set_a(new_byte);
+                        self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
                     }
                     0x27 => {
@@ -1685,7 +1685,7 @@ impl VM {
                         // SRA (HL) 2 16 | Z 0 0 0
                         let byte = shift_left_a(self.read_hl()?);
 
-                        self.cpu.set_a(byte);
+                        self.write_hl(byte)?;
                         self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x2F => {
@@ -1734,7 +1734,8 @@ impl VM {
                     0x36 => {
                         // SWAP (HL) 2 16 | Z 0 0 0
                         let byte = swap(self.read_hl()?);
-                        self.cpu.set_l(byte);
+
+                        self.write_hl(byte)?;
                         self.cpu.set_flags(byte == 0, false, false, false);
                     }
                     0x37 => {
@@ -1797,7 +1798,7 @@ impl VM {
                         let is_carry = is_carry_shift_right_u8(byte, 1);
                         let new_byte = shift_right_l(byte);
 
-                        self.cpu.set_l(new_byte);
+                        self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
                     }
                     0x3F => {
@@ -1810,707 +1811,771 @@ impl VM {
                     }
                     0x40 => {
                         // BIT 0,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 0);
+                        let is_bit = is_bit(self.cpu.get_b(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x41 => {
                         // BIT 0,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 0);
+                        let is_bit = is_bit(self.cpu.get_c(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x42 => {
                         // BIT 0,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 0);
+                        let is_bit = is_bit(self.cpu.get_d(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x43 => {
                         // BIT 0,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 0);
+                        let is_bit = is_bit(self.cpu.get_e(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x44 => {
                         // BIT 0,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 0);
+                        let is_bit = is_bit(self.cpu.get_h(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x45 => {
                         // BIT 0,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 0);
+                        let is_bit = is_bit(self.cpu.get_l(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x46 => {
                         // BIT 0,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 0);
+                        let is_bit = is_bit(self.read_hl()?, 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x47 => {
                         // BIT 0,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 0);
+                        let is_bit = is_bit(self.cpu.get_a(), 0);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x48 => {
                         // BIT 1,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 1);
+                        let is_bit = is_bit(self.cpu.get_b(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x49 => {
                         // BIT 1,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 1);
+                        let is_bit = is_bit(self.cpu.get_c(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x4A => {
                         // BIT 1,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 1);
+                        let is_bit = is_bit(self.cpu.get_d(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x4B => {
                         // BIT 1,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 1);
+                        let is_bit = is_bit(self.cpu.get_e(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x4C => {
                         // BIT 1,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 1);
+                        let is_bit = is_bit(self.cpu.get_h(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x4D => {
                         // BIT 1,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 1);
+                        let is_bit = is_bit(self.cpu.get_l(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x4E => {
                         // BIT 1,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 1);
+                        let is_bit = is_bit(self.read_hl()?, 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x4F => {
                         // BIT 1,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 1);
+                        let is_bit = is_bit(self.cpu.get_a(), 1);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x50 => {
                         // BIT 2,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 2);
+                        let is_bit = is_bit(self.cpu.get_b(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x51 => {
                         // BIT 2,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 2);
+                        let is_bit = is_bit(self.cpu.get_c(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x52 => {
                         // BIT 2,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 2);
+                        let is_bit = is_bit(self.cpu.get_d(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x53 => {
                         // BIT 2,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 2);
+                        let is_bit = is_bit(self.cpu.get_e(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x54 => {
                         // BIT 2,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 2);
+                        let is_bit = is_bit(self.cpu.get_h(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x55 => {
                         // BIT 2,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 2);
+                        let is_bit = is_bit(self.cpu.get_l(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x56 => {
                         // BIT 2,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 2);
+                        let is_bit = is_bit(self.read_hl()?, 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x57 => {
                         // BIT 2,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 2);
+                        let is_bit = is_bit(self.cpu.get_a(), 2);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x58 => {
                         // BIT 3,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 3);
+                        let is_bit = is_bit(self.cpu.get_b(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x59 => {
                         // BIT 3,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 3);
+                        let is_bit = is_bit(self.cpu.get_c(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x5A => {
                         // BIT 3,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 3);
+                        let is_bit = is_bit(self.cpu.get_d(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x5B => {
                         // BIT 3,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 3);
+                        let is_bit = is_bit(self.cpu.get_e(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x5C => {
                         // BIT 3,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 3);
+                        let is_bit = is_bit(self.cpu.get_h(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x5D => {
                         // BIT 3,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 3);
+                        let is_bit = is_bit(self.cpu.get_l(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x5E => {
                         // BIT 3,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 3);
+                        let is_bit = is_bit(self.read_hl()?, 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x5F => {
                         // BIT 3,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 3);
+                        let is_bit = is_bit(self.cpu.get_a(), 3);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x60 => {
                         // BIT 4,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 4);
+                        let is_bit = is_bit(self.cpu.get_b(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x61 => {
                         // BIT 4,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 4);
+                        let is_bit = is_bit(self.cpu.get_c(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x62 => {
                         // BIT 4,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 4);
+                        let is_bit = is_bit(self.cpu.get_d(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x63 => {
                         // BIT 4,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 4);
+                        let is_bit = is_bit(self.cpu.get_e(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x64 => {
                         // BIT 4,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 4);
+                        let is_bit = is_bit(self.cpu.get_h(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x65 => {
                         // BIT 4,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 4);
+                        let is_bit = is_bit(self.cpu.get_l(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x66 => {
                         // BIT 4,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 4);
+                        let is_bit = is_bit(self.read_hl()?, 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x67 => {
                         // BIT 4,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 4);
+                        let is_bit = is_bit(self.cpu.get_a(), 4);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x68 => {
                         // BIT 5,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 5);
+                        let is_bit = is_bit(self.cpu.get_b(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x69 => {
                         // BIT 5,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 5);
+                        let is_bit = is_bit(self.cpu.get_c(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x6A => {
                         // BIT 5,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 5);
+                        let is_bit = is_bit(self.cpu.get_d(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x6B => {
                         // BIT 5,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 5);
+                        let is_bit = is_bit(self.cpu.get_e(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x6C => {
                         // BIT 5,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 5);
+                        let is_bit = is_bit(self.cpu.get_h(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x6D => {
                         // BIT 5,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 5);
+                        let is_bit = is_bit(self.cpu.get_l(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x6E => {
                         // BIT 5,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 5);
+                        let is_bit = is_bit(self.read_hl()?, 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x6F => {
                         // BIT 5,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 5);
+                        let is_bit = is_bit(self.cpu.get_a(), 5);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x70 => {
                         // BIT 6,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 6);
+                        let is_bit = is_bit(self.cpu.get_b(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x71 => {
                         // BIT 6,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 6);
+                        let is_bit = is_bit(self.cpu.get_c(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x72 => {
                         // BIT 6,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 6);
+                        let is_bit = is_bit(self.cpu.get_d(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x73 => {
                         // BIT 6,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 6);
+                        let is_bit = is_bit(self.cpu.get_e(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x74 => {
                         // BIT 6,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 6);
+                        let is_bit = is_bit(self.cpu.get_h(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x75 => {
                         // BIT 6,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 6);
+                        let is_bit = is_bit(self.cpu.get_l(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x76 => {
                         // BIT 6,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 6);
+                        let is_bit = is_bit(self.read_hl()?, 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x77 => {
                         // BIT 6,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 6);
+                        let is_bit = is_bit(self.cpu.get_a(), 6);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x78 => {
                         // BIT 7,B 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_b(), 7);
+                        let is_bit = is_bit(self.cpu.get_b(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x79 => {
                         // BIT 7,C 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_c(), 7);
+                        let is_bit = is_bit(self.cpu.get_c(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x7A => {
                         // BIT 7,D 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_d(), 7);
+                        let is_bit = is_bit(self.cpu.get_d(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x7B => {
                         // BIT 7,E 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_e(), 7);
+                        let is_bit = is_bit(self.cpu.get_e(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x7C => {
                         // BIT 7,H 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_h(), 7);
+                        let is_bit = is_bit(self.cpu.get_h(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x7D => {
                         // BIT 7,L 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_l(), 7);
+                        let is_bit = is_bit(self.cpu.get_l(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x7E => {
                         // BIT 7,(HL) 2 16 | Z 0 1 -
-                        let is_bit = is_bit_n(self.read_hl()?, 7);
+                        let is_bit = is_bit(self.read_hl()?, 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x7F => {
                         // BIT 7,A 2 8 | Z 0 1 -
-                        let is_bit = is_bit_n(self.cpu.get_a(), 7);
+                        let is_bit = is_bit(self.cpu.get_a(), 7);
                         self.cpu.set_fz(!is_bit);
                         self.cpu.set_fn(false);
                         self.cpu.set_fh(true);
                     }
                     0x80 => {
                         // RES 0,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x80 (RES 0,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 0, false);
+                        self.cpu.set_b(byte);
                     }
                     0x81 => {
                         // RES 0,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x81 (RES 0,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 0, false);
+                        self.cpu.set_c(byte);
                     }
                     0x82 => {
                         // RES 0,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x82 (RES 0,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 0, false);
+                        self.cpu.set_d(byte);
                     }
                     0x83 => {
                         // RES 0,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x83 (RES 0,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 0, false);
+                        self.cpu.set_e(byte);
                     }
                     0x84 => {
                         // RES 0,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x84 (RES 0,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 0, false);
+                        self.cpu.set_h(byte);
                     }
                     0x85 => {
                         // RES 0,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x85 (RES 0,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 0, false);
+                        self.cpu.set_l(byte);
                     }
                     0x86 => {
                         // RES 0,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0x86 (RES 0,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 0, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0x87 => {
                         // RES 0,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x87 (RES 0,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 0, false);
+                        self.cpu.set_a(byte);
                     }
                     0x88 => {
                         // RES 1,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x88 (RES 1,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 1, false);
+                        self.cpu.set_b(byte);
                     }
                     0x89 => {
                         // RES 1,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x89 (RES 1,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 1, false);
+                        self.cpu.set_c(byte);
                     }
                     0x8A => {
                         // RES 1,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x8A (RES 1,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 1, false);
+                        self.cpu.set_d(byte);
                     }
                     0x8B => {
                         // RES 1,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x8B (RES 1,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 1, false);
+                        self.cpu.set_e(byte);
                     }
                     0x8C => {
                         // RES 1,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x8C (RES 1,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 1, false);
+                        self.cpu.set_h(byte);
                     }
                     0x8D => {
                         // RES 1,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x8D (RES 1,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 1, false);
+                        self.cpu.set_l(byte);
                     }
                     0x8E => {
                         // RES 1,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0x8E (RES 1,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 1, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0x8F => {
                         // RES 1,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x8F (RES 1,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 1, false);
+                        self.cpu.set_a(byte);
                     }
                     0x90 => {
                         // RES 2,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x90 (RES 2,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 2, false);
+                        self.cpu.set_b(byte);
                     }
                     0x91 => {
                         // RES 2,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x91 (RES 2,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 2, false);
+                        self.cpu.set_c(byte);
                     }
                     0x92 => {
                         // RES 2,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x92 (RES 2,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 2, false);
+                        self.cpu.set_d(byte);
                     }
                     0x93 => {
                         // RES 2,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x93 (RES 2,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 2, false);
+                        self.cpu.set_e(byte);
                     }
                     0x94 => {
                         // RES 2,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x94 (RES 2,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 2, false);
+                        self.cpu.set_h(byte);
                     }
                     0x95 => {
                         // RES 2,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x95 (RES 2,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 2, false);
+                        self.cpu.set_l(byte);
                     }
                     0x96 => {
                         // RES 2,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0x96 (RES 2,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 2, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0x97 => {
                         // RES 2,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x97 (RES 2,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 2, false);
+                        self.cpu.set_a(byte);
                     }
                     0x98 => {
                         // RES 3,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x98 (RES 3,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 3, false);
+                        self.cpu.set_b(byte);
                     }
                     0x99 => {
                         // RES 3,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x99 (RES 3,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 3, false);
+                        self.cpu.set_c(byte);
                     }
                     0x9A => {
                         // RES 3,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x9A (RES 3,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 3, false);
+                        self.cpu.set_d(byte);
                     }
                     0x9B => {
                         // RES 3,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x9B (RES 3,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 3, false);
+                        self.cpu.set_e(byte);
                     }
                     0x9C => {
                         // RES 3,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x9C (RES 3,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 3, false);
+                        self.cpu.set_h(byte);
                     }
                     0x9D => {
                         // RES 3,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x9D (RES 3,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 3, false);
+                        self.cpu.set_l(byte);
                     }
                     0x9E => {
                         // RES 3,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0x9E (RES 3,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 3, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0x9F => {
                         // RES 3,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0x9F (RES 3,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 3, false);
+                        self.cpu.set_a(byte);
                     }
                     0xA0 => {
                         // RES 4,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA0 (RES 4,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 4, false);
+                        self.cpu.set_b(byte);
                     }
                     0xA1 => {
                         // RES 4,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA1 (RES 4,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 4, false);
+                        self.cpu.set_c(byte);
                     }
                     0xA2 => {
                         // RES 4,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA2 (RES 4,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 4, false);
+                        self.cpu.set_d(byte);
                     }
                     0xA3 => {
                         // RES 4,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA3 (RES 4,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 4, false);
+                        self.cpu.set_e(byte);
                     }
                     0xA4 => {
                         // RES 4,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA4 (RES 4,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 4, false);
+                        self.cpu.set_h(byte);
                     }
                     0xA5 => {
                         // RES 4,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA5 (RES 4,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 4, false);
+                        self.cpu.set_l(byte);
                     }
                     0xA6 => {
                         // RES 4,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA6 (RES 4,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 4, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0xA7 => {
                         // RES 4,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA7 (RES 4,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 4, false);
+                        self.cpu.set_a(byte);
                     }
                     0xA8 => {
                         // RES 5,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA8 (RES 5,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 5, false);
+                        self.cpu.set_b(byte);
                     }
                     0xA9 => {
                         // RES 5,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xA9 (RES 5,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 5, false);
+                        self.cpu.set_c(byte);
                     }
                     0xAA => {
                         // RES 5,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xAA (RES 5,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 5, false);
+                        self.cpu.set_d(byte);
                     }
                     0xAB => {
                         // RES 5,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xAB (RES 5,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 5, false);
+                        self.cpu.set_e(byte);
                     }
                     0xAC => {
                         // RES 5,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xAC (RES 5,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 5, false);
+                        self.cpu.set_h(byte);
                     }
                     0xAD => {
                         // RES 5,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xAD (RES 5,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 5, false);
+                        self.cpu.set_l(byte);
                     }
                     0xAE => {
                         // RES 5,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xAE (RES 5,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 5, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0xAF => {
                         // RES 5,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xAF (RES 5,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 5, false);
+                        self.cpu.set_a(byte);
                     }
                     0xB0 => {
                         // RES 6,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB0 (RES 6,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 6, false);
+                        self.cpu.set_b(byte);
                     }
                     0xB1 => {
                         // RES 6,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB1 (RES 6,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 6, false);
+                        self.cpu.set_c(byte);
                     }
                     0xB2 => {
                         // RES 6,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB2 (RES 6,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 6, false);
+                        self.cpu.set_d(byte);
                     }
                     0xB3 => {
                         // RES 6,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB3 (RES 6,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 6, false);
+                        self.cpu.set_e(byte);
                     }
                     0xB4 => {
                         // RES 6,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB4 (RES 6,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 6, false);
+                        self.cpu.set_h(byte);
                     }
                     0xB5 => {
                         // RES 6,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB5 (RES 6,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 6, false);
+                        self.cpu.set_l(byte);
                     }
                     0xB6 => {
                         // RES 6,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB6 (RES 6,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 6, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0xB7 => {
                         // RES 6,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB7 (RES 6,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 6, false);
+                        self.cpu.set_a(byte);
                     }
                     0xB8 => {
                         // RES 7,B 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB8 (RES 7,B 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_b(), 7, false);
+                        self.cpu.set_b(byte);
                     }
                     0xB9 => {
                         // RES 7,C 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xB9 (RES 7,C 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_c(), 7, false);
+                        self.cpu.set_c(byte);
                     }
                     0xBA => {
                         // RES 7,D 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xBA (RES 7,D 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_d(), 7, false);
+                        self.cpu.set_d(byte);
                     }
                     0xBB => {
                         // RES 7,E 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xBB (RES 7,E 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_e(), 7, false);
+                        self.cpu.set_e(byte);
                     }
                     0xBC => {
                         // RES 7,H 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xBC (RES 7,H 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_h(), 7, false);
+                        self.cpu.set_h(byte);
                     }
                     0xBD => {
                         // RES 7,L 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xBD (RES 7,L 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_l(), 7, false);
+                        self.cpu.set_l(byte);
                     }
                     0xBE => {
                         // RES 7,(HL) 2 16 | - - - -
-                        unimplemented!("Prefix CB opcode 0xBE (RES 7,(HL) 2 16) not implemented");
+                        let byte = set_bit(self.read_hl()?, 7, false);
+                        self.mem.write(self.cpu.hl, byte)?;
                     }
                     0xBF => {
                         // RES 7,A 2 8 | - - - -
-                        unimplemented!("Prefix CB opcode 0xBF (RES 7,A 2 8) not implemented");
+                        let byte = set_bit(self.cpu.get_a(), 7, false);
+                        self.cpu.set_a(byte);
                     }
                     0xC0 => {
                         // SET 0,B 2 8 | - - - -
@@ -3058,6 +3123,10 @@ impl VM {
 
     fn read_hl(&self) -> Result<u8, Error> {
         self.mem.read(self.cpu.hl)
+    }
+
+    fn write_hl(&mut self, byte: u8) -> Result<(), Error> {
+        self.mem.write(self.cpu.hl, byte)
     }
 
     fn read_op_imm16(&mut self) -> Result<u16, Error> {
