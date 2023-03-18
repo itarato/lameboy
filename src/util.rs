@@ -74,6 +74,10 @@ pub fn swap(byte: u8) -> u8 {
     (byte << 4) | (byte >> 4)
 }
 
+pub fn is_bit_n(byte: u8, n: u8) -> bool {
+    ((byte >> n) & 0b1) > 0
+}
+
 #[cfg(test)]
 mod tests {
     use crate::util::*;
@@ -104,5 +108,12 @@ mod tests {
     #[test]
     fn test_swap() {
         assert_eq!(0b0110_1001, swap(0b1001_0110));
+    }
+
+    #[test]
+    fn test_is_bit_n() {
+        assert!(is_bit_n(0b0000_1000, 3));
+        assert!(!is_bit_n(0b0000_1000, 4));
+        assert!(!is_bit_n(0b0000_1000, 2));
     }
 }

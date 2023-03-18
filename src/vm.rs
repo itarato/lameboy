@@ -1810,259 +1810,451 @@ impl VM {
                     }
                     0x40 => {
                         // BIT 0,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x40 (BIT 0,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x41 => {
                         // BIT 0,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x41 (BIT 0,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x42 => {
                         // BIT 0,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x42 (BIT 0,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x43 => {
                         // BIT 0,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x43 (BIT 0,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x44 => {
                         // BIT 0,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x44 (BIT 0,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x45 => {
                         // BIT 0,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x45 (BIT 0,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x46 => {
                         // BIT 0,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x46 (BIT 0,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x47 => {
                         // BIT 0,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x47 (BIT 0,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 0);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x48 => {
                         // BIT 1,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x48 (BIT 1,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x49 => {
                         // BIT 1,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x49 (BIT 1,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x4A => {
                         // BIT 1,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x4A (BIT 1,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x4B => {
                         // BIT 1,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x4B (BIT 1,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x4C => {
                         // BIT 1,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x4C (BIT 1,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x4D => {
                         // BIT 1,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x4D (BIT 1,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x4E => {
                         // BIT 1,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x4E (BIT 1,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x4F => {
                         // BIT 1,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x4F (BIT 1,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 1);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x50 => {
                         // BIT 2,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x50 (BIT 2,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x51 => {
                         // BIT 2,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x51 (BIT 2,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x52 => {
                         // BIT 2,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x52 (BIT 2,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x53 => {
                         // BIT 2,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x53 (BIT 2,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x54 => {
                         // BIT 2,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x54 (BIT 2,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x55 => {
                         // BIT 2,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x55 (BIT 2,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x56 => {
                         // BIT 2,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x56 (BIT 2,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x57 => {
                         // BIT 2,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x57 (BIT 2,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 2);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x58 => {
                         // BIT 3,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x58 (BIT 3,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x59 => {
                         // BIT 3,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x59 (BIT 3,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x5A => {
                         // BIT 3,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x5A (BIT 3,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x5B => {
                         // BIT 3,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x5B (BIT 3,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x5C => {
                         // BIT 3,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x5C (BIT 3,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x5D => {
                         // BIT 3,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x5D (BIT 3,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x5E => {
                         // BIT 3,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x5E (BIT 3,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x5F => {
                         // BIT 3,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x5F (BIT 3,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 3);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x60 => {
                         // BIT 4,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x60 (BIT 4,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x61 => {
                         // BIT 4,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x61 (BIT 4,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x62 => {
                         // BIT 4,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x62 (BIT 4,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x63 => {
                         // BIT 4,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x63 (BIT 4,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x64 => {
                         // BIT 4,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x64 (BIT 4,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x65 => {
                         // BIT 4,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x65 (BIT 4,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x66 => {
                         // BIT 4,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x66 (BIT 4,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x67 => {
                         // BIT 4,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x67 (BIT 4,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 4);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x68 => {
                         // BIT 5,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x68 (BIT 5,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x69 => {
                         // BIT 5,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x69 (BIT 5,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x6A => {
                         // BIT 5,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x6A (BIT 5,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x6B => {
                         // BIT 5,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x6B (BIT 5,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x6C => {
                         // BIT 5,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x6C (BIT 5,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x6D => {
                         // BIT 5,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x6D (BIT 5,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x6E => {
                         // BIT 5,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x6E (BIT 5,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x6F => {
                         // BIT 5,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x6F (BIT 5,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 5);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x70 => {
                         // BIT 6,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x70 (BIT 6,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x71 => {
                         // BIT 6,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x71 (BIT 6,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x72 => {
                         // BIT 6,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x72 (BIT 6,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x73 => {
                         // BIT 6,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x73 (BIT 6,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x74 => {
                         // BIT 6,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x74 (BIT 6,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x75 => {
                         // BIT 6,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x75 (BIT 6,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x76 => {
                         // BIT 6,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x76 (BIT 6,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x77 => {
                         // BIT 6,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x77 (BIT 6,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 6);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x78 => {
                         // BIT 7,B 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x78 (BIT 7,B 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_b(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x79 => {
                         // BIT 7,C 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x79 (BIT 7,C 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_c(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x7A => {
                         // BIT 7,D 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x7A (BIT 7,D 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_d(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x7B => {
                         // BIT 7,E 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x7B (BIT 7,E 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_e(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x7C => {
                         // BIT 7,H 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x7C (BIT 7,H 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_h(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x7D => {
                         // BIT 7,L 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x7D (BIT 7,L 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_l(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x7E => {
                         // BIT 7,(HL) 2 16 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x7E (BIT 7,(HL) 2 16) not implemented");
+                        let is_bit = is_bit_n(self.read_hl()?, 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x7F => {
                         // BIT 7,A 2 8 | Z 0 1 -
-                        unimplemented!("Prefix CB opcode 0x7F (BIT 7,A 2 8) not implemented");
+                        let is_bit = is_bit_n(self.cpu.get_a(), 7);
+                        self.cpu.set_fz(!is_bit);
+                        self.cpu.set_fn(false);
+                        self.cpu.set_fh(true);
                     }
                     0x80 => {
                         // RES 0,B 2 8 | - - - -
