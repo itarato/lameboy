@@ -299,7 +299,7 @@ impl VM {
             0x22 => {
                 // LD (HL+),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
                 self.cpu.hl = self.cpu.hl.wrapping_add(1);
             }
             0x23 => {
@@ -384,7 +384,7 @@ impl VM {
             }
             0x2A => {
                 // LD A,(HL+) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_a(byte);
                 self.cpu.hl = self.cpu.hl.wrapping_add(1);
             }
@@ -451,20 +451,20 @@ impl VM {
             }
             0x34 => {
                 // INC (HL) 1 12 | Z 0 H -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 let is_half_carry = is_half_carry_add_u8(byte, 1);
 
-                self.mem.write(self.cpu.hl, byte.wrapping_add(1))?;
+                self.write_hl(byte.wrapping_add(1))?;
                 self.cpu.set_fz(byte == 0);
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(is_half_carry);
             }
             0x35 => {
                 // DEC (HL) 1 12 | Z 1 H -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 let is_half_carry = is_half_carry_sub_u8(byte, 1);
 
-                self.mem.write(self.cpu.hl, byte.wrapping_sub(1))?;
+                self.write_hl(byte.wrapping_sub(1))?;
                 self.cpu.set_fz(byte == 0);
                 self.cpu.set_fn(true);
                 self.cpu.set_fh(is_half_carry);
@@ -472,7 +472,7 @@ impl VM {
             0x36 => {
                 // LD (HL),d8 2 12 | - - - -
                 let byte = self.read_op()?;
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x37 => {
                 // SCF 1 4 | - 0 0 1
@@ -500,7 +500,7 @@ impl VM {
             }
             0x3A => {
                 // LD A,(HL-) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.hl = self.cpu.hl.wrapping_sub(1);
                 self.cpu.set_a(byte);
             }
@@ -572,7 +572,7 @@ impl VM {
             }
             0x46 => {
                 // LD B,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_b(byte);
             }
             0x47 => {
@@ -612,7 +612,7 @@ impl VM {
             }
             0x4E => {
                 // LD C,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_c(byte);
             }
             0x4F => {
@@ -652,7 +652,7 @@ impl VM {
             }
             0x56 => {
                 // LD D,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_d(byte);
             }
             0x57 => {
@@ -692,7 +692,7 @@ impl VM {
             }
             0x5E => {
                 // LD E,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_e(byte);
             }
             0x5F => {
@@ -732,7 +732,7 @@ impl VM {
             }
             0x66 => {
                 // LD H,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_h(byte);
             }
             0x67 => {
@@ -772,7 +772,7 @@ impl VM {
             }
             0x6E => {
                 // LD L,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_l(byte);
             }
             0x6F => {
@@ -783,32 +783,32 @@ impl VM {
             0x70 => {
                 // LD (HL),B 1 8 | - - - -
                 let byte = self.cpu.get_b();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x71 => {
                 // LD (HL),C 1 8 | - - - -
                 let byte = self.cpu.get_c();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x72 => {
                 // LD (HL),D 1 8 | - - - -
                 let byte = self.cpu.get_d();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x73 => {
                 // LD (HL),E 1 8 | - - - -
                 let byte = self.cpu.get_e();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x74 => {
                 // LD (HL),H 1 8 | - - - -
                 let byte = self.cpu.get_h();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x75 => {
                 // LD (HL),L 1 8 | - - - -
                 let byte = self.cpu.get_l();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x76 => {
                 // HALT 1 4 | - - - -
@@ -817,7 +817,7 @@ impl VM {
             0x77 => {
                 // LD (HL),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write(self.cpu.hl, byte)?;
+                self.write_hl(byte)?;
             }
             0x78 => {
                 // LD A,B 1 4 | - - - -
@@ -851,7 +851,7 @@ impl VM {
             }
             0x7E => {
                 // LD A,(HL) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.set_a(byte);
             }
             0x7F => {
@@ -891,7 +891,7 @@ impl VM {
             }
             0x86 => {
                 // ADD A,(HL) 1 8 | Z 0 H C
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.add(byte);
             }
             0x87 => {
@@ -931,7 +931,7 @@ impl VM {
             }
             0x8E => {
                 // ADC A,(HL) 1 8 | Z 0 H C
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.add(byte);
             }
             0x8F => {
@@ -971,7 +971,7 @@ impl VM {
             }
             0x96 => {
                 // SUB (HL) 1 8 | Z 1 H C
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.sub(byte);
             }
             0x97 => {
@@ -1011,7 +1011,7 @@ impl VM {
             }
             0x9E => {
                 // SBC A,(HL) 1 8 | Z 1 H C
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.sub(byte);
             }
             0x9F => {
@@ -1051,7 +1051,7 @@ impl VM {
             }
             0xA6 => {
                 // AND (HL) 1 8 | Z 0 1 0
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.and(byte);
             }
             0xA7 => {
@@ -1091,7 +1091,7 @@ impl VM {
             }
             0xAE => {
                 // XOR (HL) 1 8 | Z 0 0 0
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.xor(byte);
             }
             0xAF => {
@@ -1131,7 +1131,7 @@ impl VM {
             }
             0xB6 => {
                 // OR (HL) 1 8 | Z 0 0 0
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.or(byte);
             }
             0xB7 => {
@@ -1171,7 +1171,7 @@ impl VM {
             }
             0xBE => {
                 // CP (HL) 1 8 | Z 1 H C
-                let byte = self.mem.read(self.cpu.hl)?;
+                let byte = self.read_hl()?;
                 self.cpu.cp(byte);
             }
             0xBF => {
@@ -1330,12 +1330,12 @@ impl VM {
                     }
                     0x06 => {
                         // RLC (HL) 2 16 | Z 0 0 C
-                        let byte = self.mem.read(self.cpu.hl)?;
+                        let byte = self.read_hl()?;
 
                         let is_carry = is_carry_rot_left_u8(byte, 1);
                         let new_byte = byte.rotate_left(1);
 
-                        self.mem.write(self.cpu.hl, new_byte)?;
+                        self.write_hl(new_byte)?;
 
                         self.cpu.set_fz(new_byte == 0);
                         self.cpu.set_fn(false);
@@ -1421,12 +1421,12 @@ impl VM {
                     }
                     0x0E => {
                         // RRC (HL) 2 16 | Z 0 0 C
-                        let byte = self.mem.read(self.cpu.hl)?;
+                        let byte = self.read_hl()?;
 
                         let is_carry = is_carry_rot_right_u8(byte, 1);
                         let new_byte = byte.rotate_right(1);
 
-                        self.mem.write(self.cpu.hl, new_byte)?;
+                        self.write_hl(new_byte)?;
 
                         self.cpu.set_fz(new_byte == 0);
                         self.cpu.set_fn(false);
@@ -2290,7 +2290,7 @@ impl VM {
                     0x86 => {
                         // RES 0,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 0, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0x87 => {
                         // RES 0,A 2 8 | - - - -
@@ -2330,7 +2330,7 @@ impl VM {
                     0x8E => {
                         // RES 1,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 1, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0x8F => {
                         // RES 1,A 2 8 | - - - -
@@ -2370,7 +2370,7 @@ impl VM {
                     0x96 => {
                         // RES 2,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 2, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0x97 => {
                         // RES 2,A 2 8 | - - - -
@@ -2410,7 +2410,7 @@ impl VM {
                     0x9E => {
                         // RES 3,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 3, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0x9F => {
                         // RES 3,A 2 8 | - - - -
@@ -2450,7 +2450,7 @@ impl VM {
                     0xA6 => {
                         // RES 4,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 4, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0xA7 => {
                         // RES 4,A 2 8 | - - - -
@@ -2490,7 +2490,7 @@ impl VM {
                     0xAE => {
                         // RES 5,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 5, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0xAF => {
                         // RES 5,A 2 8 | - - - -
@@ -2530,7 +2530,7 @@ impl VM {
                     0xB6 => {
                         // RES 6,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 6, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0xB7 => {
                         // RES 6,A 2 8 | - - - -
@@ -2570,7 +2570,7 @@ impl VM {
                     0xBE => {
                         // RES 7,(HL) 2 16 | - - - -
                         let byte = set_bit(self.read_hl()?, 7, false);
-                        self.mem.write(self.cpu.hl, byte)?;
+                        self.write_hl(byte)?;
                     }
                     0xBF => {
                         // RES 7,A 2 8 | - - - -
