@@ -20,7 +20,7 @@ macro_rules! make_fn_set_reg_lo {
 
 macro_rules! make_fn_get_reg_hi {
     ($name:ident, $reg:ident) => {
-        pub fn $name(&mut self) -> u8 {
+        pub fn $name(&self) -> u8 {
             (self.$reg >> 8) as u8
         }
     };
@@ -28,7 +28,7 @@ macro_rules! make_fn_get_reg_hi {
 
 macro_rules! make_fn_get_reg_lo {
     ($name:ident, $reg:ident) => {
-        pub fn $name(&mut self) -> u8 {
+        pub fn $name(&self) -> u8 {
             (self.$reg & 0xFF) as u8
         }
     };

@@ -49,6 +49,7 @@ impl VM {
                     match self.read_repl()? {
                         Some(DebugCmd::Quit) => return Ok(()),
                         Some(DebugCmd::Next) => break,
+                        Some(DebugCmd::Print) => self.print_debug_panel(),
                         None => (),
                     };
                 }
@@ -249,7 +250,8 @@ impl VM {
             }
             0x18 => {
                 // JR r8 2 12 | - - - -
-                self.cpu.pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                self.cpu.pc = wrapping_add_u16_i8(self.cpu.pc, offs);
             }
             0x19 => {
                 // ADD HL,DE 1 8 | - 0 H C
@@ -311,7 +313,8 @@ impl VM {
             }
             0x20 => {
                 // JR NZ,r8 2 12/8 | - - - -
-                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, offs);
                 if !self.cpu.is_fz() {
                     self.cpu.pc = new_pc;
                 } else {
@@ -391,7 +394,8 @@ impl VM {
             }
             0x28 => {
                 // JR Z,r8 2 12/8 | - - - -
-                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, offs);
                 if self.cpu.is_fz() {
                     self.cpu.pc = new_pc;
                 } else {
@@ -453,7 +457,8 @@ impl VM {
             }
             0x30 => {
                 // JR NC,r8 2 12/8 | - - - -
-                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, offs);
                 if !self.cpu.is_fc() {
                     self.cpu.pc = new_pc;
                 } else {
@@ -509,7 +514,8 @@ impl VM {
             }
             0x38 => {
                 // JR C,r8 2 12/8 | - - - -
-                let new_pc = wrapping_add_u16_i8(self.cpu.pc, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                let new_pc = wrapping_add_u16_i8(self.cpu.pc, offs);
                 if self.cpu.is_fc() {
                     self.cpu.pc = new_pc;
                 } else {
@@ -1283,7 +1289,6 @@ impl VM {
             }
             0xCB => {
                 // PREFIX CB 1 4 | - - - -
-
                 let op_cb = self.read_op()?;
 
                 log::debug!(
@@ -3095,7 +3100,8 @@ impl VM {
             }
             0xE8 => {
                 // ADD SP,r8 2 16 | 0 0 H C
-                let word = wrapping_add_u16_i8(self.cpu.sp, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                let word = wrapping_add_u16_i8(self.cpu.sp, offs);
                 let is_carry;
                 let is_half_carry;
 
@@ -3169,7 +3175,8 @@ impl VM {
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
-                let word = wrapping_add_u16_i8(self.cpu.sp, self.read_op()? as i8);
+                let offs = self.read_op()? as i8;
+                let word = wrapping_add_u16_i8(self.cpu.sp, offs);
                 let is_carry;
                 let is_half_carry;
 
@@ -3249,11 +3256,44 @@ impl VM {
     }
 
     fn read_repl(&self) -> Result<Option<DebugCmd>, Error> {
+        let next_op = self.mem.read(self.cpu.pc)?;
+        if next_op == 0xCB {
+            let next_prefix_op = self.mem.read(self.cpu.pc + 1)?;
+
+            print!(
+                "NXT {:#04X} | {} > ",
+                self.cpu.pc + 1,
+                opcode_cb_name[next_prefix_op as usize]
+            );
+        } else {
+            print!(
+                "NXT {:#04X} | {} > ",
+                self.cpu.pc, opcode_name[next_op as usize]
+            );
+        }
+
         let mut buf = String::new();
-        print!("{:#04X}> ", self.cpu.pc);
         stdout().flush()?;
         stdin().read_line(&mut buf)?;
 
         Ok(DebugCmd::parse(buf))
+    }
+
+    fn print_debug_panel(&self) {
+        println!("+---");
+        println!(
+            "| A {:02X} {:02X} F | Z:{} N:{} H:{} C:{}",
+            self.cpu.get_a(),
+            self.cpu.get_f(),
+            self.cpu.get_fz(),
+            self.cpu.get_fn(),
+            self.cpu.get_fh(),
+            self.cpu.get_fc()
+        );
+        println!("| B {:02X} {:02X} C", self.cpu.get_b(), self.cpu.get_c());
+        println!("| D {:02X} {:02X} E", self.cpu.get_d(), self.cpu.get_e());
+        println!("| H {:02X} {:02X} L", self.cpu.get_h(), self.cpu.get_l());
+        println!("| SP: {:#06X} PC: {:#06X}", self.cpu.sp, self.cpu.pc);
+        println!("+---");
     }
 }
