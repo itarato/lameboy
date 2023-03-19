@@ -16,8 +16,9 @@ impl Mem {
         })
     }
 
-    pub fn reset(&mut self) {
-        self.write_unchecked(MEM_LOC_BOOT_LOCK_REG, 0b0);
+    pub fn reset(&mut self) -> Result<(), Error> {
+        self.write_unchecked(MEM_LOC_BOOT_LOCK_REG, 0b0)?;
+        Ok(())
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
@@ -170,7 +171,7 @@ impl Mem {
         }
     }
 
-    fn write_unchecked(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+    pub fn write_unchecked(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         if loc < INNER_ROM_START_ADDR {
             Err("Mem addr cannot write rom bank area".into())
         } else if loc > MEM_ADDR_MAX {

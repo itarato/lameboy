@@ -12,11 +12,18 @@ use crate::debugger::Debugger;
 use crate::mem::*;
 use crate::util::*;
 
+enum State {
+    Running,
+    Stop,
+}
+
 pub struct VM {
     mem: Mem,
     cpu: Cpu,
     debugger: Debugger,
     counter: u64,
+    state: State,
+    div_ticker: u16,
 }
 
 impl VM {
@@ -26,6 +33,8 @@ impl VM {
             cpu: Cpu::new(),
             debugger,
             counter: 0,
+            state: State::Running,
+            div_ticker: 0,
         })
     }
 
@@ -42,7 +51,7 @@ impl VM {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.reset();
+        self.reset()?;
 
         log::info!("VM eval loop start");
 
@@ -65,18 +74,24 @@ impl VM {
                 }
             }
 
-            self.exec_op()?;
-            self.counter += 1;
+            if let State::Running = self.state {
+                self.exec_op()?;
+                self.handle_ticks()?;
+                self.counter += 1;
+            }
         }
     }
 
-    fn reset(&mut self) {
-        self.mem.reset();
+    fn reset(&mut self) -> Result<(), Error> {
+        self.mem.reset()?;
 
         log::info!("VM reset");
+
+        Ok(())
     }
 
     fn exec_op(&mut self) -> Result<(), Error> {
+        let mut is_alternative_mcycle = false;
         let op = self.read_op()?;
         log::debug!(
             "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
@@ -205,7 +220,8 @@ impl VM {
             }
             0x10 => {
                 // STOP 0 2 4 | - - - -
-                unimplemented!("Opcode 0x10 (STOP 0 2 4) not implemented");
+                self.state = State::Stop;
+                self.mem.write(MEM_LOC_DIV, 0)?;
             }
             0x11 => {
                 // LD DE,d16 3 12 | - - - -
@@ -329,7 +345,7 @@ impl VM {
                 if !self.cpu.is_fz() {
                     self.cpu.pc = new_pc;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0x21 => {
@@ -410,7 +426,7 @@ impl VM {
                 if self.cpu.is_fz() {
                     self.cpu.pc = new_pc;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0x29 => {
@@ -473,7 +489,7 @@ impl VM {
                 if !self.cpu.is_fc() {
                     self.cpu.pc = new_pc;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0x31 => {
@@ -530,7 +546,7 @@ impl VM {
                 if self.cpu.is_fc() {
                     self.cpu.pc = new_pc;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0x39 => {
@@ -1229,7 +1245,7 @@ impl VM {
                     let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xC1 => {
@@ -1242,7 +1258,7 @@ impl VM {
                 if !self.cpu.is_fz() {
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0xC3 => {
@@ -1258,7 +1274,7 @@ impl VM {
                     self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xC5 => {
@@ -1281,7 +1297,7 @@ impl VM {
                     let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xC9 => {
@@ -1295,7 +1311,7 @@ impl VM {
                 if self.cpu.is_fz() {
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0xCB => {
@@ -2952,7 +2968,7 @@ impl VM {
                     }
                 };
 
-                self.cpu.mcycle += OPCODE_MCYCLE_PREFIX[op_cb as usize] as usize;
+                self.tick(OPCODE_MCYCLE_PREFIX[op_cb as usize]);
             }
             0xCC => {
                 // CALL Z,a16 3 24/12 | - - - -
@@ -2962,7 +2978,7 @@ impl VM {
                     self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xCD => {
@@ -2988,7 +3004,7 @@ impl VM {
                     let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xD1 => {
@@ -3001,7 +3017,7 @@ impl VM {
                 if !self.cpu.is_fc() {
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0xD3 => panic!("Opcode 0xD3 is invalid"),
@@ -3013,7 +3029,7 @@ impl VM {
                     self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xD5 => {
@@ -3036,7 +3052,7 @@ impl VM {
                     let addr = self.pop_u16()?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xD9 => {
@@ -3051,7 +3067,7 @@ impl VM {
                 if self.cpu.is_fc() {
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 1;
+                    is_alternative_mcycle = true;
                 }
             }
             0xDB => panic!("Opcode 0xDB is invalid"),
@@ -3063,7 +3079,7 @@ impl VM {
                     self.push_u16(self.cpu.pc)?;
                     self.cpu.pc = addr;
                 } else {
-                    self.cpu.mcycle -= 3;
+                    is_alternative_mcycle = true;
                 }
             }
             0xDD => panic!("Opcode 0xDD is invalid"),
@@ -3228,7 +3244,11 @@ impl VM {
             }
         };
 
-        self.cpu.mcycle += OPCODE_MCYCLE[op as usize] as usize;
+        if is_alternative_mcycle {
+            self.tick(OPCODE_MCYCLE_ALT[op as usize]);
+        } else {
+            self.tick(OPCODE_MCYCLE[op as usize]);
+        }
 
         Ok(())
     }
@@ -3307,5 +3327,20 @@ impl VM {
         println!("| H {:02X} {:02X} L", self.cpu.get_h(), self.cpu.get_l());
         println!("| SP: {:#06X} PC: {:#06X}", self.cpu.sp, self.cpu.pc);
         println!("+---");
+    }
+
+    fn tick(&mut self, add: u8) {
+        self.cpu.mcycle += add as u64;
+        self.div_ticker += add as u16;
+    }
+
+    fn handle_ticks(&mut self) -> Result<(), Error> {
+        if self.div_ticker >= DIV_REG_UPDATE_PER_MCYCLE {
+            self.div_ticker -= DIV_REG_UPDATE_PER_MCYCLE;
+            self.mem
+                .write_unchecked(MEM_LOC_DIV, self.mem.read(MEM_LOC_DIV)?.wrapping_add(1))?;
+        }
+
+        Ok(())
     }
 }

@@ -72,7 +72,7 @@ pub struct Cpu {
     pub hl: u16,
     pub sp: u16,
     pub pc: u16,
-    pub mcycle: usize,
+    pub mcycle: u64,
 }
 
 impl Cpu {
