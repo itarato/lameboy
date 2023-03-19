@@ -16,6 +16,7 @@ pub struct VM {
     mem: Mem,
     cpu: Cpu,
     debugger: Debugger,
+    counter: u64,
 }
 
 impl VM {
@@ -24,6 +25,7 @@ impl VM {
             mem: Mem::new(cartridge)?,
             cpu: Cpu::new(),
             debugger,
+            counter: 0,
         })
     }
 
@@ -49,14 +51,22 @@ impl VM {
                 loop {
                     match self.read_repl()? {
                         Some(DebugCmd::Quit) => return Ok(()),
-                        Some(DebugCmd::Next) => break,
+                        Some(DebugCmd::Next(auto_step)) => {
+                            self.debugger.set_auto_step_count(auto_step - 1);
+                            break;
+                        }
                         Some(DebugCmd::Print) => self.print_debug_panel(),
+                        Some(DebugCmd::Continue) => {
+                            self.debugger.clear_steps();
+                            break;
+                        }
                         None => (),
                     };
                 }
             }
 
             self.exec_op()?;
+            self.counter += 1;
         }
     }
 
@@ -3262,14 +3272,15 @@ impl VM {
             let next_prefix_op = self.mem.read(self.cpu.pc + 1)?;
 
             print!(
-                "NXT {:#04X} | {} > ",
+                "{:>8} | NXT {:#04X} | {} > ",
+                self.counter,
                 self.cpu.pc + 1,
                 OPCODE_CB_NAME[next_prefix_op as usize]
             );
         } else {
             print!(
-                "NXT {:#04X} | {} > ",
-                self.cpu.pc, OPCODE_NAME[next_op as usize]
+                "{:>8} | NXT {:#04X} | {} > ",
+                self.counter, self.cpu.pc, OPCODE_NAME[next_op as usize]
             );
         }
 

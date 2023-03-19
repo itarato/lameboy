@@ -1,5 +1,3 @@
-use simple_logger::SimpleLogger;
-
 mod cartridge;
 mod conf;
 mod cpu;
@@ -34,7 +32,7 @@ struct Args {
 }
 
 fn main() -> Result<(), Error> {
-    SimpleLogger::new().init().unwrap();
+    simple_logger::init_with_env().unwrap();
     log::info!("Emulation start");
 
     let args = Args::parse();
