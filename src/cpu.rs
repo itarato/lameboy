@@ -109,7 +109,7 @@ impl Cpu {
     make_fn_set_reg_hi!(set_d, de);
     make_fn_set_reg_hi!(set_h, hl);
 
-    make_fn_set_reg_lo!(set_f, af);
+    // make_fn_set_reg_lo!(set_f, af);
     make_fn_set_reg_lo!(set_c, bc);
     make_fn_set_reg_lo!(set_e, de);
     make_fn_set_reg_lo!(set_l, hl);

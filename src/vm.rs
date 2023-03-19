@@ -4,6 +4,7 @@ use std::io::stdout;
 use std::io::Read;
 use std::io::Write;
 
+use crate::cartridge::Cartridge;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::DebugCmd;
@@ -18,9 +19,9 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(debugger: Debugger) -> Result<Self, Error> {
+    pub fn new(cartridge: Cartridge, debugger: Debugger) -> Result<Self, Error> {
         Ok(VM {
-            mem: Mem::new()?,
+            mem: Mem::new(cartridge)?,
             cpu: Cpu::new(),
             debugger,
         })
@@ -76,7 +77,7 @@ impl VM {
             self.cpu.sp,
             self.cpu.pc - 1,
             op,
-            opcode_name[op as usize]
+            OPCODE_NAME[op as usize]
         );
 
         match op {
@@ -1300,7 +1301,7 @@ impl VM {
                     self.cpu.sp,
                     self.cpu.pc - 1,
                     op_cb,
-                    opcode_cb_name[op_cb as usize]
+                    OPCODE_CB_NAME[op_cb as usize]
                 );
 
                 match op_cb {
@@ -2941,7 +2942,7 @@ impl VM {
                     }
                 };
 
-                self.cpu.mcycle += opcode_mcycle_prefix[op_cb as usize] as usize;
+                self.cpu.mcycle += OPCODE_MCYCLE_PREFIX[op_cb as usize] as usize;
             }
             0xCC => {
                 // CALL Z,a16 3 24/12 | - - - -
@@ -3217,7 +3218,7 @@ impl VM {
             }
         };
 
-        self.cpu.mcycle += opcode_mcycle[op as usize] as usize;
+        self.cpu.mcycle += OPCODE_MCYCLE[op as usize] as usize;
 
         Ok(())
     }
@@ -3263,12 +3264,12 @@ impl VM {
             print!(
                 "NXT {:#04X} | {} > ",
                 self.cpu.pc + 1,
-                opcode_cb_name[next_prefix_op as usize]
+                OPCODE_CB_NAME[next_prefix_op as usize]
             );
         } else {
             print!(
                 "NXT {:#04X} | {} > ",
-                self.cpu.pc, opcode_name[next_op as usize]
+                self.cpu.pc, OPCODE_NAME[next_op as usize]
             );
         }
 

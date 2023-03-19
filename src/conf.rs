@@ -3,91 +3,118 @@ pub const MEM_SIZE: usize = 0x8000;
 
 pub const MEM_ADDR_MAX: u16 = 0xFFFF;
 
-// 16 KiB ROM bank 00	From cartridge, usually a fixed bank
-pub const MEM_AREA_ROM_BANK_0: u16 = 0x0000;
-// 16 KiB ROM Bank 01~NN	From cartridge, switchable bank via mapper (if any)
-pub const MEM_AREA_ROM_BANK_N: u16 = 0x4000;
-// 8 KiB Video RAM (VRAM)	In CGB mode, switchable bank 0/1
-pub const MEM_AREA_VRAM: u16 = 0x8000;
-// 8 KiB External RAM	From cartridge, switchable bank if any
-pub const MEM_AREA_EXTERNAL: u16 = 0xA000;
-// 4 KiB Work RAM (WRAM)
-pub const MEM_AREA_WRAM: u16 = 0xC000;
-// 4 KiB Work RAM (WRAM)	In CGB mode, switchable bank 1~7
-pub const MEM_AREA_WRAM_CGB: u16 = 0xD000;
-// Mirror of C000~DDFF (ECHO RAM)	Nintendo says use of this area is prohibited.
-pub const MEM_AREA_ECHO: u16 = 0xE000;
-// Sprite attribute table (OAM)
-pub const MEM_AREA_OAM: u16 = 0xFE00;
-// Not Usable	Nintendo says use of this area is prohibited
-pub const MEM_AREA_PROHIBITED: u16 = 0xFEA0;
-// I/O Registers
-pub const MEM_AREA_IO: u16 = 0xFF00;
-// High RAM (HRAM)
-pub const MEM_AREA_HRAM: u16 = 0xFF80;
-// Interrupt Enable register (IE)
-pub const MEM_AREA_IE: u16 = 0xFFFF;
+pub const ROM_BANK_SIZE: usize = 0x4000;
 
-pub const MEM_LOC_P1: u16 = 0xFF00;
-pub const MEM_LOC_SB: u16 = 0xFF01;
-pub const MEM_LOC_SC: u16 = 0xFF02;
-pub const MEM_LOC_DIV: u16 = 0xFF04;
-pub const MEM_LOC_TIMA: u16 = 0xFF05;
-pub const MEM_LOC_TMA: u16 = 0xFF06;
-pub const MEM_LOC_TAC: u16 = 0xFF07;
-pub const MEM_LOC_IF: u16 = 0xFF0F;
-pub const MEM_LOC_NR10: u16 = 0xFF10;
-pub const MEM_LOC_NR11: u16 = 0xFF11;
-pub const MEM_LOC_NR12: u16 = 0xFF12;
-pub const MEM_LOC_NR13: u16 = 0xFF13;
-pub const MEM_LOC_NR14: u16 = 0xFF14;
-pub const MEM_LOC_NR21: u16 = 0xFF16;
-pub const MEM_LOC_NR22: u16 = 0xFF17;
-pub const MEM_LOC_NR23: u16 = 0xFF18;
-pub const MEM_LOC_NR24: u16 = 0xFF19;
-pub const MEM_LOC_NR30: u16 = 0xFF1A;
-pub const MEM_LOC_NR31: u16 = 0xFF1B;
-pub const MEM_LOC_NR32: u16 = 0xFF1C;
-pub const MEM_LOC_NR33: u16 = 0xFF1D;
-pub const MEM_LOC_NR34: u16 = 0xFF1E;
-pub const MEM_LOC_NR41: u16 = 0xFF20;
-pub const MEM_LOC_NR42: u16 = 0xFF21;
-pub const MEM_LOC_NR43: u16 = 0xFF22;
-pub const MEM_LOC_NR44: u16 = 0xFF23;
-pub const MEM_LOC_NR50: u16 = 0xFF24;
-pub const MEM_LOC_NR51: u16 = 0xFF25;
-pub const MEM_LOC_NR52: u16 = 0xFF26;
-pub const MEM_LOC_LCDC: u16 = 0xFF40;
-pub const MEM_LOC_STAT: u16 = 0xFF41;
-pub const MEM_LOC_SCY: u16 = 0xFF42;
-pub const MEM_LOC_SCX: u16 = 0xFF43;
-pub const MEM_LOC_LY: u16 = 0xFF44;
-pub const MEM_LOC_LYC: u16 = 0xFF45;
+/// 16 KiB ROM bank 00	From cartridge, usually a fixed bank.
+// pub const MEM_AREA_ROM_BANK_0_START: u16 = 0x0000;
+pub const MEM_AREA_ROM_BANK_0_END: u16 = 0x3FFF;
+
+/// 16 KiB ROM Bank 01~NN	From cartridge, switchable bank via mapper (if any).
+// pub const MEM_AREA_ROM_BANK_N_START: u16 = 0x4000;
+pub const MEM_AREA_ROM_BANK_N_END: u16 = 0x7FFF;
+
+/// 8 KiB Video RAM (VRAM)	In CGB mode, switchable bank 0/1.
+pub const MEM_AREA_VRAM_START: u16 = 0x8000;
+pub const MEM_AREA_VRAM_END: u16 = 0x9FFF;
+
+/// 8 KiB External RAM	From cartridge, switchable bank if any.
+// pub const MEM_AREA_EXTERNAL_START: u16 = 0xA000;
+pub const MEM_AREA_EXTERNAL_END: u16 = 0xBFFF;
+
+/// 4 KiB Work RAM (WRAM).
+// pub const MEM_AREA_WRAM_START: u16 = 0xC000;
+pub const MEM_AREA_WRAM_END: u16 = 0xCFFF;
+
+/// 4 KiB Work RAM (WRAM)	In CGB mode, switchable bank 1~7.
+// pub const MEM_AREA_WRAM_CGB_START: u16 = 0xD000;
+pub const MEM_AREA_WRAM_CGB_END: u16 = 0xDFFF;
+
+/// Mirror of C000~DDFF (ECHO RAM)	Nintendo says use of this area is prohibited.
+// pub const MEM_AREA_ECHO_START: u16 = 0xE000;
+pub const MEM_AREA_ECHO_END: u16 = 0xFDFF;
+
+/// Sprite attribute table (OAM).
+// pub const MEM_AREA_OAM_START: u16 = 0xFE00;
+pub const MEM_AREA_OAM_END: u16 = 0xFE9F;
+
+/// Not Usable	Nintendo says use of this area is prohibited.
+// pub const MEM_AREA_PROHIBITED_START: u16 = 0xFEA0;
+pub const MEM_AREA_PROHIBITED_END: u16 = 0xFEFF;
+
+/// I/O Registers.
+// pub const MEM_AREA_IO_START: u16 = 0xFF00;
+pub const MEM_AREA_IO_END: u16 = 0xFF7F;
+
+/// High RAM (HRAM).
+// pub const MEM_AREA_HRAM_START: u16 = 0xFF80;
+pub const MEM_AREA_HRAM_END: u16 = 0xFFFE;
+
+/// Interrupt Enable register (IE).
+// pub const MEM_AREA_IE_START: u16 = 0xFFFF;
+pub const MEM_AREA_IE_END: u16 = 0xFFFF;
+
+pub const INNER_ROM_START_ADDR: u16 = MEM_AREA_VRAM_START;
+
+// pub const MEM_LOC_P1: u16 = 0xFF00;
+// pub const MEM_LOC_SB: u16 = 0xFF01;
+// pub const MEM_LOC_SC: u16 = 0xFF02;
+// pub const MEM_LOC_DIV: u16 = 0xFF04;
+// pub const MEM_LOC_TIMA: u16 = 0xFF05;
+// pub const MEM_LOC_TMA: u16 = 0xFF06;
+// pub const MEM_LOC_TAC: u16 = 0xFF07;
+// pub const MEM_LOC_IF: u16 = 0xFF0F;
+// pub const MEM_LOC_NR10: u16 = 0xFF10;
+// pub const MEM_LOC_NR11: u16 = 0xFF11;
+// pub const MEM_LOC_NR12: u16 = 0xFF12;
+// pub const MEM_LOC_NR13: u16 = 0xFF13;
+// pub const MEM_LOC_NR14: u16 = 0xFF14;
+// pub const MEM_LOC_NR21: u16 = 0xFF16;
+// pub const MEM_LOC_NR22: u16 = 0xFF17;
+// pub const MEM_LOC_NR23: u16 = 0xFF18;
+// pub const MEM_LOC_NR24: u16 = 0xFF19;
+// pub const MEM_LOC_NR30: u16 = 0xFF1A;
+// pub const MEM_LOC_NR31: u16 = 0xFF1B;
+// pub const MEM_LOC_NR32: u16 = 0xFF1C;
+// pub const MEM_LOC_NR33: u16 = 0xFF1D;
+// pub const MEM_LOC_NR34: u16 = 0xFF1E;
+// pub const MEM_LOC_NR41: u16 = 0xFF20;
+// pub const MEM_LOC_NR42: u16 = 0xFF21;
+// pub const MEM_LOC_NR43: u16 = 0xFF22;
+// pub const MEM_LOC_NR44: u16 = 0xFF23;
+// pub const MEM_LOC_NR50: u16 = 0xFF24;
+// pub const MEM_LOC_NR51: u16 = 0xFF25;
+// pub const MEM_LOC_NR52: u16 = 0xFF26;
+// pub const MEM_LOC_LCDC: u16 = 0xFF40;
+// pub const MEM_LOC_STAT: u16 = 0xFF41;
+// pub const MEM_LOC_SCY: u16 = 0xFF42;
+// pub const MEM_LOC_SCX: u16 = 0xFF43;
+// pub const MEM_LOC_LY: u16 = 0xFF44;
+// pub const MEM_LOC_LYC: u16 = 0xFF45;
 pub const MEM_LOC_DMA: u16 = 0xFF46;
-pub const MEM_LOC_BGP: u16 = 0xFF47;
-pub const MEM_LOC_OBP0: u16 = 0xFF48;
-pub const MEM_LOC_OBP1: u16 = 0xFF49;
-pub const MEM_LOC_WY: u16 = 0xFF4A;
-pub const MEM_LOC_WX: u16 = 0xFF4B;
-pub const MEM_LOC_KEY1: u16 = 0xFF4D;
-pub const MEM_LOC_VBK: u16 = 0xFF4F;
+// pub const MEM_LOC_BGP: u16 = 0xFF47;
+// pub const MEM_LOC_OBP0: u16 = 0xFF48;
+// pub const MEM_LOC_OBP1: u16 = 0xFF49;
+// pub const MEM_LOC_WY: u16 = 0xFF4A;
+// pub const MEM_LOC_WX: u16 = 0xFF4B;
+// pub const MEM_LOC_KEY1: u16 = 0xFF4D;
+// pub const MEM_LOC_VBK: u16 = 0xFF4F;
 pub const MEM_LOC_BOOT_LOCK_REG: u16 = 0xFF50;
-pub const MEM_LOC_HDMA1: u16 = 0xFF51;
-pub const MEM_LOC_HDMA2: u16 = 0xFF52;
-pub const MEM_LOC_HDMA3: u16 = 0xFF53;
-pub const MEM_LOC_HDMA4: u16 = 0xFF54;
-pub const MEM_LOC_HDMA5: u16 = 0xFF55;
-pub const MEM_LOC_RP: u16 = 0xFF56;
-pub const MEM_LOC_BCPS: u16 = 0xFF68;
-pub const MEM_LOC_BCPD: u16 = 0xFF69;
-pub const MEM_LOC_OCPS: u16 = 0xFF6A;
-pub const MEM_LOC_OCPD: u16 = 0xFF6B;
-pub const MEM_LOC_SVBK: u16 = 0xFF70;
+// pub const MEM_LOC_HDMA1: u16 = 0xFF51;
+// pub const MEM_LOC_HDMA2: u16 = 0xFF52;
+// pub const MEM_LOC_HDMA3: u16 = 0xFF53;
+// pub const MEM_LOC_HDMA4: u16 = 0xFF54;
+// pub const MEM_LOC_HDMA5: u16 = 0xFF55;
+// pub const MEM_LOC_RP: u16 = 0xFF56;
+// pub const MEM_LOC_BCPS: u16 = 0xFF68;
+// pub const MEM_LOC_BCPD: u16 = 0xFF69;
+// pub const MEM_LOC_OCPS: u16 = 0xFF6A;
+// pub const MEM_LOC_OCPD: u16 = 0xFF6B;
+// pub const MEM_LOC_SVBK: u16 = 0xFF70;
 pub const MEM_LOC_IE: u16 = 0xFFFF;
 
 pub const BIOS_SIZE: usize = 0x100;
 
-pub const opcode_name: [&str; 256] = [
+pub const OPCODE_NAME: [&str; 256] = [
     "NOP 1 4",
     "LD BC,d16 3 12",
     "LD (BC),A 1 8",
@@ -346,7 +373,7 @@ pub const opcode_name: [&str; 256] = [
     "RST 38H 1 16",
 ];
 
-pub const opcode_cb_name: [&str; 256] = [
+pub const OPCODE_CB_NAME: [&str; 256] = [
     "RLC B 2 8F",
     "RLC C 2 8",
     "RLC D 2 8",
@@ -606,7 +633,7 @@ pub const opcode_cb_name: [&str; 256] = [
 ];
 
 #[rustfmt::skip]
-pub const opcode_mcycle: [u8; 256] = [
+pub const OPCODE_MCYCLE: [u8; 256] = [
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1,
     1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
     3, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
@@ -626,7 +653,7 @@ pub const opcode_mcycle: [u8; 256] = [
 ];
 
 // #[rustfmt::skip]
-// pub const opcode_mcycle_alt: [u8; 256] = [
+// pub const OPCODE_MCYCLE_alt: [u8; 256] = [
 //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 //     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 //     2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0,
@@ -646,7 +673,7 @@ pub const opcode_mcycle: [u8; 256] = [
 // ];
 
 #[rustfmt::skip]
-pub const opcode_mcycle_prefix: [u8; 256] = [
+pub const OPCODE_MCYCLE_PREFIX: [u8; 256] = [
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,

@@ -8,6 +8,7 @@ mod mem;
 mod util;
 mod vm;
 
+use crate::cartridge::Cartridge;
 use crate::conf::Error;
 use crate::debugger::*;
 use crate::vm::*;
@@ -16,6 +17,9 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// Cartridge.
+    cartridge: String,
+
     /// Enable debug mode.
     #[arg(short, long)]
     debug: bool,
@@ -44,7 +48,8 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    let mut vm = VM::new(debugger)?;
+    let cartridge = Cartridge::new(args.cartridge)?;
+    let mut vm = VM::new(cartridge, debugger)?;
 
     vm.setup()?;
     vm.run()?;

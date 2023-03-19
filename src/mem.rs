@@ -8,10 +8,10 @@ pub struct Mem {
 }
 
 impl Mem {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new(cartridge: Cartridge) -> Result<Self, Error> {
         Ok(Mem {
             bios: [0; 0x100],
-            cartridge: Cartridge::new()?,
+            cartridge,
             data: [0u8; MEM_SIZE],
         })
     }
@@ -21,44 +21,33 @@ impl Mem {
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
-        let byte = if loc < MEM_AREA_ROM_BANK_N {
-            // MEM_AREA_ROM_BANK_0:
+        let byte = if loc <= MEM_AREA_ROM_BANK_0_END {
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
                 self.bios[loc as usize]
             } else {
                 unimplemented!("Read from MEM_AREA_ROM_BANK_0 not handled yet")
             }
-        } else if loc < MEM_AREA_VRAM {
-            // MEM_AREA_ROM_BANK_N:
+        } else if loc <= MEM_AREA_ROM_BANK_N_END {
             unimplemented!("Read from MEM_AREA_ROM_BANK_N not handled yet")
-        } else if loc < MEM_AREA_EXTERNAL {
-            // MEM_AREA_VRAM:
+        } else if loc <= MEM_AREA_VRAM_END {
             unimplemented!("Read from MEM_AREA_VRAM not handled yet")
-        } else if loc < MEM_AREA_WRAM {
-            // MEM_AREA_EXTERNAL:
+        } else if loc <= MEM_AREA_EXTERNAL_END {
             unimplemented!("Read from MEM_AREA_EXTERNAL not handled yet")
-        } else if loc < MEM_AREA_WRAM_CGB {
-            // MEM_AREA_WRAM:
+        } else if loc <= MEM_AREA_WRAM_END {
             unimplemented!("Read from MEM_AREA_WRAM not handled yet")
-        } else if loc < MEM_AREA_ECHO {
-            // MEM_AREA_WRAM_CGB:
+        } else if loc <= MEM_AREA_WRAM_CGB_END {
             unimplemented!("Read from MEM_AREA_WRAM_CGB not handled yet")
-        } else if loc < MEM_AREA_OAM {
-            // MEM_AREA_ECHO:
+        } else if loc <= MEM_AREA_ECHO_END {
             unimplemented!("Read from MEM_AREA_ECHO not handled yet")
-        } else if loc < MEM_AREA_PROHIBITED {
-            // MEM_AREA_OAM:
+        } else if loc <= MEM_AREA_OAM_END {
             unimplemented!("Read from MEM_AREA_OAM not handled yet")
-        } else if loc < MEM_AREA_IO {
-            // MEM_AREA_PROHIBITED:
+        } else if loc <= MEM_AREA_PROHIBITED_END {
             unimplemented!("Read from MEM_AREA_PROHIBITED not handled yet")
-        } else if loc < MEM_AREA_HRAM {
-            // MEM_AREA_IO:
-            self.data[(loc - MEM_AREA_VRAM) as usize]
-        } else if loc < MEM_AREA_IE {
-            // MEM_AREA_HRAM:
+        } else if loc <= MEM_AREA_IO_END {
+            self.data[(loc - INNER_ROM_START_ADDR) as usize]
+        } else if loc <= MEM_AREA_HRAM_END {
             unimplemented!("Read from MEM_AREA_HRAM not handled yet")
-        } else if loc == MEM_AREA_IE {
+        } else if loc <= MEM_AREA_IE_END {
             // MEM_AREA_IE:
             unimplemented!("Read from MEM_AREA_IE not handled yet")
         } else {
@@ -71,8 +60,8 @@ impl Mem {
     }
 
     fn read_unchecked(&self, loc: u16) -> Result<u8, Error> {
-        if loc >= MEM_AREA_VRAM && loc <= MEM_ADDR_MAX {
-            Ok(self.data[(loc - MEM_AREA_VRAM) as usize])
+        if loc >= INNER_ROM_START_ADDR && loc <= MEM_ADDR_MAX {
+            Ok(self.data[(loc - INNER_ROM_START_ADDR) as usize])
         } else {
             panic!("Unexpected unchecked read on: {:#06X}", loc)
         }
@@ -97,41 +86,29 @@ impl Mem {
             _ => (),
         }
 
-        if loc < MEM_AREA_ROM_BANK_N {
-            // MEM_AREA_ROM_BANK_0:
+        if loc <= MEM_AREA_ROM_BANK_0_END {
             return Err("Cannot write to ROM (0)".into());
-        } else if loc < MEM_AREA_VRAM {
-            // MEM_AREA_ROM_BANK_N:
+        } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
-        } else if loc < MEM_AREA_EXTERNAL {
-            // MEM_AREA_VRAM:
+        } else if loc <= MEM_AREA_VRAM_END {
             Ok(self.write_unchecked(loc, byte))
-        } else if loc < MEM_AREA_WRAM {
-            // MEM_AREA_EXTERNAL:
+        } else if loc <= MEM_AREA_EXTERNAL_END {
             unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
-        } else if loc < MEM_AREA_WRAM_CGB {
-            // MEM_AREA_WRAM:
+        } else if loc <= MEM_AREA_WRAM_END {
             unimplemented!("Write to MEM_AREA_WRAM is not implemented")
-        } else if loc < MEM_AREA_ECHO {
-            // MEM_AREA_WRAM_CGB:
+        } else if loc <= MEM_AREA_WRAM_CGB_END {
             unimplemented!("Write to MEM_AREA_WRAM_CGB is not implemented")
-        } else if loc < MEM_AREA_OAM {
-            // MEM_AREA_ECHO:
+        } else if loc <= MEM_AREA_ECHO_END {
             unimplemented!("Write to MEM_AREA_ECHO is not implemented")
-        } else if loc < MEM_AREA_PROHIBITED {
-            // MEM_AREA_OAM:
+        } else if loc <= MEM_AREA_OAM_END {
             unimplemented!("Write to MEM_AREA_OAM is not implemented")
-        } else if loc < MEM_AREA_IO {
-            // MEM_AREA_PROHIBITED:
+        } else if loc <= MEM_AREA_PROHIBITED_END {
             unimplemented!("Write to MEM_AREA_PROHIBITED is not implemented")
-        } else if loc < MEM_AREA_HRAM {
-            // MEM_AREA_IO:
+        } else if loc <= MEM_AREA_IO_END {
             unimplemented!("Write to MEM_AREA_IO is not implemented")
-        } else if loc < MEM_AREA_IE {
-            // MEM_AREA_HRAM:
+        } else if loc <= MEM_AREA_HRAM_END {
             unimplemented!("Write to MEM_AREA_HRAM is not implemented")
-        } else if loc == MEM_AREA_IE {
-            // MEM_AREA_IE:
+        } else if loc <= MEM_AREA_IE_END {
             unimplemented!("Write to MEM_AREA_IE is not implemented")
         } else {
             return Err("Write outside of memory".into());
@@ -139,7 +116,10 @@ impl Mem {
     }
 
     fn write_unchecked(&mut self, loc: u16, byte: u8) {
-        assert!(loc >= MEM_AREA_VRAM, "Mem addr cannot write rom bank area");
+        assert!(
+            loc >= INNER_ROM_START_ADDR,
+            "Mem addr cannot write rom bank area"
+        );
         assert!(loc <= MEM_ADDR_MAX, "Mem addr cannot exceed limit");
 
         if loc == MEM_LOC_DMA {
@@ -147,7 +127,7 @@ impl Mem {
         }
 
         // Set pointer relative to non-rom-bank area.
-        let loc = loc - MEM_AREA_VRAM;
+        let loc = loc - INNER_ROM_START_ADDR;
 
         self.data[loc as usize] = byte;
     }
