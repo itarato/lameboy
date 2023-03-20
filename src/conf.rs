@@ -12,7 +12,22 @@ const CPU_HZ: u64 = 4194304;
 
 // Cycles per second.
 const DIV_REG_UPDATE_HZ: u64 = 16384;
-pub const DIV_REG_UPDATE_PER_MCYCLE: u16 = (DIV_REG_UPDATE_HZ / CYCLE_PER_MCYCLE) as u16;
+/**
+ * 1s = CPU_HZ cycle (4194304)
+ * 1s = CPU_HZ / CYCLE_PER_MCYCLE mcycle (1048576)
+ * 1s = DIM 16384 update
+ * CPU_HZ / CYCLE_PER_MCYCLE mcycle (1048576) = DIM 16384 update
+ * 1048576 mcycle = 16384 update
+ * 64 mcycle = 1 update
+ */
+pub const DIV_REG_UPDATE_PER_MCYCLE: u16 = (CPU_HZ / CYCLE_PER_MCYCLE / 16384) as u16;
+
+pub const TIMA_UPDATE_PER_MCYCLE: [u32; 4] = [
+    (CPU_HZ / CYCLE_PER_MCYCLE / 1024) as u32,
+    (CPU_HZ / CYCLE_PER_MCYCLE / 16) as u32,
+    (CPU_HZ / CYCLE_PER_MCYCLE / 64) as u32,
+    (CPU_HZ / CYCLE_PER_MCYCLE / 256) as u32,
+];
 
 /// 16 KiB ROM bank 00	From cartridge, usually a fixed bank.
 // pub const MEM_AREA_ROM_BANK_0_START: u16 = 0x0000;

@@ -59,7 +59,7 @@ impl Mem {
         Ok(byte)
     }
 
-    fn read_unchecked(&self, loc: u16) -> Result<u8, Error> {
+    pub fn read_unchecked(&self, loc: u16) -> Result<u8, Error> {
         if loc >= INNER_ROM_START_ADDR && loc <= MEM_ADDR_MAX {
             Ok(self.data[(loc - INNER_ROM_START_ADDR) as usize])
         } else {

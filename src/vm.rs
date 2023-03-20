@@ -24,6 +24,7 @@ pub struct VM {
     counter: u64,
     state: State,
     div_ticker: u16,
+    tima_ticker: u32,
 }
 
 impl VM {
@@ -35,6 +36,7 @@ impl VM {
             counter: 0,
             state: State::Running,
             div_ticker: 0,
+            tima_ticker: 0,
         })
     }
 
@@ -75,8 +77,10 @@ impl VM {
             }
 
             if let State::Running = self.state {
+                let old_tac = self.mem.read_unchecked(MEM_LOC_TAC)?;
+
                 self.exec_op()?;
-                self.handle_ticks()?;
+                self.handle_ticks(old_tac)?;
                 self.counter += 1;
             }
         }
@@ -3332,15 +3336,41 @@ impl VM {
     fn tick(&mut self, add: u8) {
         self.cpu.mcycle += add as u64;
         self.div_ticker += add as u16;
+        self.tima_ticker += add as u32;
     }
 
-    fn handle_ticks(&mut self) -> Result<(), Error> {
+    fn handle_ticks(&mut self, old_tma: u8) -> Result<(), Error> {
         if self.div_ticker >= DIV_REG_UPDATE_PER_MCYCLE {
             self.div_ticker -= DIV_REG_UPDATE_PER_MCYCLE;
             self.mem
                 .write_unchecked(MEM_LOC_DIV, self.mem.read(MEM_LOC_DIV)?.wrapping_add(1))?;
         }
 
+        let (timer_enable, timer_clock) = self.tac()?;
+        if timer_enable {
+            if self.tima_ticker >= timer_clock {
+                self.tima_ticker -= timer_clock;
+
+                let tima = self.mem.read_unchecked(MEM_LOC_TIMA)?;
+                if tima == u8::MAX {
+                    self.mem.write_unchecked(MEM_LOC_TIMA, old_tma)?;
+                    unimplemented!("TIMA interrupt not implemented")
+                } else {
+                    self.mem
+                        .write_unchecked(MEM_LOC_TIMA, tima.wrapping_add(1))?;
+                }
+            }
+        }
+
         Ok(())
+    }
+
+    fn tac(&self) -> Result<(bool, u32), Error> {
+        let tac = self.mem.read_unchecked(MEM_LOC_TAC)?;
+
+        let timer_enable = (tac & 0b100) > 0;
+        let timer_clock = TIMA_UPDATE_PER_MCYCLE[(tac & 0b11) as usize];
+
+        Ok((timer_enable, timer_clock))
     }
 }
