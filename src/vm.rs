@@ -3347,7 +3347,7 @@ impl VM {
         self.tima_ticker += add as u32;
     }
 
-    fn handle_ticks(&mut self, old_tma: u8) -> Result<(), Error> {
+    fn handle_ticks(&mut self, old_tac: u8) -> Result<(), Error> {
         if self.div_ticker >= DIV_REG_UPDATE_PER_MCYCLE {
             self.div_ticker -= DIV_REG_UPDATE_PER_MCYCLE;
             self.mem
@@ -3361,7 +3361,7 @@ impl VM {
 
                 let tima = self.mem_read(MEM_LOC_TIMA)?;
                 if tima == u8::MAX {
-                    self.mem.write_unchecked(MEM_LOC_TIMA, old_tma)?;
+                    self.mem.write_unchecked(MEM_LOC_TIMA, old_tac)?;
                     unimplemented!("TIMA interrupt not implemented")
                 } else {
                     self.mem
