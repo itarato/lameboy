@@ -10,6 +10,7 @@ use crate::cpu::*;
 use crate::debugger::*;
 use crate::mem::*;
 use crate::sound::*;
+use crate::timer::*;
 use crate::util::*;
 
 enum State {
@@ -23,10 +24,7 @@ pub struct VM {
     debugger: Debugger,
     counter: u64,
     state: State,
-    div: u8,
-    tac: u8,
-    div_ticker: u16,
-    tima_ticker: u32,
+    timer: Timer,
     sound: Sound,
 }
 
@@ -38,10 +36,7 @@ impl VM {
             debugger,
             counter: 0,
             state: State::Running,
-            div: 0,
-            tac: 0,
-            div_ticker: 0,
-            tima_ticker: 0,
+            timer: Timer::new(),
             sound: Sound::new(),
         })
     }
@@ -83,11 +78,11 @@ impl VM {
             }
 
             if let State::Running = self.state {
-                let old_tac = self.tac;
+                let old_tac = self.timer.tac;
 
                 self.exec_op()?;
 
-                self.handle_ticks(old_tac)?;
+                self.timer.handle_ticks(old_tac)?;
 
                 self.counter += 1;
             }
@@ -3343,41 +3338,7 @@ impl VM {
 
     fn tick(&mut self, add: u8) {
         self.cpu.mcycle += add as u64;
-        self.div_ticker += add as u16;
-        self.tima_ticker += add as u32;
-    }
-
-    fn handle_ticks(&mut self, old_tac: u8) -> Result<(), Error> {
-        if self.div_ticker >= DIV_REG_UPDATE_PER_MCYCLE {
-            self.div_ticker -= DIV_REG_UPDATE_PER_MCYCLE;
-            self.mem
-                .write_unchecked(MEM_LOC_DIV, self.mem_read(MEM_LOC_DIV)?.wrapping_add(1))?;
-        }
-
-        let (timer_enable, timer_clock) = self.tac()?;
-        if timer_enable {
-            if self.tima_ticker >= timer_clock {
-                self.tima_ticker -= timer_clock;
-
-                let tima = self.mem_read(MEM_LOC_TIMA)?;
-                if tima == u8::MAX {
-                    self.mem.write_unchecked(MEM_LOC_TIMA, old_tac)?;
-                    unimplemented!("TIMA interrupt not implemented")
-                } else {
-                    self.mem
-                        .write_unchecked(MEM_LOC_TIMA, tima.wrapping_add(1))?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn tac(&self) -> Result<(bool, u32), Error> {
-        let timer_enable = (self.tac & 0b100) > 0;
-        let timer_clock = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
-
-        Ok((timer_enable, timer_clock))
+        self.timer.tick(add);
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
@@ -3406,10 +3367,10 @@ impl VM {
                 MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
                 MEM_LOC_SB => unimplemented!("Write to register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Write to register SC is not implemented"),
-                MEM_LOC_DIV => self.div = 0,
+                MEM_LOC_DIV => self.timer.div = 0,
                 MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
-                MEM_LOC_TAC => self.tac = byte,
+                MEM_LOC_TAC => self.timer.tac = byte,
                 MEM_LOC_IF => unimplemented!("Write to register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte)?,
                 MEM_LOC_LCDC => unimplemented!("Write to register LCDC is not implemented"),
@@ -3482,10 +3443,10 @@ impl VM {
                 MEM_LOC_P1 => unimplemented!("Read from register P1 is not implemented"),
                 MEM_LOC_SB => unimplemented!("Read from register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Read from register SC is not implemented"),
-                MEM_LOC_DIV => Ok(self.div),
+                MEM_LOC_DIV => Ok(self.timer.div),
                 MEM_LOC_TIMA => unimplemented!("Read from register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Read from register TMA is not implemented"),
-                MEM_LOC_TAC => Ok(self.tac),
+                MEM_LOC_TAC => Ok(self.timer.tac),
                 MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
                 MEM_LOC_LCDC => unimplemented!("Read from register LCDC is not implemented"),
