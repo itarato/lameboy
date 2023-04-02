@@ -3372,7 +3372,7 @@ impl VM {
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
                 MEM_LOC_TAC => self.timer.tac = byte,
                 MEM_LOC_IF => unimplemented!("Write to register IF is not implemented"),
-                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte)?,
+                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
                 MEM_LOC_LCDC => unimplemented!("Write to register LCDC is not implemented"),
                 MEM_LOC_STAT => unimplemented!("Write to register STAT is not implemented"),
                 MEM_LOC_SCY => unimplemented!("Write to register SCY is not implemented"),
