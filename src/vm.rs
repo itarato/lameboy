@@ -12,6 +12,7 @@ use crate::mem::*;
 use crate::sound::*;
 use crate::timer::*;
 use crate::util::*;
+use crate::video::*;
 
 enum State {
     Running,
@@ -26,6 +27,7 @@ pub struct VM {
     state: State,
     timer: Timer,
     sound: Sound,
+    video: Video,
 }
 
 impl VM {
@@ -38,6 +40,7 @@ impl VM {
             state: State::Running,
             timer: Timer::new(),
             sound: Sound::new(),
+            video: Video::new(),
         })
     }
 
@@ -3373,18 +3376,7 @@ impl VM {
                 MEM_LOC_TAC => self.timer.tac = byte,
                 MEM_LOC_IF => unimplemented!("Write to register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
-                MEM_LOC_LCDC => unimplemented!("Write to register LCDC is not implemented"),
-                MEM_LOC_STAT => unimplemented!("Write to register STAT is not implemented"),
-                MEM_LOC_SCY => unimplemented!("Write to register SCY is not implemented"),
-                MEM_LOC_SCX => unimplemented!("Write to register SCX is not implemented"),
-                MEM_LOC_LY => unimplemented!("Write to register LY is not implemented"),
-                MEM_LOC_LYC => unimplemented!("Write to register LYC is not implemented"),
-                MEM_LOC_DMA => unimplemented!("Write to register DMA is not implemented"),
-                MEM_LOC_BGP => unimplemented!("Write to register BGP is not implemented"),
-                MEM_LOC_OBP0 => unimplemented!("Write to register OBP0 is not implemented"),
-                MEM_LOC_OBP1 => unimplemented!("Write to register OBP1 is not implemented"),
-                MEM_LOC_WY => unimplemented!("Write to register WY is not implemented"),
-                MEM_LOC_WX => unimplemented!("Write to register WX is not implemented"),
+                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.write(loc, byte),
                 MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
                 MEM_LOC_VBK => unimplemented!("Write to register VBK is not implemented"),
                 MEM_LOC_BOOT_LOCK_REG => {

@@ -6,6 +6,7 @@ mod mem;
 mod sound;
 mod timer;
 mod util;
+mod video;
 mod vm;
 
 use crate::cartridge::Cartridge;
