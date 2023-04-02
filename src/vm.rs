@@ -24,6 +24,7 @@ pub struct VM {
     counter: u64,
     state: State,
     div: u8,
+    tac: u8,
     div_ticker: u16,
     tima_ticker: u32,
     sound: Sound,
@@ -38,6 +39,7 @@ impl VM {
             counter: 0,
             state: State::Running,
             div: 0,
+            tac: 0,
             div_ticker: 0,
             tima_ticker: 0,
             sound: Sound::new(),
@@ -81,7 +83,7 @@ impl VM {
             }
 
             if let State::Running = self.state {
-                let old_tac = self.mem.read_unchecked(MEM_LOC_TAC)?;
+                let old_tac = self.tac;
 
                 self.exec_op()?;
 
@@ -3357,7 +3359,7 @@ impl VM {
             if self.tima_ticker >= timer_clock {
                 self.tima_ticker -= timer_clock;
 
-                let tima = self.mem.read_unchecked(MEM_LOC_TIMA)?;
+                let tima = self.mem_read(MEM_LOC_TIMA)?;
                 if tima == u8::MAX {
                     self.mem.write_unchecked(MEM_LOC_TIMA, old_tma)?;
                     unimplemented!("TIMA interrupt not implemented")
@@ -3372,10 +3374,8 @@ impl VM {
     }
 
     fn tac(&self) -> Result<(bool, u32), Error> {
-        let tac = self.mem.read_unchecked(MEM_LOC_TAC)?;
-
-        let timer_enable = (tac & 0b100) > 0;
-        let timer_clock = TIMA_UPDATE_PER_MCYCLE[(tac & 0b11) as usize];
+        let timer_enable = (self.tac & 0b100) > 0;
+        let timer_clock = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
 
         Ok((timer_enable, timer_clock))
     }
@@ -3388,7 +3388,7 @@ impl VM {
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
         } else if loc <= MEM_AREA_VRAM_END {
-            self.mem.write_unchecked(loc, byte)
+            self.mem.write_unchecked(loc, byte)?;
         } else if loc <= MEM_AREA_EXTERNAL_END {
             unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
         } else if loc <= MEM_AREA_WRAM_END {
@@ -3406,15 +3406,12 @@ impl VM {
                 MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
                 MEM_LOC_SB => unimplemented!("Write to register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Write to register SC is not implemented"),
-                MEM_LOC_DIV => {
-                    self.div = 0;
-                    Ok(())
-                }
+                MEM_LOC_DIV => self.div = 0,
                 MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
-                MEM_LOC_TAC => unimplemented!("Write to register TAC is not implemented"),
+                MEM_LOC_TAC => self.tac = byte,
                 MEM_LOC_IF => unimplemented!("Write to register IF is not implemented"),
-                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
+                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte)?,
                 MEM_LOC_LCDC => unimplemented!("Write to register LCDC is not implemented"),
                 MEM_LOC_STAT => unimplemented!("Write to register STAT is not implemented"),
                 MEM_LOC_SCY => unimplemented!("Write to register SCY is not implemented"),
@@ -3434,9 +3431,9 @@ impl VM {
                     // permanently disabled until the next system reset. Writing 0b0 when BOOT_OFF is 0b0 has no
                     // effect and doesn’t lock the boot ROM.
                     if byte == 0b1 {
-                        self.mem.write_unchecked(loc, byte)
+                        self.mem.boot_lock_reg = byte;
                     } else {
-                        Err("Boot lock register must only be set to 1".into())
+                        return Err("Boot lock register must only be set to 1".into());
                     }
                 }
                 MEM_LOC_HDMA1 => unimplemented!("Write to register HDMA1 is not implemented"),
@@ -3451,7 +3448,7 @@ impl VM {
                 MEM_LOC_OCPD => unimplemented!("Write to register OCPD is not implemented"),
                 MEM_LOC_SVBK => unimplemented!("Write to register SVBK is not implemented"),
                 _ => unimplemented!("Write to MEM_AREA_IO is not implemented"),
-            }
+            };
         } else if loc <= MEM_AREA_HRAM_END {
             unimplemented!("Write to MEM_AREA_HRAM is not implemented")
         } else if loc <= MEM_AREA_IE_END {
@@ -3459,6 +3456,8 @@ impl VM {
         } else {
             return Err("Write outside of memory".into());
         }
+
+        Ok(())
     }
 
     fn mem_write_u16(&mut self, loc: u16, word: u16) -> Result<(), Error> {
@@ -3486,7 +3485,7 @@ impl VM {
                 MEM_LOC_DIV => Ok(self.div),
                 MEM_LOC_TIMA => unimplemented!("Read from register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Read from register TMA is not implemented"),
-                MEM_LOC_TAC => unimplemented!("Read from register TAC is not implemented"),
+                MEM_LOC_TAC => Ok(self.tac),
                 MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
                 MEM_LOC_LCDC => unimplemented!("Read from register LCDC is not implemented"),
@@ -3503,7 +3502,7 @@ impl VM {
                 MEM_LOC_WX => unimplemented!("Read from register WX is not implemented"),
                 MEM_LOC_KEY1 => unimplemented!("Read from register KEY1 is not implemented"),
                 MEM_LOC_VBK => unimplemented!("Read from register VBK is not implemented"),
-                MEM_LOC_BOOT_LOCK_REG => self.mem.read_unchecked(loc),
+                MEM_LOC_BOOT_LOCK_REG => Ok(self.mem.boot_lock_reg),
                 MEM_LOC_HDMA1 => unimplemented!("Read from register HDMA1 is not implemented"),
                 MEM_LOC_HDMA2 => unimplemented!("Read from register HDMA2 is not implemented"),
                 MEM_LOC_HDMA3 => unimplemented!("Read from register HDMA3 is not implemented"),
@@ -3515,7 +3514,7 @@ impl VM {
                 MEM_LOC_OCPS => unimplemented!("Read from register OCPS is not implemented"),
                 MEM_LOC_OCPD => unimplemented!("Read from register OCPD is not implemented"),
                 MEM_LOC_SVBK => unimplemented!("Read from register SVBK is not implemented"),
-                _ => unimplemented!("Write to MEM_AREA_IO is not implemented"),
+                _ => unimplemented!("Read from MEM_AREA_IO is not implemented"),
             },
             MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END => self.mem.read(loc),
             MEM_AREA_IE_END => {

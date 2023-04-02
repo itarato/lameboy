@@ -2,6 +2,7 @@ use crate::cartridge::*;
 use crate::conf::*;
 
 pub struct Mem {
+    pub boot_lock_reg: u8,
     pub bios: [u8; 0x100],
     cartridge: Cartridge,
     data: [u8; MEM_SIZE],
@@ -10,6 +11,7 @@ pub struct Mem {
 impl Mem {
     pub fn new(cartridge: Cartridge) -> Result<Self, Error> {
         Ok(Mem {
+            boot_lock_reg: 0,
             bios: [0; 0x100],
             cartridge,
             data: [0u8; MEM_SIZE],
@@ -17,7 +19,7 @@ impl Mem {
     }
 
     pub fn reset(&mut self) -> Result<(), Error> {
-        self.write_unchecked(MEM_LOC_BOOT_LOCK_REG, 0b0)?;
+        self.boot_lock_reg = 0;
         Ok(())
     }
 
@@ -45,14 +47,6 @@ impl Mem {
         Ok(byte)
     }
 
-    pub fn read_unchecked(&self, loc: u16) -> Result<u8, Error> {
-        if loc >= INNER_ROM_START_ADDR && loc <= MEM_ADDR_MAX {
-            Ok(self.data[(loc - INNER_ROM_START_ADDR) as usize])
-        } else {
-            panic!("Unexpected unchecked read on: {:#06X}", loc)
-        }
-    }
-
     pub fn write_unchecked(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         if loc < INNER_ROM_START_ADDR {
             Err("Mem addr cannot write rom bank area".into())
@@ -69,6 +63,6 @@ impl Mem {
     }
 
     fn is_bios_mounted(&self) -> bool {
-        self.read_unchecked(MEM_LOC_BOOT_LOCK_REG).unwrap() == 0b0
+        self.boot_lock_reg == 0b0
     }
 }
