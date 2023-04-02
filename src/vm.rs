@@ -23,6 +23,7 @@ pub struct VM {
     debugger: Debugger,
     counter: u64,
     state: State,
+    div: u8,
     div_ticker: u16,
     tima_ticker: u32,
     sound: Sound,
@@ -36,6 +37,7 @@ impl VM {
             debugger,
             counter: 0,
             state: State::Running,
+            div: 0,
             div_ticker: 0,
             tima_ticker: 0,
             sound: Sound::new(),
@@ -169,7 +171,7 @@ impl VM {
             0x08 => {
                 // LD (a16),SP 3 20 | - - - -
                 let word = self.read_op_imm16()?;
-                self.mem.write_u16(word, self.cpu.sp)?;
+                self.mem_write_u16(word, self.cpu.sp)?;
             }
             0x09 => {
                 // ADD HL,BC 1 8 | - 0 H C
@@ -184,7 +186,7 @@ impl VM {
             }
             0x0A => {
                 // LD A,(BC) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.bc)?;
+                let byte = self.mem_read(self.cpu.bc)?;
                 self.cpu.set_a(byte);
             }
             0x0B => {
@@ -301,7 +303,7 @@ impl VM {
             }
             0x1A => {
                 // LD A,(DE) 1 8 | - - - -
-                let byte = self.mem.read(self.cpu.de)?;
+                let byte = self.mem_read(self.cpu.de)?;
                 self.cpu.set_a(byte);
             }
             0x1B => {
@@ -3176,7 +3178,7 @@ impl VM {
             0xF0 => {
                 // LDH A,(a8) 2 12 | - - - -
                 let word = 0xFF00u16 | self.read_op()? as u16;
-                let byte = self.mem.read(word)?;
+                let byte = self.mem_read(word)?;
                 self.cpu.set_a(byte);
             }
             0xF1 => {
@@ -3186,7 +3188,7 @@ impl VM {
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
-                let byte = self.mem.read(word)?;
+                let byte = self.mem_read(word)?;
                 self.cpu.set_a(byte);
             }
             0xF3 => {
@@ -3231,7 +3233,7 @@ impl VM {
             0xFA => {
                 // LD A,(a16) 3 16 | - - - -
                 let word = self.read_op_imm16()?;
-                let byte = self.mem.read(word)?;
+                let byte = self.mem_read(word)?;
                 self.cpu.set_a(byte);
             }
             0xFB => {
@@ -3262,14 +3264,14 @@ impl VM {
     }
 
     fn read_op(&mut self) -> Result<u8, Error> {
-        let op = self.mem.read(self.cpu.pc)?;
+        let op = self.mem_read(self.cpu.pc)?;
         self.cpu.pc = self.cpu.pc.wrapping_add(1);
 
         Ok(op)
     }
 
     fn read_hl(&self) -> Result<u8, Error> {
-        self.mem.read(self.cpu.hl)
+        self.mem_read(self.cpu.hl)
     }
 
     fn write_hl(&mut self, byte: u8) -> Result<(), Error> {
@@ -3285,19 +3287,19 @@ impl VM {
 
     fn push_u16(&mut self, word: u16) -> Result<(), Error> {
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
-        self.mem.write_u16(self.cpu.sp, word)
+        self.mem_write_u16(self.cpu.sp, word)
     }
 
     fn pop_u16(&mut self) -> Result<u16, Error> {
-        let word = self.mem.read_u16(self.cpu.sp)?;
+        let word = self.mem_read_u16(self.cpu.sp)?;
         self.cpu.sp = self.cpu.sp.wrapping_add(2);
         Ok(word)
     }
 
     fn read_repl(&self) -> Result<Option<DebugCmd>, Error> {
-        let next_op = self.mem.read(self.cpu.pc)?;
+        let next_op = self.mem_read(self.cpu.pc)?;
         if next_op == 0xCB {
-            let next_prefix_op = self.mem.read(self.cpu.pc + 1)?;
+            let next_prefix_op = self.mem_read(self.cpu.pc + 1)?;
 
             print!(
                 "{:>8} | NXT {:#04X} | {} > ",
@@ -3347,7 +3349,7 @@ impl VM {
         if self.div_ticker >= DIV_REG_UPDATE_PER_MCYCLE {
             self.div_ticker -= DIV_REG_UPDATE_PER_MCYCLE;
             self.mem
-                .write_unchecked(MEM_LOC_DIV, self.mem.read(MEM_LOC_DIV)?.wrapping_add(1))?;
+                .write_unchecked(MEM_LOC_DIV, self.mem_read(MEM_LOC_DIV)?.wrapping_add(1))?;
         }
 
         let (timer_enable, timer_clock) = self.tac()?;
@@ -3379,6 +3381,8 @@ impl VM {
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+        log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
+
         if loc <= MEM_AREA_ROM_BANK_0_END {
             return Err("Cannot write to ROM (0)".into());
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
@@ -3402,7 +3406,10 @@ impl VM {
                 MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
                 MEM_LOC_SB => unimplemented!("Write to register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Write to register SC is not implemented"),
-                MEM_LOC_DIV => self.mem.write_unchecked(MEM_LOC_DIV, 0),
+                MEM_LOC_DIV => {
+                    self.div = 0;
+                    Ok(())
+                }
                 MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
                 MEM_LOC_TAC => unimplemented!("Write to register TAC is not implemented"),
@@ -3452,5 +3459,74 @@ impl VM {
         } else {
             return Err("Write outside of memory".into());
         }
+    }
+
+    fn mem_write_u16(&mut self, loc: u16, word: u16) -> Result<(), Error> {
+        log::debug!("Write: {:#06X} = #{:#06X}", loc, word);
+
+        let hi = (word >> 8) as u8;
+        let lo = (word & 0xFF) as u8;
+
+        self.mem_write(loc, lo)?;
+        self.mem_write(loc + 1, hi)?;
+
+        Ok(())
+    }
+
+    fn mem_read(&self, loc: u16) -> Result<u8, Error> {
+        match loc {
+            0..=MEM_AREA_OAM_END => self.mem.read(loc),
+            MEM_AREA_PROHIBITED_START..=MEM_AREA_PROHIBITED_END => {
+                Err(format!("Read from prohibited mem area: {:#06X}", loc).into())
+            }
+            MEM_AREA_IO_START..=MEM_AREA_IO_END => match loc {
+                MEM_LOC_P1 => unimplemented!("Read from register P1 is not implemented"),
+                MEM_LOC_SB => unimplemented!("Read from register SB is not implemented"),
+                MEM_LOC_SC => unimplemented!("Read from register SC is not implemented"),
+                MEM_LOC_DIV => Ok(self.div),
+                MEM_LOC_TIMA => unimplemented!("Read from register TIMA is not implemented"),
+                MEM_LOC_TMA => unimplemented!("Read from register TMA is not implemented"),
+                MEM_LOC_TAC => unimplemented!("Read from register TAC is not implemented"),
+                MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
+                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
+                MEM_LOC_LCDC => unimplemented!("Read from register LCDC is not implemented"),
+                MEM_LOC_STAT => unimplemented!("Read from register STAT is not implemented"),
+                MEM_LOC_SCY => unimplemented!("Read from register SCY is not implemented"),
+                MEM_LOC_SCX => unimplemented!("Read from register SCX is not implemented"),
+                MEM_LOC_LY => unimplemented!("Read from register LY is not implemented"),
+                MEM_LOC_LYC => unimplemented!("Read from register LYC is not implemented"),
+                MEM_LOC_DMA => unimplemented!("Read from register DMA is not implemented"),
+                MEM_LOC_BGP => unimplemented!("Read from register BGP is not implemented"),
+                MEM_LOC_OBP0 => unimplemented!("Read from register OBP0 is not implemented"),
+                MEM_LOC_OBP1 => unimplemented!("Read from register OBP1 is not implemented"),
+                MEM_LOC_WY => unimplemented!("Read from register WY is not implemented"),
+                MEM_LOC_WX => unimplemented!("Read from register WX is not implemented"),
+                MEM_LOC_KEY1 => unimplemented!("Read from register KEY1 is not implemented"),
+                MEM_LOC_VBK => unimplemented!("Read from register VBK is not implemented"),
+                MEM_LOC_BOOT_LOCK_REG => self.mem.read_unchecked(loc),
+                MEM_LOC_HDMA1 => unimplemented!("Read from register HDMA1 is not implemented"),
+                MEM_LOC_HDMA2 => unimplemented!("Read from register HDMA2 is not implemented"),
+                MEM_LOC_HDMA3 => unimplemented!("Read from register HDMA3 is not implemented"),
+                MEM_LOC_HDMA4 => unimplemented!("Read from register HDMA4 is not implemented"),
+                MEM_LOC_HDMA5 => unimplemented!("Read from register HDMA5 is not implemented"),
+                MEM_LOC_RP => unimplemented!("Read from register RP is not implemented"),
+                MEM_LOC_BCPS => unimplemented!("Read from register BCPS is not implemented"),
+                MEM_LOC_BCPD => unimplemented!("Read from register BCPD is not implemented"),
+                MEM_LOC_OCPS => unimplemented!("Read from register OCPS is not implemented"),
+                MEM_LOC_OCPD => unimplemented!("Read from register OCPD is not implemented"),
+                MEM_LOC_SVBK => unimplemented!("Read from register SVBK is not implemented"),
+                _ => unimplemented!("Write to MEM_AREA_IO is not implemented"),
+            },
+            MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END => self.mem.read(loc),
+            MEM_AREA_IE_END => {
+                unimplemented!("Read from MEM_AREA_IE not handled yet")
+            }
+        }
+    }
+
+    fn mem_read_u16(&mut self, loc: u16) -> Result<u16, Error> {
+        let lo = self.mem_read(loc)?;
+        let hi = self.mem_read(loc + 1)?;
+        Ok(((hi as u16) << 8) | lo as u16)
     }
 }

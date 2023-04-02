@@ -30,11 +30,11 @@ pub const TIMA_UPDATE_PER_MCYCLE: [u32; 4] = [
 ];
 
 /// 16 KiB ROM bank 00	From cartridge, usually a fixed bank.
-// pub const MEM_AREA_ROM_BANK_0_START: u16 = 0x0000;
+pub const MEM_AREA_ROM_BANK_0_START: u16 = 0x0000;
 pub const MEM_AREA_ROM_BANK_0_END: u16 = 0x3FFF;
 
 /// 16 KiB ROM Bank 01~NN	From cartridge, switchable bank via mapper (if any).
-// pub const MEM_AREA_ROM_BANK_N_START: u16 = 0x4000;
+pub const MEM_AREA_ROM_BANK_N_START: u16 = 0x4000;
 pub const MEM_AREA_ROM_BANK_N_END: u16 = 0x7FFF;
 
 /// 8 KiB Video RAM (VRAM)	In CGB mode, switchable bank 0/1.
@@ -62,15 +62,15 @@ pub const MEM_AREA_ECHO_END: u16 = 0xFDFF;
 pub const MEM_AREA_OAM_END: u16 = 0xFE9F;
 
 /// Not Usable	Nintendo says use of this area is prohibited.
-// pub const MEM_AREA_PROHIBITED_START: u16 = 0xFEA0;
+pub const MEM_AREA_PROHIBITED_START: u16 = 0xFEA0;
 pub const MEM_AREA_PROHIBITED_END: u16 = 0xFEFF;
 
 /// I/O Registers.
-// pub const MEM_AREA_IO_START: u16 = 0xFF00;
+pub const MEM_AREA_IO_START: u16 = 0xFF00;
 pub const MEM_AREA_IO_END: u16 = 0xFF7F;
 
 /// High RAM (HRAM).
-// pub const MEM_AREA_HRAM_START: u16 = 0xFF80;
+pub const MEM_AREA_HRAM_START: u16 = 0xFF80;
 pub const MEM_AREA_HRAM_END: u16 = 0xFFFE;
 
 /// Interrupt Enable register (IE).
