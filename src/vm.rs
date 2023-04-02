@@ -4,11 +4,10 @@ use std::io::stdout;
 use std::io::Read;
 use std::io::Write;
 
-use crate::cartridge::Cartridge;
+use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
-use crate::debugger::DebugCmd;
-use crate::debugger::Debugger;
+use crate::debugger::*;
 use crate::mem::*;
 use crate::sound::*;
 use crate::util::*;
@@ -86,8 +85,6 @@ impl VM {
 
                 self.handle_ticks(old_tac)?;
 
-                self.sound.update(&self.mem);
-
                 self.counter += 1;
             }
         }
@@ -128,7 +125,7 @@ impl VM {
             0x02 => {
                 // LD (BC),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write(self.cpu.bc, byte)?;
+                self.mem_write(self.cpu.bc, byte)?;
             }
             0x03 => {
                 // INC BC 1 8 | - - - -
@@ -232,7 +229,7 @@ impl VM {
             0x10 => {
                 // STOP 0 2 4 | - - - -
                 self.state = State::Stop;
-                self.mem.write(MEM_LOC_DIV, 0)?;
+                self.mem_write(MEM_LOC_DIV, 0)?;
             }
             0x11 => {
                 // LD DE,d16 3 12 | - - - -
@@ -242,7 +239,7 @@ impl VM {
             0x12 => {
                 // LD (DE),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
-                self.mem.write(self.cpu.de, byte)?;
+                self.mem_write(self.cpu.de, byte)?;
             }
             0x13 => {
                 // INC DE 1 8 | - - - -
@@ -512,7 +509,7 @@ impl VM {
                 // LD (HL-),A 1 8 | - - - -
                 let byte = self.cpu.get_a();
                 let word = self.cpu.hl;
-                self.mem.write(word, byte)?;
+                self.mem_write(word, byte)?;
                 self.cpu.hl = self.cpu.hl.wrapping_sub(1);
             }
             0x33 => {
@@ -3070,7 +3067,7 @@ impl VM {
                 // RETI 1 16 | - - - -
                 let addr = self.pop_u16()?;
                 self.cpu.pc = addr;
-                self.mem.write(MEM_LOC_IE, 1)?;
+                self.mem_write(MEM_LOC_IE, 1)?;
             }
             0xDA => {
                 // JP C,a16 3 16/12 | - - - -
@@ -3108,7 +3105,7 @@ impl VM {
                 // LDH (a8),A 2 12 | - - - -
                 let byte = self.cpu.get_a();
                 let word = 0xFF00u16 | self.read_op()? as u16;
-                self.mem.write(word, byte)?;
+                self.mem_write(word, byte)?;
             }
             0xE1 => {
                 // POP HL 1 12 | - - - -
@@ -3118,7 +3115,7 @@ impl VM {
                 // LD (C),A 2 8 | - - - -
                 let byte = self.cpu.get_a();
                 let word = 0xFF00u16 | self.cpu.get_c() as u16;
-                self.mem.write(word, byte)?;
+                self.mem_write(word, byte)?;
             }
             0xE3 => panic!("Opcode 0xE3 is invalid"),
             0xE4 => panic!("Opcode 0xE4 is invalid"),
@@ -3161,7 +3158,7 @@ impl VM {
                 // LD (a16),A 3 16 | - - - -
                 let word = self.read_op_imm16()?;
                 let byte = self.cpu.get_a();
-                self.mem.write(word, byte)?;
+                self.mem_write(word, byte)?;
             }
             0xEB => panic!("Opcode 0xEB is invalid"),
             0xEC => panic!("Opcode 0xEC is invalid"),
@@ -3194,7 +3191,7 @@ impl VM {
             }
             0xF3 => {
                 // DI 1 4 | - - - -
-                self.mem.write(MEM_LOC_IE, 0)?;
+                self.mem_write(MEM_LOC_IE, 0)?;
             }
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
@@ -3239,7 +3236,7 @@ impl VM {
             }
             0xFB => {
                 // EI 1 4 | - - - -
-                self.mem.write(MEM_LOC_IE, 1)?;
+                self.mem_write(MEM_LOC_IE, 1)?;
             }
             0xFC => panic!("Opcode 0xFC is invalid"),
             0xFD => panic!("Opcode 0xFD is invalid"),
@@ -3276,7 +3273,7 @@ impl VM {
     }
 
     fn write_hl(&mut self, byte: u8) -> Result<(), Error> {
-        self.mem.write(self.cpu.hl, byte)
+        self.mem_write(self.cpu.hl, byte)
     }
 
     fn read_op_imm16(&mut self) -> Result<u16, Error> {
@@ -3379,5 +3376,81 @@ impl VM {
         let timer_clock = TIMA_UPDATE_PER_MCYCLE[(tac & 0b11) as usize];
 
         Ok((timer_enable, timer_clock))
+    }
+
+    fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+        if loc <= MEM_AREA_ROM_BANK_0_END {
+            return Err("Cannot write to ROM (0)".into());
+        } else if loc <= MEM_AREA_ROM_BANK_N_END {
+            return Err("Cannot write to ROM (N)".into());
+        } else if loc <= MEM_AREA_VRAM_END {
+            self.mem.write_unchecked(loc, byte)
+        } else if loc <= MEM_AREA_EXTERNAL_END {
+            unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
+        } else if loc <= MEM_AREA_WRAM_END {
+            unimplemented!("Write to MEM_AREA_WRAM is not implemented")
+        } else if loc <= MEM_AREA_WRAM_CGB_END {
+            unimplemented!("Write to MEM_AREA_WRAM_CGB is not implemented")
+        } else if loc <= MEM_AREA_ECHO_END {
+            unimplemented!("Write to MEM_AREA_ECHO is not implemented")
+        } else if loc <= MEM_AREA_OAM_END {
+            unimplemented!("Write to MEM_AREA_OAM is not implemented")
+        } else if loc <= MEM_AREA_PROHIBITED_END {
+            unimplemented!("Write to MEM_AREA_PROHIBITED is not implemented")
+        } else if loc <= MEM_AREA_IO_END {
+            match loc {
+                MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
+                MEM_LOC_SB => unimplemented!("Write to register SB is not implemented"),
+                MEM_LOC_SC => unimplemented!("Write to register SC is not implemented"),
+                MEM_LOC_DIV => self.mem.write_unchecked(MEM_LOC_DIV, 0),
+                MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
+                MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
+                MEM_LOC_TAC => unimplemented!("Write to register TAC is not implemented"),
+                MEM_LOC_IF => unimplemented!("Write to register IF is not implemented"),
+                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
+                MEM_LOC_LCDC => unimplemented!("Write to register LCDC is not implemented"),
+                MEM_LOC_STAT => unimplemented!("Write to register STAT is not implemented"),
+                MEM_LOC_SCY => unimplemented!("Write to register SCY is not implemented"),
+                MEM_LOC_SCX => unimplemented!("Write to register SCX is not implemented"),
+                MEM_LOC_LY => unimplemented!("Write to register LY is not implemented"),
+                MEM_LOC_LYC => unimplemented!("Write to register LYC is not implemented"),
+                MEM_LOC_DMA => unimplemented!("Write to register DMA is not implemented"),
+                MEM_LOC_BGP => unimplemented!("Write to register BGP is not implemented"),
+                MEM_LOC_OBP0 => unimplemented!("Write to register OBP0 is not implemented"),
+                MEM_LOC_OBP1 => unimplemented!("Write to register OBP1 is not implemented"),
+                MEM_LOC_WY => unimplemented!("Write to register WY is not implemented"),
+                MEM_LOC_WX => unimplemented!("Write to register WX is not implemented"),
+                MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
+                MEM_LOC_VBK => unimplemented!("Write to register VBK is not implemented"),
+                MEM_LOC_BOOT_LOCK_REG => {
+                    // BOOT_OFF can only transition from 0b0 to 0b1, so once 0b1 has been written, the boot ROM is
+                    // permanently disabled until the next system reset. Writing 0b0 when BOOT_OFF is 0b0 has no
+                    // effect and doesn’t lock the boot ROM.
+                    if byte == 0b1 {
+                        self.mem.write_unchecked(loc, byte)
+                    } else {
+                        Err("Boot lock register must only be set to 1".into())
+                    }
+                }
+                MEM_LOC_HDMA1 => unimplemented!("Write to register HDMA1 is not implemented"),
+                MEM_LOC_HDMA2 => unimplemented!("Write to register HDMA2 is not implemented"),
+                MEM_LOC_HDMA3 => unimplemented!("Write to register HDMA3 is not implemented"),
+                MEM_LOC_HDMA4 => unimplemented!("Write to register HDMA4 is not implemented"),
+                MEM_LOC_HDMA5 => unimplemented!("Write to register HDMA5 is not implemented"),
+                MEM_LOC_RP => unimplemented!("Write to register RP is not implemented"),
+                MEM_LOC_BCPS => unimplemented!("Write to register BCPS is not implemented"),
+                MEM_LOC_BCPD => unimplemented!("Write to register BCPD is not implemented"),
+                MEM_LOC_OCPS => unimplemented!("Write to register OCPS is not implemented"),
+                MEM_LOC_OCPD => unimplemented!("Write to register OCPD is not implemented"),
+                MEM_LOC_SVBK => unimplemented!("Write to register SVBK is not implemented"),
+                _ => unimplemented!("Write to MEM_AREA_IO is not implemented"),
+            }
+        } else if loc <= MEM_AREA_HRAM_END {
+            unimplemented!("Write to MEM_AREA_HRAM is not implemented")
+        } else if loc <= MEM_AREA_IE_END {
+            unimplemented!("Write to MEM_AREA_IE is not implemented")
+        } else {
+            return Err("Write outside of memory".into());
+        }
     }
 }

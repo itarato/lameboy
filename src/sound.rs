@@ -1,5 +1,7 @@
 use crate::conf::*;
+use crate::conf::*;
 use crate::mem::*;
+use crate::util::*;
 
 pub struct Sound {
     is_on: bool,
@@ -10,7 +12,7 @@ impl Sound {
         Sound { is_on: false }
     }
 
-    pub fn update(&mut self, mem: &Mem) {
-        let nr52 = mem.read_unchecked(MEM_LOC_NR52);
+    pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+        unimplemented!("Sound chip not implemented")
     }
 }
