@@ -3,6 +3,7 @@ mod conf;
 mod cpu;
 mod debugger;
 mod mem;
+mod sound;
 mod util;
 mod vm;
 

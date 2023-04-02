@@ -10,6 +10,7 @@ use crate::cpu::*;
 use crate::debugger::DebugCmd;
 use crate::debugger::Debugger;
 use crate::mem::*;
+use crate::sound::*;
 use crate::util::*;
 
 enum State {
@@ -25,6 +26,7 @@ pub struct VM {
     state: State,
     div_ticker: u16,
     tima_ticker: u32,
+    sound: Sound,
 }
 
 impl VM {
@@ -37,6 +39,7 @@ impl VM {
             state: State::Running,
             div_ticker: 0,
             tima_ticker: 0,
+            sound: Sound::new(),
         })
     }
 
@@ -80,7 +83,11 @@ impl VM {
                 let old_tac = self.mem.read_unchecked(MEM_LOC_TAC)?;
 
                 self.exec_op()?;
+
                 self.handle_ticks(old_tac)?;
+
+                self.sound.update(&self.mem);
+
                 self.counter += 1;
             }
         }
