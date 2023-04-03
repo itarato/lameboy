@@ -3,6 +3,8 @@ use std::io::stdin;
 use std::io::stdout;
 use std::io::Read;
 use std::io::Write;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 use crate::cartridge::*;
 use crate::conf::*;
@@ -20,6 +22,7 @@ enum State {
 }
 
 pub struct VM {
+    global_exit_flag: Arc<AtomicBool>,
     mem: Mem,
     cpu: Cpu,
     debugger: Debugger,
@@ -32,12 +35,14 @@ pub struct VM {
 
 impl VM {
     pub fn new(
+        global_exit_flag: Arc<AtomicBool>,
         cartridge: Cartridge,
         vram: Vram,
         oam_ram: OamVram,
         debugger: Debugger,
     ) -> Result<Self, Error> {
         Ok(VM {
+            global_exit_flag,
             mem: Mem::new(cartridge, vram.clone(), oam_ram.clone())?,
             cpu: Cpu::new(),
             debugger,
@@ -93,6 +98,13 @@ impl VM {
                 self.timer.handle_ticks(old_tac)?;
 
                 self.counter += 1;
+            }
+
+            if self
+                .global_exit_flag
+                .load(std::sync::atomic::Ordering::Acquire)
+            {
+                return Ok(());
             }
         }
     }

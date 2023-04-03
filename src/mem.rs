@@ -30,14 +30,14 @@ impl Mem {
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
                 self.bios[loc as usize]
             } else {
-                unimplemented!("Unimplemented mem read: {:#06X}", loc)
+                return Err(format!("Unimplemented mem read: {:#06X}", loc).into());
             }
         } else if (MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END).contains(&loc) {
             self.vram.lock().expect("Cannot lock vram")[(loc - MEM_AREA_VRAM_START) as usize]
         } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
             self.oam_ram.lock().expect("Cannot lock oam ram")[(loc - MEM_AREA_OAM_START) as usize]
         } else {
-            unimplemented!("Unimplemented mem read: {:#06X}", loc)
+            return Err(format!("Unimplemented mem read: {:#06X}", loc).into());
         };
 
         log::debug!("Read: {:#06X} = #{:#04X}", loc, byte);
@@ -53,7 +53,7 @@ impl Mem {
             self.oam_ram.lock().expect("Cannot lock oam ram")
                 [(loc - MEM_AREA_OAM_START) as usize] = byte;
         } else {
-            unimplemented!("Unimplemented mem read: {:#06X}", loc)
+            return Err(format!("Unimplemented mem write: {:#06X}", loc).into());
         }
 
         Ok(())

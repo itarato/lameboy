@@ -4,6 +4,9 @@ pub const MEM_ADDR_MAX: u16 = 0xFFFF;
 
 pub const ROM_BANK_SIZE: usize = 0x4000;
 
+pub const DISPLAY_WIDTH: usize = 160;
+pub const DISPLAY_HEIGHT: usize = 144;
+
 const CYCLE_PER_MCYCLE: u64 = 4;
 
 // Cycles per second.
