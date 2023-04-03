@@ -8,7 +8,6 @@ use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
-use crate::gfx::*;
 use crate::mem::*;
 use crate::sound::*;
 use crate::timer::*;
@@ -29,7 +28,6 @@ pub struct VM {
     timer: Timer,
     sound: Sound,
     video: Video,
-    gfx: Gfx,
 }
 
 impl VM {
@@ -48,7 +46,6 @@ impl VM {
             timer: Timer::new(),
             sound: Sound::new(),
             video: Video::new(),
-            gfx: Gfx::new(vram.clone(), oam_ram.clone()),
         })
     }
 

@@ -13,10 +13,13 @@ mod vm;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::cartridge::Cartridge;
+use crate::cartridge::*;
 use crate::conf::*;
 use crate::debugger::*;
+use crate::gfx::*;
 use crate::vm::*;
+
+use std::thread::spawn;
 
 use clap::Parser;
 
@@ -57,10 +60,32 @@ fn main() -> Result<(), Error> {
     let cartridge = Cartridge::new(args.cartridge)?;
     let vram = Arc::new(Mutex::new([0; VRAM_SIZE]));
     let oam_ram = Arc::new(Mutex::new([0; OAM_RAM_SIZE]));
-    let mut vm = VM::new(cartridge, vram.clone(), oam_ram.clone(), debugger)?;
 
-    vm.setup()?;
-    vm.run()?;
+    let vm_vram = vram.clone();
+    let vm_oam_ram = oam_ram.clone();
+    let vm_thread = spawn(|| {
+        if let Ok(mut vm) = VM::new(cartridge, vm_vram, vm_oam_ram, debugger) {
+            if let Err(err) = vm.setup() {
+                log::error!("Failed VM setup: {}", err);
+                return;
+            }
+
+            if let Err(err) = vm.run() {
+                log::error!("Failed VM run: {}", err);
+                return;
+            }
+        }
+    });
+
+    let gfx_vram = vram.clone();
+    let gfx_oam_ram = oam_ram.clone();
+    let gfx_thread = spawn(|| {
+        let gfx = Gfx::new(gfx_vram, gfx_oam_ram);
+        gfx.run();
+    });
+
+    gfx_thread.join().expect("Failed joining GFX thread");
+    vm_thread.join().expect("Failed joining VM thread");
 
     log::info!("Emulation end");
 
