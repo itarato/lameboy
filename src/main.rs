@@ -2,6 +2,7 @@ mod cartridge;
 mod conf;
 mod cpu;
 mod debugger;
+mod gfx;
 mod mem;
 mod sound;
 mod timer;
@@ -9,10 +10,14 @@ mod util;
 mod video;
 mod vm;
 
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use crate::cartridge::Cartridge;
-use crate::conf::Error;
+use crate::conf::*;
 use crate::debugger::*;
 use crate::vm::*;
+
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -50,7 +55,9 @@ fn main() -> Result<(), Error> {
     }
 
     let cartridge = Cartridge::new(args.cartridge)?;
-    let mut vm = VM::new(cartridge, debugger)?;
+    let vram = Arc::new(Mutex::new([0; VRAM_SIZE]));
+    let oam_ram = Arc::new(Mutex::new([0; OAM_RAM_SIZE]));
+    let mut vm = VM::new(cartridge, vram.clone(), oam_ram.clone(), debugger)?;
 
     vm.setup()?;
     vm.run()?;

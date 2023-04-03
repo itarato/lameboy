@@ -8,6 +8,7 @@ use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
+use crate::gfx::*;
 use crate::mem::*;
 use crate::sound::*;
 use crate::timer::*;
@@ -28,12 +29,18 @@ pub struct VM {
     timer: Timer,
     sound: Sound,
     video: Video,
+    gfx: Gfx,
 }
 
 impl VM {
-    pub fn new(cartridge: Cartridge, debugger: Debugger) -> Result<Self, Error> {
+    pub fn new(
+        cartridge: Cartridge,
+        vram: Vram,
+        oam_ram: OamVram,
+        debugger: Debugger,
+    ) -> Result<Self, Error> {
         Ok(VM {
-            mem: Mem::new(cartridge)?,
+            mem: Mem::new(cartridge, vram.clone(), oam_ram.clone())?,
             cpu: Cpu::new(),
             debugger,
             counter: 0,
@@ -41,6 +48,7 @@ impl VM {
             timer: Timer::new(),
             sound: Sound::new(),
             video: Video::new(),
+            gfx: Gfx::new(vram.clone(), oam_ram.clone()),
         })
     }
 
@@ -3352,7 +3360,7 @@ impl VM {
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
         } else if loc <= MEM_AREA_VRAM_END {
-            self.mem.write_unchecked(loc, byte)?;
+            self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_EXTERNAL_END {
             unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
         } else if loc <= MEM_AREA_WRAM_END {

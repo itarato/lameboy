@@ -4,17 +4,19 @@ use crate::conf::*;
 pub struct Mem {
     pub boot_lock_reg: u8,
     pub bios: [u8; 0x100],
+    vram: Vram,
+    oam_ram: OamVram,
     cartridge: Cartridge,
-    data: [u8; MEM_SIZE],
 }
 
 impl Mem {
-    pub fn new(cartridge: Cartridge) -> Result<Self, Error> {
+    pub fn new(cartridge: Cartridge, vram: Vram, oam_ram: OamVram) -> Result<Self, Error> {
         Ok(Mem {
             boot_lock_reg: 0,
             bios: [0; 0x100],
+            vram,
+            oam_ram,
             cartridge,
-            data: [0u8; MEM_SIZE],
         })
     }
 
@@ -28,18 +30,14 @@ impl Mem {
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
                 self.bios[loc as usize]
             } else {
-                unimplemented!("Read from MEM_AREA_ROM_BANK_0 not handled yet")
+                unimplemented!("Unimplemented mem read: {:#06X}", loc)
             }
-        } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&loc) {
-            unimplemented!("Read from MEM_AREA_ROM_BANK_N not handled yet")
-        } else if (MEM_AREA_VRAM_START..=MEM_AREA_OAM_END).contains(&loc) {
-            self.data[(loc - INNER_ROM_START_ADDR) as usize]
-        } else if (MEM_AREA_PROHIBITED_START..=MEM_AREA_IO_END).contains(&loc) {
-            return Err(format!("Illegal mem read address: {:#06X}", loc).into());
-        } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
-            self.data[(loc - INNER_ROM_START_ADDR) as usize]
+        } else if (MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END).contains(&loc) {
+            self.vram.lock().expect("Cannot lock vram")[(loc - MEM_AREA_VRAM_START) as usize]
+        } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
+            self.oam_ram.lock().expect("Cannot lock oam ram")[(loc - MEM_AREA_OAM_START) as usize]
         } else {
-            return Err("Read outside of memory".into());
+            unimplemented!("Unimplemented mem read: {:#06X}", loc)
         };
 
         log::debug!("Read: {:#06X} = #{:#04X}", loc, byte);
@@ -47,19 +45,18 @@ impl Mem {
         Ok(byte)
     }
 
-    pub fn write_unchecked(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
-        if loc < INNER_ROM_START_ADDR {
-            Err("Mem addr cannot write rom bank area".into())
-        } else if loc > MEM_ADDR_MAX {
-            Err("Mem addr cannot exceed limit".into())
+    pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
+        if (MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END).contains(&loc) {
+            self.vram.lock().expect("Cannot lock vram")[(loc - MEM_AREA_VRAM_START) as usize] =
+                byte;
+        } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
+            self.oam_ram.lock().expect("Cannot lock oam ram")
+                [(loc - MEM_AREA_OAM_START) as usize] = byte;
         } else {
-            // Set pointer relative to non-rom-bank area.
-            let loc = loc - INNER_ROM_START_ADDR;
-
-            self.data[loc as usize] = byte;
-
-            Ok(())
+            unimplemented!("Unimplemented mem read: {:#06X}", loc)
         }
+
+        Ok(())
     }
 
     fn is_bios_mounted(&self) -> bool {

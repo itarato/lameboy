@@ -1,5 +1,4 @@
-// Half of the space, not including 2 x 16K rom bank mapping.
-pub const MEM_SIZE: usize = 0x8000;
+use std::sync::{Arc, Mutex};
 
 pub const MEM_ADDR_MAX: u16 = 0xFFFF;
 
@@ -42,7 +41,7 @@ pub const MEM_AREA_VRAM_START: u16 = 0x8000;
 pub const MEM_AREA_VRAM_END: u16 = 0x9FFF;
 
 /// 8 KiB External RAM	From cartridge, switchable bank if any.
-// pub const MEM_AREA_EXTERNAL_START: u16 = 0xA000;
+pub const MEM_AREA_EXTERNAL_START: u16 = 0xA000;
 pub const MEM_AREA_EXTERNAL_END: u16 = 0xBFFF;
 
 /// 4 KiB Work RAM (WRAM).
@@ -58,7 +57,7 @@ pub const MEM_AREA_WRAM_CGB_END: u16 = 0xDFFF;
 pub const MEM_AREA_ECHO_END: u16 = 0xFDFF;
 
 /// Sprite attribute table (OAM).
-// pub const MEM_AREA_OAM_START: u16 = 0xFE00;
+pub const MEM_AREA_OAM_START: u16 = 0xFE00;
 pub const MEM_AREA_OAM_END: u16 = 0xFE9F;
 
 /// Not Usable	Nintendo says use of this area is prohibited.
@@ -76,8 +75,6 @@ pub const MEM_AREA_HRAM_END: u16 = 0xFFFE;
 /// Interrupt Enable register (IE).
 // pub const MEM_AREA_IE_START: u16 = 0xFFFF;
 pub const MEM_AREA_IE_END: u16 = 0xFFFF;
-
-pub const INNER_ROM_START_ADDR: u16 = MEM_AREA_VRAM_START;
 
 pub const MEM_LOC_P1: u16 = 0xFF00;
 pub const MEM_LOC_SB: u16 = 0xFF01;
@@ -717,4 +714,9 @@ pub const OPCODE_MCYCLE_PREFIX: [u8; 256] = [
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
 ];
 
+pub const VRAM_SIZE: usize = (MEM_AREA_OAM_END - MEM_AREA_VRAM_START + 1) as usize;
+pub const OAM_RAM_SIZE: usize = (MEM_AREA_OAM_END - MEM_AREA_OAM_START + 1) as usize;
+
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Vram = Arc<Mutex<[u8; VRAM_SIZE]>>;
+pub type OamVram = Arc<Mutex<[u8; OAM_RAM_SIZE]>>;
