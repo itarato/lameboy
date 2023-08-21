@@ -4,6 +4,7 @@ use crate::conf::*;
 pub struct Mem {
     pub boot_lock_reg: u8,
     pub bios: [u8; 0x100],
+    hram: [u8; 0x7F],
     vram: Vram,
     oam_ram: OamVram,
     cartridge: Cartridge,
@@ -14,6 +15,7 @@ impl Mem {
         Ok(Mem {
             boot_lock_reg: 0,
             bios: [0; 0x100],
+            hram: [0; 0x7F],
             vram,
             oam_ram,
             cartridge,
@@ -30,12 +32,14 @@ impl Mem {
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
                 self.bios[loc as usize]
             } else {
-                return Err(format!("Unimplemented mem read: {:#06X}", loc).into());
+                self.cartridge.rom_0()[loc as usize]
             }
         } else if (MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END).contains(&loc) {
             self.vram.lock().expect("Cannot lock vram")[(loc - MEM_AREA_VRAM_START) as usize]
         } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
             self.oam_ram.lock().expect("Cannot lock oam ram")[(loc - MEM_AREA_OAM_START) as usize]
+        } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
+            self.hram[(loc - MEM_AREA_HRAM_START) as usize]
         } else {
             return Err(format!("Unimplemented mem read: {:#06X}", loc).into());
         };
@@ -52,6 +56,8 @@ impl Mem {
         } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
             self.oam_ram.lock().expect("Cannot lock oam ram")
                 [(loc - MEM_AREA_OAM_START) as usize] = byte;
+        } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
+            self.hram[(loc - MEM_AREA_HRAM_START) as usize] = byte;
         } else {
             return Err(format!("Unimplemented mem write: {:#06X}", loc).into());
         }

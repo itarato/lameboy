@@ -92,10 +92,15 @@ impl VM {
 
             if let State::Running = self.state {
                 let old_tac = self.timer.tac;
+                let old_cpu_mcycle: u64 = self.cpu.mcycle;
 
                 self.exec_op()?;
 
+                let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
+
                 self.timer.handle_ticks(old_tac)?;
+
+                self.video.update(diff_mcycle);
 
                 self.counter += 1;
             }
@@ -111,6 +116,7 @@ impl VM {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.mem.reset()?;
+        self.video.reset();
 
         log::info!("VM reset");
 
@@ -3420,7 +3426,7 @@ impl VM {
                 _ => unimplemented!("Write to MEM_AREA_IO is not implemented"),
             };
         } else if loc <= MEM_AREA_HRAM_END {
-            unimplemented!("Write to MEM_AREA_HRAM is not implemented")
+            self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_IE_END {
             unimplemented!("Write to MEM_AREA_IE is not implemented")
         } else {
@@ -3458,18 +3464,7 @@ impl VM {
                 MEM_LOC_TAC => Ok(self.timer.tac),
                 MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
-                MEM_LOC_LCDC => unimplemented!("Read from register LCDC is not implemented"),
-                MEM_LOC_STAT => unimplemented!("Read from register STAT is not implemented"),
-                MEM_LOC_SCY => unimplemented!("Read from register SCY is not implemented"),
-                MEM_LOC_SCX => unimplemented!("Read from register SCX is not implemented"),
-                MEM_LOC_LY => unimplemented!("Read from register LY is not implemented"),
-                MEM_LOC_LYC => unimplemented!("Read from register LYC is not implemented"),
-                MEM_LOC_DMA => unimplemented!("Read from register DMA is not implemented"),
-                MEM_LOC_BGP => unimplemented!("Read from register BGP is not implemented"),
-                MEM_LOC_OBP0 => unimplemented!("Read from register OBP0 is not implemented"),
-                MEM_LOC_OBP1 => unimplemented!("Read from register OBP1 is not implemented"),
-                MEM_LOC_WY => unimplemented!("Read from register WY is not implemented"),
-                MEM_LOC_WX => unimplemented!("Read from register WX is not implemented"),
+                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read(loc),
                 MEM_LOC_KEY1 => unimplemented!("Read from register KEY1 is not implemented"),
                 MEM_LOC_VBK => unimplemented!("Read from register VBK is not implemented"),
                 MEM_LOC_BOOT_LOCK_REG => Ok(self.mem.boot_lock_reg),

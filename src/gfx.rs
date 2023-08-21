@@ -1,3 +1,12 @@
+/**
+ * Tiles: 8x8
+ * Color id (pixel info): 0-3
+ * For object, color-0 = transparent
+ * Layers: background / window / object
+ * Background: pointers to tiles
+ * Object: 1 (8x8) or 2 (8x16) tiles
+ * VRAM: (0x8000-0x97FF) 16 bytes sections x 384
+ */
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -8,7 +17,7 @@ use crate::conf::*;
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
-    event::{Event, VirtualKeyCode, WindowEvent},
+    event::{Event, VirtualKeyCode},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
