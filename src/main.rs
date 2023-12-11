@@ -44,7 +44,11 @@ struct Args {
 }
 
 fn main() -> Result<(), Error> {
-    simple_logger::init_with_env().unwrap();
+    simple_logger::SimpleLogger::new()
+        .env()
+        .with_module_level("wgpu_core", log::LevelFilter::Off)
+        .init()
+        .unwrap();
     log::info!("Emulation start");
 
     let args = Args::parse();

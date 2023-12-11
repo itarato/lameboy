@@ -92,7 +92,7 @@ impl Video {
                 }
             }
             LcdcMode::M3 => {
-                // Todo: 168 to 291 dots, depending on object count
+                // Todo: 172 to 289 dots, depending on object count
                 let m3_len = 200u64;
                 if self.stat_counter >= m3_len {
                     self.stat_counter -= m3_len;
@@ -102,11 +102,12 @@ impl Video {
                     // Todo: draw for line LY.
 
                     // Mode to 0.
-                    self.lcdc = self.lcdc & 0b1111_1100;
+                    self.set_lcd_stat_ppu_mode(0);
                 }
             }
             LcdcMode::M0 => {
-                let m0_len = 85 + 291 - 168 - self.prev_m3_len;
+                // Todo: 87 to 204 dots (I assume depending on object count, reverse (vs M3))
+                let m0_len = 87 + 289 - self.prev_m3_len;
 
                 if self.stat_counter >= m0_len {
                     self.stat_counter -= m0_len;
@@ -119,10 +120,10 @@ impl Video {
 
                     if self.ly < 144 {
                         // Mode to 2.
-                        self.lcdc = (self.lcdc & 0b1111_1100) | 0b10;
+                        self.set_lcd_stat_ppu_mode(2);
                     } else {
                         // Mode to 1.
-                        self.lcdc = (self.lcdc & 0b1111_1100) | 0b1;
+                        self.set_lcd_stat_ppu_mode(1);
                     }
                 }
             }
@@ -133,7 +134,7 @@ impl Video {
                     self.ly = 0;
 
                     // Mode to 2.
-                    self.lcdc = (self.lcdc & 0b1111_1100) | 0b10;
+                    self.set_lcd_stat_ppu_mode(2);
                 } else {
                     self.ly = 144 + (self.stat_counter / 506) as u8;
                 }
@@ -270,5 +271,11 @@ impl Video {
             0b11 => LcdcMode::M3,
             _ => panic!("Illegal LCDC mode"),
         }
+    }
+
+    fn set_lcd_stat_ppu_mode(&mut self, mode: u8) {
+        assert!(mode <= 0b11);
+        self.stat &= 0b1111_1100;
+        self.stat |= mode;
     }
 }
