@@ -1,7 +1,7 @@
 use crate::conf::*;
 use crate::util::*;
 
-enum LcdcMode {
+enum LcdPpuMode {
     M0,
     M1,
     M2,
@@ -68,7 +68,7 @@ impl Video {
 
     pub fn reset(&mut self) {
         // Set LCD stat mode to 2.
-        self.lcdc = (self.lcdc & 0b1111_1100) | 0b10;
+        self.set_lcd_stat_ppu_mode(2);
         self.ly = 0;
     }
 
@@ -83,15 +83,17 @@ impl Video {
         // Mode 3  _33____33____33____33____33____33__________________3___
         // Mode 0  ___000___000___000___000___000___000________________000
         // Mode 1  ____________________________________11111111111111_____
-        match self.lcdc_mode() {
-            LcdcMode::M2 => {
+        match self.lcd_ppu_mode() {
+            // Searching for OBJs which overlap this line.
+            LcdPpuMode::M2 => {
                 if self.stat_counter >= 80 {
                     self.stat_counter -= 80;
                     // Mode to 3.
-                    self.lcdc = (self.lcdc & 0b1111_1100) | 0b11;
+                    self.set_lcd_stat_ppu_mode(3);
                 }
             }
-            LcdcMode::M3 => {
+            // Sending pixels to the LCD.
+            LcdPpuMode::M3 => {
                 // Todo: 172 to 289 dots, depending on object count
                 let m3_len = 200u64;
                 if self.stat_counter >= m3_len {
@@ -105,7 +107,8 @@ impl Video {
                     self.set_lcd_stat_ppu_mode(0);
                 }
             }
-            LcdcMode::M0 => {
+            // Waiting until the end of the scanline.
+            LcdPpuMode::M0 => {
                 // Todo: 87 to 204 dots (I assume depending on object count, reverse (vs M3))
                 let m0_len = 87 + 289 - self.prev_m3_len;
 
@@ -127,7 +130,8 @@ impl Video {
                     }
                 }
             }
-            LcdcMode::M1 => {
+            // Waiting until the next frame.
+            LcdPpuMode::M1 => {
                 if self.stat_counter >= 4560 {
                     self.stat_counter -= 4560;
 
@@ -263,12 +267,12 @@ impl Video {
         }
     }
 
-    fn lcdc_mode(&self) -> LcdcMode {
+    fn lcd_ppu_mode(&self) -> LcdPpuMode {
         match self.stat & 0b11 {
-            0b00 => LcdcMode::M0,
-            0b01 => LcdcMode::M1,
-            0b10 => LcdcMode::M2,
-            0b11 => LcdcMode::M3,
+            0b00 => LcdPpuMode::M0,
+            0b01 => LcdPpuMode::M1,
+            0b10 => LcdPpuMode::M2,
+            0b11 => LcdPpuMode::M3,
             _ => panic!("Illegal LCDC mode"),
         }
     }
