@@ -26,15 +26,22 @@ use winit_input_helper::WinitInputHelper;
 pub struct Gfx {
     vram: Vram,
     oam_ram: OamVram,
+    wram: Wram,
     pixel_size: usize,
     global_exit_flag: Arc<AtomicBool>,
 }
 
 impl Gfx {
-    pub fn new(vram: Vram, oam_ram: OamVram, global_exit_flag: Arc<AtomicBool>) -> Self {
+    pub fn new(
+        vram: Vram,
+        oam_ram: OamVram,
+        wram: Wram,
+        global_exit_flag: Arc<AtomicBool>,
+    ) -> Self {
         Gfx {
             vram,
             oam_ram,
+            wram,
             pixel_size: 4,
             global_exit_flag,
         }

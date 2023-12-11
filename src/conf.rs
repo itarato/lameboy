@@ -48,12 +48,8 @@ pub const MEM_AREA_EXTERNAL_START: u16 = 0xA000;
 pub const MEM_AREA_EXTERNAL_END: u16 = 0xBFFF;
 
 /// 4 KiB Work RAM (WRAM).
-// pub const MEM_AREA_WRAM_START: u16 = 0xC000;
-pub const MEM_AREA_WRAM_END: u16 = 0xCFFF;
-
-/// 4 KiB Work RAM (WRAM)	In CGB mode, switchable bank 1~7.
-// pub const MEM_AREA_WRAM_CGB_START: u16 = 0xD000;
-pub const MEM_AREA_WRAM_CGB_END: u16 = 0xDFFF;
+pub const MEM_AREA_WRAM_START: u16 = 0xC000;
+pub const MEM_AREA_WRAM_END: u16 = 0xDFFF;
 
 /// Mirror of C000~DDFF (ECHO RAM)	Nintendo says use of this area is prohibited.
 // pub const MEM_AREA_ECHO_START: u16 = 0xE000;
@@ -718,8 +714,10 @@ pub const OPCODE_MCYCLE_PREFIX: [u8; 256] = [
 ];
 
 pub const VRAM_SIZE: usize = (MEM_AREA_OAM_END - MEM_AREA_VRAM_START + 1) as usize;
+pub const WRAM_SIZE: usize = (MEM_AREA_WRAM_END - MEM_AREA_WRAM_START + 1) as usize;
 pub const OAM_RAM_SIZE: usize = (MEM_AREA_OAM_END - MEM_AREA_OAM_START + 1) as usize;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Vram = Arc<Mutex<[u8; VRAM_SIZE]>>;
 pub type OamVram = Arc<Mutex<[u8; OAM_RAM_SIZE]>>;
+pub type Wram = Arc<Mutex<[u8; WRAM_SIZE]>>;

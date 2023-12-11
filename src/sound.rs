@@ -54,6 +54,10 @@ impl Sound {
     pub fn write(&mut self, loc: u16, byte: u8) {
         match loc {
             MEM_LOC_NR11 => self.nr11 = byte,
+            // NR13: Channel 1 period low [write-only].
+            MEM_LOC_NR13 => self.nr13 = byte,
+            // FF14 — NR14: Channel 1 period high & control.
+            MEM_LOC_NR14 => self.nr14 = byte,
             MEM_LOC_NR12 => self.nr12 = byte,
             MEM_LOC_NR50 => self.nr50 = byte,
             MEM_LOC_NR51 => self.nr51 = byte,

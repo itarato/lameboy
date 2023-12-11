@@ -39,11 +39,12 @@ impl VM {
         cartridge: Cartridge,
         vram: Vram,
         oam_ram: OamVram,
+        wram: Wram,
         debugger: Debugger,
     ) -> Result<Self, Error> {
         Ok(VM {
             global_exit_flag,
-            mem: Mem::new(cartridge, vram.clone(), oam_ram.clone())?,
+            mem: Mem::new(cartridge, vram.clone(), oam_ram.clone(), wram.clone())?,
             cpu: Cpu::new(),
             debugger,
             counter: 0,
@@ -3379,9 +3380,7 @@ impl VM {
         } else if loc <= MEM_AREA_EXTERNAL_END {
             unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
         } else if loc <= MEM_AREA_WRAM_END {
-            unimplemented!("Write to MEM_AREA_WRAM is not implemented")
-        } else if loc <= MEM_AREA_WRAM_CGB_END {
-            unimplemented!("Write to MEM_AREA_WRAM_CGB is not implemented")
+            self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_ECHO_END {
             unimplemented!("Write to MEM_AREA_ECHO is not implemented")
         } else if loc <= MEM_AREA_OAM_END {

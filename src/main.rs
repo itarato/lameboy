@@ -65,10 +65,12 @@ fn main() -> Result<(), Error> {
     let cartridge = Cartridge::new(args.cartridge)?;
     let vram = Arc::new(Mutex::new([0; VRAM_SIZE]));
     let oam_ram = Arc::new(Mutex::new([0; OAM_RAM_SIZE]));
+    let wram = Arc::new(Mutex::new([0; WRAM_SIZE]));
     let global_exit_flag = Arc::new(AtomicBool::new(false));
 
     let vm_vram = vram.clone();
     let vm_oam_ram = oam_ram.clone();
+    let vm_wram = wram.clone();
     let vm_global_exit_flag = global_exit_flag.clone();
     let vm_thread = spawn(move || {
         if let Ok(mut vm) = VM::new(
@@ -76,6 +78,7 @@ fn main() -> Result<(), Error> {
             cartridge,
             vm_vram,
             vm_oam_ram,
+            vm_wram,
             debugger,
         ) {
             if let Err(err) = vm.setup() {
@@ -94,7 +97,12 @@ fn main() -> Result<(), Error> {
         vm_global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
     });
 
-    let gfx = Gfx::new(vram.clone(), oam_ram.clone(), global_exit_flag.clone());
+    let gfx = Gfx::new(
+        vram.clone(),
+        oam_ram.clone(),
+        wram.clone(),
+        global_exit_flag.clone(),
+    );
     gfx.run();
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
