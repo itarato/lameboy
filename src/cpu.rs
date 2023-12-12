@@ -65,6 +65,18 @@ macro_rules! make_fn_set_flag {
     };
 }
 
+#[derive(Clone, Copy)]
+pub enum Reg {
+    A,
+    F,
+    B,
+    C,
+    D,
+    E,
+    H,
+    L,
+}
+
 pub struct Cpu {
     pub af: u16,
     pub bc: u16,
@@ -204,5 +216,47 @@ impl Cpu {
         }
 
         self.af |= mask;
+    }
+
+    pub fn shift_left_instrucrtion(&mut self, reg: Reg) {
+        let is_carry = is_carry_rot_left_u8(self.get_reg(reg), 1);
+        let byte = (self.get_reg(reg) << 1) | self.get_fc();
+
+        self.set_reg(reg, byte);
+        self.set_flags(byte == 0, false, false, is_carry);
+    }
+
+    pub fn shift_right_instruction(&mut self, reg: Reg) {
+        let is_carry = is_carry_rot_right_u8(self.get_reg(reg), 1);
+        let byte = (self.get_reg(reg) >> 1) | (self.get_fc() << 7);
+
+        self.set_reg(reg, byte);
+        self.set_flags(byte == 0, false, false, is_carry);
+    }
+
+    fn get_reg(&self, reg: Reg) -> u8 {
+        match reg {
+            Reg::A => self.get_a(),
+            Reg::F => self.get_f(),
+            Reg::B => self.get_b(),
+            Reg::C => self.get_c(),
+            Reg::D => self.get_d(),
+            Reg::E => self.get_e(),
+            Reg::H => self.get_h(),
+            Reg::L => self.get_l(),
+        }
+    }
+
+    fn set_reg(&mut self, reg: Reg, value: u8) {
+        match reg {
+            Reg::A => self.set_a(value),
+            Reg::F => unimplemented!("Cannot set register F directly"),
+            Reg::B => self.set_b(value),
+            Reg::C => self.set_c(value),
+            Reg::D => self.set_d(value),
+            Reg::E => self.set_e(value),
+            Reg::H => self.set_h(value),
+            Reg::L => self.set_l(value),
+        }
     }
 }

@@ -36,7 +36,7 @@ pub struct Video {
     stat: u8,
     scy: u8,
     scx: u8,
-    ly: u8,
+    pub ly: u8,
     lyc: u8,
     dma: u8,
     bgp: u8,
@@ -67,10 +67,9 @@ impl Video {
     }
 
     pub fn reset(&mut self) {
-        // Bit-6: LYC int select (Read/Write): If set, selects the LYC == LY condition for the STAT interrupt.
-        // Bit-4: Mode 1 int select (Read/Write): If set, selects the Mode 1 condition for the STAT interrupt.
+        // Bit-7: Should be unused, not sure why BGB has it set.
         // Bit-2: LYC == LY (Read-only): Set when LY contains the same value as LYC; it is constantly updated.
-        self.stat = 0b0101_0100;
+        self.stat = 0b1000_0100;
 
         self.ly = 0;
     }
@@ -160,6 +159,11 @@ impl Video {
 
         // Update LY
         // Update LYC
+        if self.ly == self.lyc {
+            self.stat |= 0b0100;
+        } else {
+            self.stat &= !0b0100;
+        }
         // Handle draw stages/modes
 
         should_call_vblank_interrupt
@@ -192,7 +196,11 @@ impl Video {
 
         match loc {
             MEM_LOC_LCDC => self.lcdc = byte,
-            MEM_LOC_STAT => self.stat = byte,
+            MEM_LOC_STAT => {
+                self.stat = byte;
+                // These 3 bytes are the stat interrupt enable bytes. We do not handle them on PPU  mode change.
+                assert!((byte & 0b0011_1000) == 0);
+            }
             MEM_LOC_SCY => self.scy = byte,
             MEM_LOC_SCX => self.scx = byte,
             MEM_LOC_LY => self.ly = byte,

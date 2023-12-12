@@ -1,7 +1,11 @@
+use log::{info, warn};
+
 pub enum DebugCmd {
     Quit,
     Next(usize),
     Continue,
+    AddBreakpoint(usize),
+    EnableStepByStep,
     Print,
 }
 
@@ -26,7 +30,14 @@ impl DebugCmd {
             Some(DebugCmd::Print)
         } else if raw == "c" {
             Some(DebugCmd::Continue)
+        } else if parts.len() == 2 && parts[0] == "b" {
+            usize::from_str_radix(parts[1], 16)
+                .ok()
+                .map(|pc| DebugCmd::AddBreakpoint(pc))
+        } else if raw == "s" {
+            Some(DebugCmd::EnableStepByStep)
         } else {
+            warn!("Invalid debug command: {}", raw);
             None
         }
     }
@@ -49,7 +60,7 @@ impl Debugger {
         }
     }
 
-    pub fn clear_steps(&mut self) {
+    pub fn clear_steps_and_continue(&mut self) {
         self.auto_step_count = 0;
         self.step_by_step = false;
     }
@@ -67,6 +78,7 @@ impl Debugger {
     }
 
     pub fn add_breakpoints(&mut self, mut breakpoints: Vec<u16>) {
+        info!("Breakpoints has been added: {:?}", breakpoints);
         self.pc_breakpoints.append(&mut breakpoints);
     }
 

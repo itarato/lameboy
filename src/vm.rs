@@ -92,8 +92,14 @@ impl VM {
                         }
                         Some(DebugCmd::Print) => self.print_debug_panel(),
                         Some(DebugCmd::Continue) => {
-                            self.debugger.clear_steps();
+                            self.debugger.clear_steps_and_continue();
                             break;
+                        }
+                        Some(DebugCmd::AddBreakpoint(pc_breakpoint)) => {
+                            self.debugger.add_breakpoints(vec![pc_breakpoint as u16]);
+                        }
+                        Some(DebugCmd::EnableStepByStep) => {
+                            self.debugger.set_step_by_step();
                         }
                         None => (),
                     };
@@ -130,6 +136,10 @@ impl VM {
     fn reset(&mut self) -> Result<(), Error> {
         self.mem.reset()?;
         self.video.reset();
+
+        // Byte 7/6/5: Unused.
+        // Byte 0: VBlank interrupt.
+        self.interrupt_flag = 0xE1;
 
         log::info!("VM reset");
 
@@ -1561,51 +1571,27 @@ impl VM {
                     }
                     0x10 => {
                         // RL B 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_b(), 1);
-                        let byte = self.cpu.get_b().rotate_left(1);
-
-                        self.cpu.set_b(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::B);
                     }
                     0x11 => {
                         // RL C 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_c(), 1);
-                        let byte = self.cpu.get_c().rotate_left(1);
-
-                        self.cpu.set_c(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::C);
                     }
                     0x12 => {
                         // RL D 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_d(), 1);
-                        let byte = self.cpu.get_d().rotate_left(1);
-
-                        self.cpu.set_d(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::D);
                     }
                     0x13 => {
                         // RL E 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_e(), 1);
-                        let byte = self.cpu.get_e().rotate_left(1);
-
-                        self.cpu.set_e(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::E);
                     }
                     0x14 => {
                         // RL H 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_h(), 1);
-                        let byte = self.cpu.get_h().rotate_left(1);
-
-                        self.cpu.set_h(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::H);
                     }
                     0x15 => {
                         // RL L 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_l(), 1);
-                        let byte = self.cpu.get_l().rotate_left(1);
-
-                        self.cpu.set_l(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::L);
                     }
                     0x16 => {
                         // RL (HL) 2 16 | Z 0 0 C
@@ -1618,59 +1604,31 @@ impl VM {
                     }
                     0x17 => {
                         // RL A 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
-                        let byte = self.cpu.get_a().rotate_left(1);
-
-                        self.cpu.set_a(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_left_instrucrtion(Reg::A);
                     }
                     0x18 => {
                         // RR B 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_b(), 1);
-                        let byte = self.cpu.get_b().rotate_right(1);
-
-                        self.cpu.set_b(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::B);
                     }
                     0x19 => {
                         // RR C 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_c(), 1);
-                        let byte = self.cpu.get_c().rotate_right(1);
-
-                        self.cpu.set_c(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::C);
                     }
                     0x1A => {
                         // RR D 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_d(), 1);
-                        let byte = self.cpu.get_d().rotate_right(1);
-
-                        self.cpu.set_d(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::D);
                     }
                     0x1B => {
                         // RR E 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_e(), 1);
-                        let byte = self.cpu.get_e().rotate_right(1);
-
-                        self.cpu.set_e(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::E);
                     }
                     0x1C => {
                         // RR H 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_h(), 1);
-                        let byte = self.cpu.get_h().rotate_right(1);
-
-                        self.cpu.set_h(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::H);
                     }
                     0x1D => {
                         // RR L 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_l(), 1);
-                        let byte = self.cpu.get_l().rotate_right(1);
-
-                        self.cpu.set_l(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::L);
                     }
                     0x1E => {
                         // RR (HL) 2 16 | Z 0 0 C
@@ -1683,11 +1641,7 @@ impl VM {
                     }
                     0x1F => {
                         // RR A 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
-                        let byte = self.cpu.get_a().rotate_right(1);
-
-                        self.cpu.set_a(byte);
-                        self.cpu.set_flags(byte == 0, false, false, is_carry);
+                        self.cpu.shift_right_instruction(Reg::A);
                     }
                     0x20 => {
                         // SLA B 2 8 | Z 0 0 C
@@ -3373,10 +3327,15 @@ impl VM {
             self.cpu.get_c(),
             self.video.read(MEM_LOC_STAT).unwrap()
         );
-        println!("| D {:02X} {:02X} E", self.cpu.get_d(), self.cpu.get_e());
+        println!(
+            "| D {:02X} {:02X} E |                 | {:02X}",
+            self.cpu.get_d(),
+            self.cpu.get_e(),
+            self.video.ly
+        );
         println!("| H {:02X} {:02X} L", self.cpu.get_h(), self.cpu.get_l());
-        println!("| SP: {:06X}", self.cpu.sp);
-        println!("| PC: {:06X}", self.cpu.pc);
+        println!("| SP: {:04X}", self.cpu.sp);
+        println!("| PC: {:04X}", self.cpu.pc);
         println!(
             "| IME: {} | IE: {:02X} | IF: {:02X}",
             self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
