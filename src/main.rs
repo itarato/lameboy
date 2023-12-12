@@ -4,6 +4,7 @@ mod cpu;
 mod debugger;
 mod gfx;
 mod mem;
+mod serial;
 mod sound;
 mod timer;
 mod util;

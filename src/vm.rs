@@ -11,6 +11,7 @@ use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
 use crate::mem::*;
+use crate::serial::Serial;
 use crate::sound::*;
 use crate::timer::*;
 use crate::util::*;
@@ -25,12 +26,16 @@ pub struct VM {
     global_exit_flag: Arc<AtomicBool>,
     mem: Mem,
     cpu: Cpu,
+    serial: Serial,
     debugger: Debugger,
     counter: u64,
     state: State,
     timer: Timer,
     sound: Sound,
     video: Video,
+    interrupt_master_enable_flag: bool,
+    interrupt_enable: u8,
+    interrupt_flag: u8,
 }
 
 impl VM {
@@ -46,12 +51,16 @@ impl VM {
             global_exit_flag,
             mem: Mem::new(cartridge, vram.clone(), oam_ram.clone(), wram.clone())?,
             cpu: Cpu::new(),
+            serial: Serial::new(),
             debugger,
             counter: 0,
             state: State::Running,
             timer: Timer::new(),
             sound: Sound::new(),
             video: Video::new(),
+            interrupt_master_enable_flag: false,
+            interrupt_enable: 0,
+            interrupt_flag: 0,
         })
     }
 
@@ -101,7 +110,10 @@ impl VM {
 
                 self.timer.handle_ticks(old_tac)?;
 
-                self.video.update(diff_mcycle);
+                let should_call_vblank_interrupt = self.video.update(diff_mcycle);
+                if should_call_vblank_interrupt {
+                    self.set_interrupt_flag(self.interrupt_flag | 0b1);
+                }
 
                 self.counter += 1;
             }
@@ -3093,7 +3105,7 @@ impl VM {
                 // RETI 1 16 | - - - -
                 let addr = self.pop_u16()?;
                 self.cpu.pc = addr;
-                self.mem_write(MEM_LOC_IE, 1)?;
+                self.interrupt_master_enable_flag = true;
             }
             0xDA => {
                 // JP C,a16 3 16/12 | - - - -
@@ -3217,7 +3229,7 @@ impl VM {
             }
             0xF3 => {
                 // DI 1 4 | - - - -
-                self.mem_write(MEM_LOC_IE, 0)?;
+                self.interrupt_master_enable_flag = false;
             }
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
@@ -3262,7 +3274,7 @@ impl VM {
             }
             0xFB => {
                 // EI 1 4 | - - - -
-                self.mem_write(MEM_LOC_IE, 1)?;
+                self.interrupt_master_enable_flag = true;
             }
             0xFC => panic!("Opcode 0xFC is invalid"),
             0xFD => panic!("Opcode 0xFD is invalid"),
@@ -3390,13 +3402,13 @@ impl VM {
         } else if loc <= MEM_AREA_IO_END {
             match loc {
                 MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
-                MEM_LOC_SB => unimplemented!("Write to register SB is not implemented"),
-                MEM_LOC_SC => unimplemented!("Write to register SC is not implemented"),
+                MEM_LOC_SB => self.serial.set_sb(byte),
+                MEM_LOC_SC => self.serial.set_sc(byte),
                 MEM_LOC_DIV => self.timer.div = 0,
                 MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
                 MEM_LOC_TAC => self.timer.tac = byte,
-                MEM_LOC_IF => unimplemented!("Write to register IF is not implemented"),
+                MEM_LOC_IF => self.set_interrupt_flag(byte),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
                 MEM_LOC_LCDC..=MEM_LOC_WX => self.video.write(loc, byte),
                 MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
@@ -3427,7 +3439,7 @@ impl VM {
         } else if loc <= MEM_AREA_HRAM_END {
             self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_IE_END {
-            unimplemented!("Write to MEM_AREA_IE is not implemented")
+            self.set_interrupt_enable(byte);
         } else {
             return Err("Write outside of memory".into());
         }
@@ -3491,5 +3503,54 @@ impl VM {
         let lo = self.mem_read(loc)?;
         let hi = self.mem_read(loc + 1)?;
         Ok(((hi as u16) << 8) | lo as u16)
+    }
+
+    fn set_interrupt_enable(&mut self, value: u8) {
+        assert!((0b1110_0000 & value) == 0);
+        self.interrupt_enable = value;
+    }
+
+    fn is_vblank_interrupt_enabled(&self) -> bool {
+        (self.interrupt_enable & 0b1) > 0
+    }
+
+    fn is_lcd_interrupt_enabled(&self) -> bool {
+        (self.interrupt_enable & 0b10) > 0
+    }
+
+    fn is_timer_interrupt_enabled(&self) -> bool {
+        (self.interrupt_enable & 0b100) > 0
+    }
+
+    fn is_serial_interrupt_enabled(&self) -> bool {
+        (self.interrupt_enable & 0b1000) > 0
+    }
+
+    fn is_joypad_interrupt_enabled(&self) -> bool {
+        (self.interrupt_enable & 0b1_0000) > 0
+    }
+
+    fn set_interrupt_flag(&mut self, new_value: u8) {
+        if self.interrupt_master_enable_flag {
+            let diff = !self.interrupt_flag & new_value;
+
+            if (diff & 0b1) > 0 && self.is_vblank_interrupt_enabled() {
+                unimplemented!("VBlank interrupt not implemented")
+            }
+            if (diff & 0b10) > 0 && self.is_lcd_interrupt_enabled() {
+                unimplemented!("LCD interrupt not implemented")
+            }
+            if (diff & 0b100) > 0 && self.is_timer_interrupt_enabled() {
+                unimplemented!("Timer interrupt not implemented")
+            }
+            if (diff & 0b1000) > 0 && self.is_serial_interrupt_enabled() {
+                unimplemented!("Serial interrupt not implemented")
+            }
+            if (diff & 0b1_0000) > 0 && self.is_joypad_interrupt_enabled() {
+                unimplemented!("Joypad interrupt not implemented")
+            }
+        }
+
+        self.interrupt_flag = new_value;
     }
 }

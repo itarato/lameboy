@@ -72,9 +72,14 @@ impl Video {
         self.ly = 0;
     }
 
-    pub fn update(&mut self, spent_mcycle: u64) {
+    /**
+     * Return: whether vblank interrupt should be called.
+     */
+    #[must_use]
+    pub fn update(&mut self, spent_mcycle: u64) -> bool {
+        let mut should_call_vblank_interrupt = false;
         if !self.is_lcd_display_enabled() {
-            return;
+            return should_call_vblank_interrupt;
         }
 
         self.stat_counter += spent_mcycle;
@@ -127,6 +132,7 @@ impl Video {
                     } else {
                         // Mode to 1.
                         self.set_lcd_stat_ppu_mode(1);
+                        should_call_vblank_interrupt = true;
                     }
                 }
             }
@@ -148,6 +154,8 @@ impl Video {
         // Update LY
         // Update LYC
         // Handle draw stages/modes
+
+        should_call_vblank_interrupt
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
