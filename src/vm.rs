@@ -3339,9 +3339,7 @@ impl VM {
 
             print!(
                 "{:>8} | NXT {:#04X} | {} > ",
-                self.counter,
-                self.cpu.pc + 1,
-                OPCODE_CB_NAME[next_prefix_op as usize]
+                self.counter, self.cpu.pc, OPCODE_CB_NAME[next_prefix_op as usize]
             );
         } else {
             print!(
@@ -3360,18 +3358,29 @@ impl VM {
     fn print_debug_panel(&self) {
         println!("+---");
         println!(
-            "| A {:02X} {:02X} F | Z:{} N:{} H:{} C:{}",
+            "| A {:02X} {:02X} F | Z:{} N:{} H:{} C:{} | LCDC: {:02X}",
             self.cpu.get_a(),
             self.cpu.get_f(),
             self.cpu.get_fz(),
             self.cpu.get_fn(),
             self.cpu.get_fh(),
-            self.cpu.get_fc()
+            self.cpu.get_fc(),
+            self.video.read(MEM_LOC_LCDC).unwrap(),
         );
-        println!("| B {:02X} {:02X} C", self.cpu.get_b(), self.cpu.get_c());
+        println!(
+            "| B {:02X} {:02X} C |                 | STAT: {:02X}",
+            self.cpu.get_b(),
+            self.cpu.get_c(),
+            self.video.read(MEM_LOC_STAT).unwrap()
+        );
         println!("| D {:02X} {:02X} E", self.cpu.get_d(), self.cpu.get_e());
         println!("| H {:02X} {:02X} L", self.cpu.get_h(), self.cpu.get_l());
-        println!("| SP: {:#06X} PC: {:#06X}", self.cpu.sp, self.cpu.pc);
+        println!("| SP: {:06X}", self.cpu.sp);
+        println!("| PC: {:06X}", self.cpu.pc);
+        println!(
+            "| IME: {} | IE: {:02X} | IF: {:02X}",
+            self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
+        );
         println!("+---");
     }
 

@@ -67,14 +67,21 @@ impl Video {
     }
 
     pub fn reset(&mut self) {
-        // Set LCD stat mode to 2.
-        self.set_lcd_stat_ppu_mode(2);
+        // Bit-6: LYC int select (Read/Write): If set, selects the LYC == LY condition for the STAT interrupt.
+        // Bit-4: Mode 1 int select (Read/Write): If set, selects the Mode 1 condition for the STAT interrupt.
+        // Bit-2: LYC == LY (Read-only): Set when LY contains the same value as LYC; it is constantly updated.
+        self.stat = 0b0101_0100;
+
         self.ly = 0;
     }
 
     /**
      * Return: whether vblank interrupt should be called.
      */
+    // TODO: Use stat interrupt:
+    //       - leverage https://gbdev.io/pandocs/Interrupt_Sources.html#int-48--stat-interrupt
+    //       - use is_stat_mode_0_interrupt_selected ...
+    //       - make return a list of instructions
     #[must_use]
     pub fn update(&mut self, spent_mcycle: u64) -> bool {
         let mut should_call_vblank_interrupt = false;
@@ -289,5 +296,17 @@ impl Video {
         assert!(mode <= 0b11);
         self.stat &= 0b1111_1100;
         self.stat |= mode;
+    }
+
+    fn is_stat_mode_0_interrupt_selected(&self) -> bool {
+        (self.stat & 0b1000) > 0
+    }
+
+    fn is_stat_mode_1_interrupt_selected(&self) -> bool {
+        (self.stat & 0b1_0000) > 0
+    }
+
+    fn is_stat_mode_2_interrupt_selected(&self) -> bool {
+        (self.stat & 0b10_0000) > 0
     }
 }
