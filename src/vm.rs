@@ -209,7 +209,7 @@ impl VM {
                 let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
                 let new_a = self.cpu.get_a().rotate_left(1);
                 self.cpu.set_a(new_a);
-                self.cpu.set_fz(false);
+                // Not set flag-zero.
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
@@ -269,7 +269,7 @@ impl VM {
                 let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
                 let new_a = self.cpu.get_a().rotate_right(1);
                 self.cpu.set_a(new_a);
-                self.cpu.set_fz(false);
+                // Not setting flag-zero.
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
@@ -320,13 +320,12 @@ impl VM {
             }
             0x17 => {
                 // RLA 1 4 | 0 0 0 C
-                let old_carry = self.cpu.get_fc();
                 let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
-                let new_a = self.cpu.get_a().rotate_left(1) | old_carry;
+                let new_a = (self.cpu.get_a() << 1) | self.cpu.get_fc();
 
                 self.cpu.set_a(new_a);
 
-                self.cpu.set_fz(false);
+                // No reset for flag-zero.
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
@@ -383,13 +382,12 @@ impl VM {
             }
             0x1F => {
                 // RRA 1 4 | 0 0 0 C
-                let old_carry = self.cpu.get_fc();
                 let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
-                let new_a = self.cpu.get_a().rotate_right(1) | (old_carry << 7);
+                let new_a = (self.cpu.get_a() >> 1) | (self.cpu.get_fc() << 7);
 
                 self.cpu.set_a(new_a);
 
-                self.cpu.set_fz(false);
+                // Not setting flag-zero.
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
