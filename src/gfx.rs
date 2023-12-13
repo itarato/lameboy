@@ -24,26 +24,35 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-pub struct Gfx {
+struct Drawer {
     vram: Vram,
     oam_ram: OamVram,
     wram: Wram,
+}
+
+impl Drawer {
+    fn new(vram: Vram, oam_ram: OamVram, wram: Wram) -> Drawer {
+        Drawer {
+            vram,
+            oam_ram,
+            wram,
+        }
+    }
+
+    fn draw_debug_tiles(&self, frame: &mut [u8]) {
+        for x in 0..16 {
+            for y in 0..24 {}
+        }
+    }
+}
+
+pub struct Gfx {
     global_exit_flag: Arc<AtomicBool>,
 }
 
 impl Gfx {
-    pub fn new(
-        vram: Vram,
-        oam_ram: OamVram,
-        wram: Wram,
-        global_exit_flag: Arc<AtomicBool>,
-    ) -> Self {
-        Gfx {
-            vram,
-            oam_ram,
-            wram,
-            global_exit_flag,
-        }
+    pub fn new(global_exit_flag: Arc<AtomicBool>) -> Self {
+        Gfx { global_exit_flag }
     }
 
     fn display_width(&self) -> u32 {
@@ -71,8 +80,11 @@ impl Gfx {
         (window, pixels)
     }
 
+    // 8x8 tiles
+    // 16 tiles wide
+    // 24 tiles tall
     fn make_tile_debug_window(&self, event_loop: &EventLoop<()>) -> (Window, Pixels) {
-        let size = LogicalSize::new(self.display_width() as f64, self.display_height() as f64);
+        let size = LogicalSize::new((8 * 16) as f64, (8 * 24) as f64);
         let window = WindowBuilder::new()
             .with_title("Tile debug")
             .with_inner_size(size)
@@ -88,7 +100,9 @@ impl Gfx {
         (window, pixels)
     }
 
-    pub fn run(&self) {
+    pub fn run(&self, vram: Vram, oam_ram: OamVram, wram: Wram) {
+        let drawer = Drawer::new(vram, oam_ram, wram);
+
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
         let (window, mut pixels) = self.make_main_window(&event_loop);
@@ -106,6 +120,7 @@ impl Gfx {
                     return;
                 }
 
+                drawer.draw_debug_tiles(pixels_for_tile_debug_window.frame_mut());
                 if let Err(err) = pixels_for_tile_debug_window.render() {
                     global_exit_flag.store(false, Ordering::Release);
                     *control_flow = ControlFlow::Exit;

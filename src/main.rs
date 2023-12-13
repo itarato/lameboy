@@ -98,13 +98,8 @@ fn main() -> Result<(), Error> {
         vm_global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
     });
 
-    let gfx = Gfx::new(
-        vram.clone(),
-        oam_ram.clone(),
-        wram.clone(),
-        global_exit_flag.clone(),
-    );
-    gfx.run();
+    let gfx = Gfx::new(global_exit_flag.clone());
+    gfx.run(vram.clone(), oam_ram.clone(), wram.clone());
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
 
