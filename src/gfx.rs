@@ -68,7 +68,17 @@ impl Gfx {
                 .unwrap()
         };
 
-        let pixels = {
+        let tile_debug_window = {
+            let size = LogicalSize::new(self.display_width() as f64, self.display_height() as f64);
+            WindowBuilder::new()
+                .with_title("Tile debug")
+                .with_inner_size(size)
+                .with_min_inner_size(size)
+                .build(&event_loop)
+                .unwrap()
+        };
+
+        let mut pixels = {
             let window_size = window.inner_size();
             let surface_texture =
                 SurfaceTexture::new(window_size.width, window_size.height, &window);
@@ -85,6 +95,11 @@ impl Gfx {
         event_loop.run(move |event, _, control_flow| {
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
+                pixels.frame_mut()[1000] = 0xff;
+                pixels.frame_mut()[1001] = 0xff;
+                pixels.frame_mut()[1002] = 0xff;
+                pixels.frame_mut()[1003] = 0xff;
+
                 if let Err(err) = pixels.render() {
                     global_exit_flag.store(false, Ordering::Release);
                     *control_flow = ControlFlow::Exit;
@@ -106,6 +121,7 @@ impl Gfx {
 
                 // Update internal state and request a redraw
                 window.request_redraw();
+                tile_debug_window.request_redraw();
             }
 
             if global_exit_flag.load(Ordering::Acquire) {
