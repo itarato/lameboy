@@ -1595,7 +1595,7 @@ impl VM {
                         // RL (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
                         let is_carry = is_carry_rot_left_u8(byte, 1);
-                        let new_byte = byte.rotate_left(1);
+                        let new_byte = (byte << 1) | self.cpu.get_fc();
 
                         self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
@@ -1632,7 +1632,7 @@ impl VM {
                         // RR (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
                         let is_carry = is_carry_rot_right_u8(byte, 1);
-                        let new_byte = byte.rotate_right(1);
+                        let new_byte = (byte >> 1) | (self.cpu.get_fc() << 7);
 
                         self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
@@ -1708,59 +1708,75 @@ impl VM {
                     }
                     0x28 => {
                         // SRA B 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_b());
+                        let old_byte = self.cpu.get_b();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_b(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x29 => {
                         // SRA C 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_c());
+                        let old_byte = self.cpu.get_c();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_c(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x2A => {
                         // SRA D 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_d());
+                        let old_byte = self.cpu.get_d();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_d(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x2B => {
                         // SRA E 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_e());
+                        let old_byte = self.cpu.get_e();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_e(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x2C => {
                         // SRA H 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_h());
+                        let old_byte = self.cpu.get_h();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_h(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x2D => {
                         // SRA L 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_l());
+                        let old_byte = self.cpu.get_l();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_l(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x2E => {
                         // SRA (HL) 2 16 | Z 0 0 0
-                        let byte = shift_left_a(self.read_hl()?);
+                        let old_byte = self.read_hl()?;
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.write_hl(byte)?;
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x2F => {
                         // SRA A 2 8 | Z 0 0 0
-                        let byte = shift_right_a(self.cpu.get_a());
+                        let old_byte = self.cpu.get_a();
+                        let is_carry = is_bit(old_byte, 0);
+                        let byte = shift_right_arithmetic_u8(old_byte);
 
                         self.cpu.set_a(byte);
-                        self.cpu.set_flags(byte == 0, false, false, false);
+                        self.cpu.set_flags(byte == 0, false, false, is_carry);
                     }
                     0x30 => {
                         // SWAP B 2 8 | Z 0 0 0
@@ -1814,7 +1830,7 @@ impl VM {
                     0x38 => {
                         // SRL B 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_b(), 1);
-                        let byte = shift_right_l(self.cpu.get_b());
+                        let byte = shift_right_logical(self.cpu.get_b());
 
                         self.cpu.set_b(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);
@@ -1822,7 +1838,7 @@ impl VM {
                     0x39 => {
                         // SRL C 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_c(), 1);
-                        let byte = shift_right_l(self.cpu.get_c());
+                        let byte = shift_right_logical(self.cpu.get_c());
 
                         self.cpu.set_c(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);
@@ -1830,7 +1846,7 @@ impl VM {
                     0x3A => {
                         // SRL D 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_d(), 1);
-                        let byte = shift_right_l(self.cpu.get_d());
+                        let byte = shift_right_logical(self.cpu.get_d());
 
                         self.cpu.set_d(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);
@@ -1838,7 +1854,7 @@ impl VM {
                     0x3B => {
                         // SRL E 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_e(), 1);
-                        let byte = shift_right_l(self.cpu.get_e());
+                        let byte = shift_right_logical(self.cpu.get_e());
 
                         self.cpu.set_e(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);
@@ -1846,7 +1862,7 @@ impl VM {
                     0x3C => {
                         // SRL H 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_h(), 1);
-                        let byte = shift_right_l(self.cpu.get_h());
+                        let byte = shift_right_logical(self.cpu.get_h());
 
                         self.cpu.set_h(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);
@@ -1854,7 +1870,7 @@ impl VM {
                     0x3D => {
                         // SRL L 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_l(), 1);
-                        let byte = shift_right_l(self.cpu.get_l());
+                        let byte = shift_right_logical(self.cpu.get_l());
 
                         self.cpu.set_l(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);
@@ -1863,7 +1879,7 @@ impl VM {
                         // SRL (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
                         let is_carry = is_carry_shift_right_u8(byte, 1);
-                        let new_byte = shift_right_l(byte);
+                        let new_byte = shift_right_logical(byte);
 
                         self.write_hl(new_byte)?;
                         self.cpu.set_flags(new_byte == 0, false, false, is_carry);
@@ -1871,7 +1887,7 @@ impl VM {
                     0x3F => {
                         // SRL A 2 8 | Z 0 0 C
                         let is_carry = is_carry_shift_right_u8(self.cpu.get_a(), 1);
-                        let byte = shift_right_l(self.cpu.get_a());
+                        let byte = shift_right_logical(self.cpu.get_a());
 
                         self.cpu.set_a(byte);
                         self.cpu.set_flags(byte == 0, false, false, is_carry);

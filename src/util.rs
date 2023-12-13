@@ -50,11 +50,7 @@ pub fn shift_left_a(byte: u8) -> u8 {
     (byte as i8).wrapping_shl(1) as u8
 }
 
-pub fn shift_right_a(byte: u8) -> u8 {
-    (byte as i8).wrapping_shr(1) as u8
-}
-
-pub fn shift_right_l(byte: u8) -> u8 {
+pub fn shift_right_logical(byte: u8) -> u8 {
     byte >> 1
 }
 
@@ -66,12 +62,20 @@ pub fn wrapping_add_u16_i8(lhs: u16, rhs: i8) -> u16 {
     }
 }
 
+pub fn shift_right_arithmetic_u8(byte: u8) -> u8 {
+    (byte >> 1) | (byte & 0b1000_0000)
+}
+
 pub fn swap(byte: u8) -> u8 {
     (byte << 4) | (byte >> 4)
 }
 
+pub fn bit(byte: u8, n: u8) -> u8 {
+    (byte >> n) & 0b1
+}
+
 pub fn is_bit(byte: u8, n: u8) -> bool {
-    ((byte >> n) & 0b1) > 0
+    bit(byte, n) > 0
 }
 
 pub fn set_bit(mut byte: u8, n: u8, is_on: bool) -> u8 {
