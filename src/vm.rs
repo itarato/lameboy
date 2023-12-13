@@ -3326,7 +3326,7 @@ impl VM {
     fn print_debug_panel(&self) {
         println!("+---");
         println!(
-            "| A {:02X} {:02X} F | Z:{} N:{} H:{} C:{} | LCDC: {:02X}",
+            "| \x1B[93qmA\x1B[0m {:02X} {:02X} \x1B[93mF\x1B[0m | Z{} N{} H{} C{} | LCDC {:02X}",
             self.cpu.get_a(),
             self.cpu.get_f(),
             self.cpu.get_fz(),
@@ -3336,22 +3336,22 @@ impl VM {
             self.video.read(MEM_LOC_LCDC).unwrap(),
         );
         println!(
-            "| B {:02X} {:02X} C |                 | STAT: {:02X}",
+            "| B {:02X} {:02X} C |                 | STAT {:02X}",
             self.cpu.get_b(),
             self.cpu.get_c(),
             self.video.read(MEM_LOC_STAT).unwrap()
         );
         println!(
-            "| D {:02X} {:02X} E |                 | {:02X}",
+            "| D {:02X} {:02X} E |                 | LY {:02X}",
             self.cpu.get_d(),
             self.cpu.get_e(),
             self.video.ly
         );
         println!("| H {:02X} {:02X} L", self.cpu.get_h(), self.cpu.get_l());
-        println!("| SP: {:04X}", self.cpu.sp);
-        println!("| PC: {:04X}", self.cpu.pc);
+        println!("| SP {:04X}", self.cpu.sp);
+        println!("| PC {:04X}", self.cpu.pc);
         println!(
-            "| IME: {} | IE: {:02X} | IF: {:02X}",
+            "| IME {} | IE {:02X} | IF {:02X}",
             self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
         );
         println!("+---");
