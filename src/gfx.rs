@@ -40,8 +40,36 @@ impl Drawer {
     }
 
     fn draw_debug_tiles(&self, frame: &mut [u8]) {
-        for x in 0..16 {
-            for y in 0..24 {}
+        let vram = self.vram.lock().expect("Cannot lock vram for debug print");
+
+        for y in 0..24 {
+            for x in 0..16 {
+                let tile_number = (y * 16) + x;
+                let vram_pos = tile_number * 16; // 8x8 pixel with 2bpp = 16 bytes
+                let frame_pos = tile_number * 8 * 8 * 4; // Assuming frame is 4-attr color (RGBA) * 8x8 sprite size
+                for sprite_y in 0..8 {
+                    let byte1 = vram[vram_pos + sprite_y * 2];
+                    let byte2 = vram[vram_pos + sprite_y * 2 + 1];
+                    for sprite_x in 0..8 {
+                        let gb_pixel_color =
+                            (((byte2 >> sprite_x) & 0b1) << 1) | ((byte1 >> sprite_x) & 0b1);
+
+                        let pixel_color = match gb_pixel_color {
+                            0b00 => [0x10, 0x40, 0x20, 0xff],
+                            0b01 => [0x10, 0x80, 0x40, 0xff],
+                            0b10 => [0x10, 0xa0, 0x50, 0xff],
+                            0b11 => [0x10, 0xf0, 0x80, 0xff],
+                            _ => unimplemented!("Unknown gb pixel color"),
+                        };
+
+                        let frame_pos_pixel_offset = ((sprite_y * 8) + sprite_x) * 4;
+                        frame[frame_pos + frame_pos_pixel_offset + 0] = pixel_color[0];
+                        frame[frame_pos + frame_pos_pixel_offset + 1] = pixel_color[1];
+                        frame[frame_pos + frame_pos_pixel_offset + 2] = pixel_color[2];
+                        frame[frame_pos + frame_pos_pixel_offset + 3] = pixel_color[3];
+                    }
+                }
+            }
         }
     }
 }
@@ -55,16 +83,8 @@ impl Gfx {
         Gfx { global_exit_flag }
     }
 
-    fn display_width(&self) -> u32 {
-        DISPLAY_WIDTH
-    }
-
-    fn display_height(&self) -> u32 {
-        DISPLAY_HEIGHT
-    }
-
     fn make_main_window(&self, event_loop: &EventLoop<()>) -> (Window, Pixels) {
-        let size = LogicalSize::new(self.display_width() as f64, self.display_height() as f64);
+        let size = LogicalSize::new(DISPLAY_WIDTH as f64, DISPLAY_HEIGHT as f64);
         let window = WindowBuilder::new()
             .with_title("Lameboy")
             .with_inner_size(size)
@@ -74,7 +94,7 @@ impl Gfx {
 
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        let pixels = Pixels::new(self.display_width(), self.display_height(), surface_texture)
+        let pixels = Pixels::new(DISPLAY_WIDTH, DISPLAY_HEIGHT, surface_texture)
             .expect("Failed instantiating Pixels");
 
         (window, pixels)
@@ -94,8 +114,8 @@ impl Gfx {
 
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        let pixels = Pixels::new(self.display_width(), self.display_height(), surface_texture)
-            .expect("Failed instantiating Pixels");
+        let pixels =
+            Pixels::new(8 * 16, 8 * 24, surface_texture).expect("Failed instantiating Pixels");
 
         (window, pixels)
     }
