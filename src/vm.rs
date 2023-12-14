@@ -90,7 +90,10 @@ impl VM {
                             self.debugger.set_auto_step_count(auto_step - 1);
                             break;
                         }
-                        Some(DebugCmd::Print) => self.print_debug_panel(),
+                        Some(DebugCmd::PrintCpu) => self.print_debug_panel(),
+                        Some(DebugCmd::PrintMemory(from, len)) => {
+                            self.print_debug_memory(from, len);
+                        }
                         Some(DebugCmd::Continue) => {
                             self.debugger.clear_steps_and_continue();
                             break;
@@ -3333,13 +3336,13 @@ impl VM {
             self.cpu.get_fn(),
             self.cpu.get_fh(),
             self.cpu.get_fc(),
-            self.video.read(MEM_LOC_LCDC).unwrap(),
+            self.mem_read(MEM_LOC_LCDC).unwrap(),
         );
         println!(
             "| \x1B[93mB\x1B[0m {:02X} {:02X} \x1B[93mC\x1B[0m |             | \x1B[93mSTAT\x1B[0m {:02X}",
             self.cpu.get_b(),
             self.cpu.get_c(),
-            self.video.read(MEM_LOC_STAT).unwrap()
+            self.mem_read(MEM_LOC_STAT).unwrap()
         );
         println!(
             "| \x1B[93mD\x1B[0m {:02X} {:02X} \x1B[93mE\x1B[0m |             | \x1B[93mLY\x1B[0m {:02X}",
@@ -3359,6 +3362,26 @@ impl VM {
             self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
         );
         println!("+---");
+    }
+
+    fn print_debug_memory(&self, from: u16, len: usize) {
+        for i in 0..len {
+            if i % 8 == 0 {
+                print!("\n\x1B[93m{:#06X}\x1B[0m", from + i as u16)
+            }
+
+            print!(
+                " {:02X}",
+                self.mem_read(from + i as u16)
+                    .expect("Failed reading memory")
+            );
+
+            if i % 8 == 3 {
+                print!(" ");
+            }
+        }
+
+        println!("");
     }
 
     fn tick(&mut self, add: u8) {

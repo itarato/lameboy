@@ -41,18 +41,19 @@ impl Drawer {
 
     fn draw_debug_tiles(&self, frame: &mut [u8]) {
         let vram = self.vram.lock().expect("Cannot lock vram for debug print");
+        const FRAME_LINE_OFFS: usize = 16 * 8 * 4;
 
         for y in 0..24 {
             for x in 0..16 {
                 let tile_number = (y * 16) + x;
                 let vram_pos = tile_number * 16; // 8x8 pixel with 2bpp = 16 bytes
-                let frame_pos = tile_number * 8 * 8 * 4; // Assuming frame is 4-attr color (RGBA) * 8x8 sprite size
+                let frame_pos = (y * 8 * 8 * 4 * 16) + (x * 8 * 4); // Assuming frame is 4-attr color (RGBA) * 8x8 sprite size
                 for sprite_y in 0..8 {
                     let byte1 = vram[vram_pos + sprite_y * 2];
                     let byte2 = vram[vram_pos + sprite_y * 2 + 1];
                     for sprite_x in 0..8 {
-                        let gb_pixel_color =
-                            (((byte2 >> sprite_x) & 0b1) << 1) | ((byte1 >> sprite_x) & 0b1);
+                        let gb_pixel_color = (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
+                            | ((byte1 >> (7 - sprite_x)) & 0b1);
 
                         let pixel_color = match gb_pixel_color {
                             0b00 => [0x10, 0x40, 0x20, 0xff],
@@ -62,11 +63,19 @@ impl Drawer {
                             _ => unimplemented!("Unknown gb pixel color"),
                         };
 
-                        let frame_pos_pixel_offset = ((sprite_y * 8) + sprite_x) * 4;
-                        frame[frame_pos + frame_pos_pixel_offset + 0] = pixel_color[0];
-                        frame[frame_pos + frame_pos_pixel_offset + 1] = pixel_color[1];
-                        frame[frame_pos + frame_pos_pixel_offset + 2] = pixel_color[2];
-                        frame[frame_pos + frame_pos_pixel_offset + 3] = pixel_color[3];
+                        let frame_pos_pixel_offset = sprite_x * 4;
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 0] =
+                            pixel_color[0];
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 1] =
+                            pixel_color[1];
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 2] =
+                            pixel_color[2];
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 3] =
+                            pixel_color[3];
                     }
                 }
             }
@@ -87,7 +96,7 @@ impl Gfx {
         let size = LogicalSize::new(DISPLAY_WIDTH as f64, DISPLAY_HEIGHT as f64);
         let window = WindowBuilder::new()
             .with_title("Lameboy")
-            .with_inner_size(size)
+            .with_inner_size(size.to_physical::<f64>(4.0))
             .with_min_inner_size(size)
             .build(&event_loop)
             .unwrap();
@@ -107,7 +116,7 @@ impl Gfx {
         let size = LogicalSize::new((8 * 16) as f64, (8 * 24) as f64);
         let window = WindowBuilder::new()
             .with_title("Tile debug")
-            .with_inner_size(size)
+            .with_inner_size(size.to_physical::<f64>(4.0))
             .with_min_inner_size(size)
             .build(&event_loop)
             .unwrap();

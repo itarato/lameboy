@@ -6,7 +6,8 @@ pub enum DebugCmd {
     Continue,
     AddBreakpoint(usize),
     EnableStepByStep,
-    Print,
+    PrintCpu,
+    PrintMemory(u16, usize),
 }
 
 impl DebugCmd {
@@ -27,7 +28,7 @@ impl DebugCmd {
 
             Some(DebugCmd::Next(auto_step))
         } else if raw == "p" {
-            Some(DebugCmd::Print)
+            Some(DebugCmd::PrintCpu)
         } else if raw == "c" {
             Some(DebugCmd::Continue)
         } else if parts.len() == 2 && parts[0] == "b" {
@@ -36,6 +37,12 @@ impl DebugCmd {
                 .map(|pc| DebugCmd::AddBreakpoint(pc))
         } else if raw == "s" {
             Some(DebugCmd::EnableStepByStep)
+        } else if parts.len() == 3 && parts[0] == "m" {
+            u16::from_str_radix(parts[1], 16)
+                .and_then(|from| {
+                    usize::from_str_radix(parts[2], 10).map(|len| DebugCmd::PrintMemory(from, len))
+                })
+                .ok()
         } else {
             warn!("Invalid debug command: {}", raw);
             None
