@@ -5,6 +5,9 @@ use std::io::Read;
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
 
 use crate::cartridge::*;
 use crate::conf::*;
@@ -36,6 +39,7 @@ pub struct VM {
     interrupt_master_enable_flag: bool,
     interrupt_enable: u8,
     interrupt_flag: u8,
+    fps_ctrl_time: Instant,
 }
 
 impl VM {
@@ -61,6 +65,7 @@ impl VM {
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
             interrupt_flag: 0,
+            fps_ctrl_time: Instant::now(),
         })
     }
 
@@ -98,12 +103,6 @@ impl VM {
                             self.debugger.clear_steps_and_continue();
                             break;
                         }
-                        Some(DebugCmd::AddBreakpoint(pc_breakpoint)) => {
-                            self.debugger.add_breakpoints(vec![pc_breakpoint as u16]);
-                        }
-                        Some(DebugCmd::EnableStepByStep) => {
-                            self.debugger.set_step_by_step();
-                        }
                         None => (),
                     };
                 }
@@ -133,6 +132,15 @@ impl VM {
             {
                 return Ok(());
             }
+
+            self.ensure_fps();
+        }
+    }
+
+    fn ensure_fps(&mut self) {
+        let elapsed = self.fps_ctrl_time.elapsed().as_micros();
+        if elapsed < 16_666u128 {
+            thread::sleep(Duration::from_micros(16_666 - elapsed as u64));
         }
     }
 
@@ -3303,7 +3311,7 @@ impl VM {
         Ok(word)
     }
 
-    fn read_repl(&self) -> Result<Option<DebugCmd>, Error> {
+    fn read_repl(&mut self) -> Result<Option<DebugCmd>, Error> {
         let next_op = self.mem_read(self.cpu.pc)?;
         if next_op == 0xCB {
             let next_prefix_op = self.mem_read(self.cpu.pc + 1)?;
@@ -3323,7 +3331,7 @@ impl VM {
         stdout().flush()?;
         stdin().read_line(&mut buf)?;
 
-        Ok(DebugCmd::parse(buf))
+        Ok(self.debugger.parse(buf))
     }
 
     fn print_debug_panel(&self) {

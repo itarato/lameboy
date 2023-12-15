@@ -39,7 +39,7 @@ pub fn is_half_carry_add_u16(acc: u16, n: u16) -> bool {
 }
 
 pub fn is_half_carry_sub_u8(acc: u8, sub: u8) -> bool {
-    (acc & 0xF0) < (sub & 0xF0)
+    (acc & 0x0F) < (sub & 0x0F)
 }
 
 // pub fn is_half_carry_sub_u16(acc: u16, sub: u16) -> bool {

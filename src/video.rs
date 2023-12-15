@@ -305,16 +305,4 @@ impl Video {
         self.stat &= 0b1111_1100;
         self.stat |= mode;
     }
-
-    fn is_stat_mode_0_interrupt_selected(&self) -> bool {
-        (self.stat & 0b1000) > 0
-    }
-
-    fn is_stat_mode_1_interrupt_selected(&self) -> bool {
-        (self.stat & 0b1_0000) > 0
-    }
-
-    fn is_stat_mode_2_interrupt_selected(&self) -> bool {
-        (self.stat & 0b10_0000) > 0
-    }
 }

@@ -1,17 +1,31 @@
-use log::{info, warn};
+use log::info;
 
 pub enum DebugCmd {
     Quit,
     Next(usize),
     Continue,
-    AddBreakpoint(usize),
-    EnableStepByStep,
     PrintCpu,
     PrintMemory(u16, usize),
 }
 
-impl DebugCmd {
-    pub fn parse(raw: String) -> Option<DebugCmd> {
+pub struct Debugger {
+    break_on_start: bool,
+    step_by_step: bool,
+    pc_breakpoints: Vec<u16>,
+    auto_step_count: usize,
+}
+
+impl Debugger {
+    pub fn new() -> Self {
+        Self {
+            break_on_start: false,
+            step_by_step: false,
+            pc_breakpoints: vec![],
+            auto_step_count: 0,
+        }
+    }
+
+    pub fn parse(&mut self, raw: String) -> Option<DebugCmd> {
         let raw = raw.trim();
         let parts = raw.split(" ").collect::<Vec<&str>>();
 
@@ -34,9 +48,30 @@ impl DebugCmd {
         } else if parts.len() == 2 && parts[0] == "b" {
             usize::from_str_radix(parts[1], 16)
                 .ok()
-                .map(|pc| DebugCmd::AddBreakpoint(pc))
+                .map(|pc| self.add_breakpoints(vec![pc as u16]));
+            self.dump_breakpoints();
+            None
+        } else if raw == "b?" {
+            self.dump_breakpoints();
+            None
+        } else if parts[0] == "b-" {
+            if parts.len() == 1 {
+                self.pc_breakpoints.clear();
+            } else {
+                for i in 1..parts.len() {
+                    if let Some(i) = u16::from_str_radix(parts[i], 16)
+                        .ok()
+                        .and_then(|v_in| self.pc_breakpoints.iter().position(|e| e == &v_in))
+                    {
+                        self.pc_breakpoints.remove(i);
+                    }
+                }
+            }
+            self.dump_breakpoints();
+            None
         } else if raw == "s" {
-            Some(DebugCmd::EnableStepByStep)
+            self.set_step_by_step();
+            None
         } else if parts.len() == 3 && parts[0] == "m" {
             u16::from_str_radix(parts[1], 16)
                 .and_then(|from| {
@@ -44,26 +79,8 @@ impl DebugCmd {
                 })
                 .ok()
         } else {
-            warn!("Invalid debug command: {}", raw);
+            println!("Invalid debug command: {}", raw);
             None
-        }
-    }
-}
-
-pub struct Debugger {
-    break_on_start: bool,
-    step_by_step: bool,
-    pc_breakpoints: Vec<u16>,
-    auto_step_count: usize,
-}
-
-impl Debugger {
-    pub fn new() -> Self {
-        Self {
-            break_on_start: false,
-            step_by_step: false,
-            pc_breakpoints: vec![],
-            auto_step_count: 0,
         }
     }
 
@@ -108,5 +125,15 @@ impl Debugger {
         }
 
         false
+    }
+
+    fn dump_breakpoints(&self) {
+        let lines = self
+            .pc_breakpoints
+            .iter()
+            .map(|v| format!("{:04X}", v))
+            .collect::<Vec<_>>()
+            .join(" ");
+        println!("Breakpoints: {}", lines);
     }
 }
