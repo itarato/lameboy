@@ -67,39 +67,45 @@ fn main() -> Result<(), Error> {
     let vram = Arc::new(Mutex::new([0; VRAM_SIZE]));
     let oam_ram = Arc::new(Mutex::new([0; OAM_RAM_SIZE]));
     let wram = Arc::new(Mutex::new([0; WRAM_SIZE]));
+    let canvas = Arc::new(Mutex::new([0; DISPLAY_PIXELS_COUNT as usize]));
     let global_exit_flag = Arc::new(AtomicBool::new(false));
 
-    let vm_vram = vram.clone();
-    let vm_oam_ram = oam_ram.clone();
-    let vm_wram = wram.clone();
-    let vm_global_exit_flag = global_exit_flag.clone();
-    let vm_thread = spawn(move || {
-        if let Ok(mut vm) = VM::new(
-            vm_global_exit_flag.clone(),
-            cartridge,
-            vm_vram,
-            vm_oam_ram,
-            vm_wram,
-            debugger,
-        ) {
-            if let Err(err) = vm.setup() {
-                log::error!("Failed VM setup: {}", err);
-                vm_global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
-                return;
+    let vm_thread = spawn({
+        let vram = vram.clone();
+        let oam_ram = oam_ram.clone();
+        let wram = wram.clone();
+        let global_exit_flag = global_exit_flag.clone();
+        let canvas = canvas.clone();
+
+        move || {
+            if let Ok(mut vm) = VM::new(
+                global_exit_flag.clone(),
+                cartridge,
+                vram,
+                oam_ram,
+                wram,
+                debugger,
+                canvas,
+            ) {
+                if let Err(err) = vm.setup() {
+                    log::error!("Failed VM setup: {}", err);
+                    global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
+                    return;
+                }
+
+                if let Err(err) = vm.run() {
+                    log::error!("Failed VM run: {}", err);
+                    global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
+                    return;
+                }
             }
 
-            if let Err(err) = vm.run() {
-                log::error!("Failed VM run: {}", err);
-                vm_global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
-                return;
-            }
+            global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
         }
-
-        vm_global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
     });
 
     let gfx = Gfx::new(global_exit_flag.clone());
-    gfx.run(vram.clone(), oam_ram.clone(), wram.clone());
+    gfx.run(vram.clone(), oam_ram.clone(), wram.clone(), canvas.clone());
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
 

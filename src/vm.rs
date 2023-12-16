@@ -50,6 +50,7 @@ impl VM {
         oam_ram: OamVram,
         wram: Wram,
         debugger: Debugger,
+        canvas: CanvasT,
     ) -> Result<Self, Error> {
         Ok(VM {
             global_exit_flag,
@@ -61,7 +62,7 @@ impl VM {
             state: State::Running,
             timer: Timer::new(),
             sound: Sound::new(),
-            video: Video::new(),
+            video: Video::new(canvas),
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
             interrupt_flag: 0,

@@ -721,3 +721,6 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Vram = Arc<Mutex<[u8; VRAM_SIZE]>>;
 pub type OamVram = Arc<Mutex<[u8; OAM_RAM_SIZE]>>;
 pub type Wram = Arc<Mutex<[u8; WRAM_SIZE]>>;
+
+pub const DISPLAY_PIXELS_COUNT: u32 = DISPLAY_WIDTH * DISPLAY_HEIGHT;
+pub type CanvasT = Arc<Mutex<[u8; DISPLAY_PIXELS_COUNT as usize]>>;

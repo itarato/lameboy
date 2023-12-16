@@ -44,10 +44,11 @@ pub struct Video {
     obp1: u8,
     wy: u8,
     wx: u8,
+    canvas: CanvasT,
 }
 
 impl Video {
-    pub fn new() -> Self {
+    pub fn new(canvas: CanvasT) -> Self {
         Video {
             stat_counter: 0,
             prev_m3_len: 204,
@@ -63,6 +64,7 @@ impl Video {
             obp1: 0,
             wy: 0,
             wx: 0,
+            canvas,
         }
     }
 

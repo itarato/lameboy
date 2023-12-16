@@ -28,14 +28,16 @@ struct Drawer {
     vram: Vram,
     oam_ram: OamVram,
     wram: Wram,
+    canvas: CanvasT,
 }
 
 impl Drawer {
-    fn new(vram: Vram, oam_ram: OamVram, wram: Wram) -> Drawer {
+    fn new(vram: Vram, oam_ram: OamVram, wram: Wram, canvas: CanvasT) -> Drawer {
         Drawer {
             vram,
             oam_ram,
             wram,
+            canvas,
         }
     }
 
@@ -79,6 +81,12 @@ impl Drawer {
                     }
                 }
             }
+        }
+    }
+
+    fn draw_display(&self, frame: &mut [u8]) {
+        for y in 0..DISPLAY_HEIGHT {
+            for x in 0..DISPLAY_WIDTH {}
         }
     }
 }
@@ -129,8 +137,8 @@ impl Gfx {
         (window, pixels)
     }
 
-    pub fn run(&self, vram: Vram, oam_ram: OamVram, wram: Wram) {
-        let drawer = Drawer::new(vram, oam_ram, wram);
+    pub fn run(&self, vram: Vram, oam_ram: OamVram, wram: Wram, canvas: CanvasT) {
+        let drawer = Drawer::new(vram, oam_ram, wram, canvas);
 
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
