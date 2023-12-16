@@ -50,7 +50,7 @@ impl Video {
     pub fn new() -> Self {
         Video {
             stat_counter: 0,
-            prev_m3_len: 0,
+            prev_m3_len: 204,
             lcdc: 0,
             stat: 0,
             scy: 0,
@@ -90,6 +90,8 @@ impl Video {
 
         self.stat_counter += spent_mcycle;
 
+        println!("\nSTAT COUNTER: {}\n", self.stat_counter);
+
         // Mode 2  2_____2_____2_____2_____2_____2___________________2____
         // Mode 3  _33____33____33____33____33____33__________________3___
         // Mode 0  ___000___000___000___000___000___000________________000
@@ -106,7 +108,7 @@ impl Video {
             // Sending pixels to the LCD.
             LcdPpuMode::M3 => {
                 // Todo: 172 to 289 dots, depending on object count
-                let m3_len = 200u64;
+                let m3_len = 204u64;
                 if self.stat_counter >= m3_len {
                     self.stat_counter -= m3_len;
 
