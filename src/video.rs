@@ -185,7 +185,16 @@ impl Video {
         should_call_vblank_interrupt
     }
 
-    pub fn draw_line_to_screen(&self, line: u8) {}
+    pub fn draw_line_to_screen(&self, line: u8) {
+        let tile_map_start = self.window_tile_map_display_section_start();
+        // There are 32x32 tiles on the map: 256x256 pixels
+
+        if line < self.scy {
+            //
+        }
+
+        let tile_line = line / 8;
+    }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         let byte = match loc {
@@ -257,6 +266,13 @@ impl Video {
             TileMapDisplaySelect::Section9C00_9FFF
         } else {
             TileMapDisplaySelect::Section9800_9BFF
+        }
+    }
+
+    fn window_tile_map_display_section_start(&self) -> u16 {
+        match self.window_tile_map_display_section() {
+            TileMapDisplaySelect::Section9800_9BFF => 0x9800,
+            TileMapDisplaySelect::Section9C00_9FFF => 0x9C00,
         }
     }
 
