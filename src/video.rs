@@ -47,12 +47,14 @@ pub struct Video {
     obp1: u8,
     wy: u8,
     wx: u8,
-    canvas: CanvasT,
     fps_ctrl_time: Instant,
+    vram: [u8; VRAM_SIZE],
+    oam_ram: [u8; OAM_RAM_SIZE],
+    display_buffer: [u8; DISPLAY_PIXELS_COUNT],
 }
 
 impl Video {
-    pub fn new(canvas: CanvasT) -> Self {
+    pub fn new() -> Self {
         Video {
             stat_counter: 0,
             prev_m3_len: 204,
@@ -68,8 +70,10 @@ impl Video {
             obp1: 0,
             wy: 0,
             wx: 0,
-            canvas,
             fps_ctrl_time: Instant::now(),
+            vram: [0; VRAM_SIZE],
+            oam_ram: [0; OAM_RAM_SIZE],
+            display_buffer: [0; DISPLAY_PIXELS_COUNT],
         }
     }
 
@@ -185,6 +189,12 @@ impl Video {
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         let byte = match loc {
+            MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
+                self.vram[(loc - MEM_AREA_VRAM_START) as usize]
+            }
+            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
+                self.oam_ram[(loc - MEM_AREA_OAM_START) as usize]
+            }
             MEM_LOC_LCDC => self.lcdc,
             MEM_LOC_STAT => self.stat,
             MEM_LOC_SCY => self.scy,
@@ -209,6 +219,12 @@ impl Video {
         log::debug!("Write video: {:#06X} = #{:#04X}", loc, byte);
 
         match loc {
+            MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
+                self.vram[(loc - MEM_AREA_VRAM_START) as usize] = byte;
+            }
+            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
+                self.oam_ram[(loc - MEM_AREA_OAM_START) as usize] = byte;
+            }
             MEM_LOC_LCDC => self.lcdc = byte,
             MEM_LOC_STAT => {
                 self.stat = byte;
@@ -324,6 +340,73 @@ impl Video {
         let elapsed = self.fps_ctrl_time.elapsed().as_micros();
         if elapsed < 16_666u128 {
             thread::sleep(Duration::from_micros(16_666 - elapsed as u64));
+        }
+    }
+
+    /**
+     * Expect a 16 tile wide 3 x 8 tile tall grid:
+     * Pixel width:  16 (tile) * 8 (pixel per tile)
+     * Pixel height: 24 (tile) * 8 (pixel per tile)
+     * -> Total: 16 * 8 * 24 * 8 * 4 (color bytes per pixel)
+     */
+    pub fn draw_debug_tiles(&self, frame: &mut [u8]) {
+        const FRAME_LINE_OFFS: usize = 16 * 8 * 4;
+
+        for y in 0..24 {
+            for x in 0..16 {
+                let tile_number = (y * 16) + x;
+                let vram_pos = tile_number * 16; // 8x8 pixel with 2bpp = 16 bytes
+                let frame_pos = (y * 8 * 8 * 4 * 16) + (x * 8 * 4); // Assuming frame is 4-attr color (RGBA) * 8x8 sprite size
+                for sprite_y in 0..8 {
+                    let byte1 = self.vram[vram_pos + sprite_y * 2];
+                    let byte2 = self.vram[vram_pos + sprite_y * 2 + 1];
+                    for sprite_x in 0..8 {
+                        let gb_pixel_color = (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
+                            | ((byte1 >> (7 - sprite_x)) & 0b1);
+
+                        let pixel_color = self.pixel_color(gb_pixel_color);
+
+                        let frame_pos_pixel_offset = sprite_x * 4;
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 0] =
+                            pixel_color[0];
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 1] =
+                            pixel_color[1];
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 2] =
+                            pixel_color[2];
+                        frame
+                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 3] =
+                            pixel_color[3];
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn draw_display(&self, frame: &mut [u8]) {
+        for y in 0..DISPLAY_HEIGHT {
+            for x in 0..DISPLAY_WIDTH {
+                let pixel_pos: usize = ((y * DISPLAY_WIDTH) + x) as usize;
+                let frame_pos: usize = pixel_pos * 4;
+                let pixel_color = self.pixel_color(self.display_buffer[pixel_pos]);
+
+                frame[frame_pos + 0] = pixel_color[0];
+                frame[frame_pos + 1] = pixel_color[1];
+                frame[frame_pos + 2] = pixel_color[2];
+                frame[frame_pos + 3] = pixel_color[3];
+            }
+        }
+    }
+
+    fn pixel_color(&self, code: u8) -> [u8; 4] {
+        match code {
+            0b00 => [0x10, 0x40, 0x20, 0xff],
+            0b01 => [0x10, 0x80, 0x40, 0xff],
+            0b10 => [0x10, 0xa0, 0x50, 0xff],
+            0b11 => [0x10, 0xf0, 0x80, 0xff],
+            _ => unimplemented!("Unknown gb pixel color"),
         }
     }
 }

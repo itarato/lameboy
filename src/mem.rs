@@ -5,26 +5,17 @@ pub struct Mem {
     pub boot_lock_reg: u8,
     pub bios: [u8; 0x100],
     hram: [u8; 0x7F],
-    vram: Vram,
-    oam_ram: OamVram,
-    wram: Wram,
+    wram: [u8; WRAM_SIZE],
     cartridge: Cartridge,
 }
 
 impl Mem {
-    pub fn new(
-        cartridge: Cartridge,
-        vram: Vram,
-        oam_ram: OamVram,
-        wram: Wram,
-    ) -> Result<Self, Error> {
+    pub fn new(cartridge: Cartridge) -> Result<Self, Error> {
         Ok(Mem {
             boot_lock_reg: 0,
             bios: [0; 0x100],
             hram: [0; 0x7F],
-            vram,
-            oam_ram,
-            wram,
+            wram: [0; WRAM_SIZE],
             cartridge,
         })
     }
@@ -41,10 +32,6 @@ impl Mem {
             } else {
                 self.cartridge.rom_0()[loc as usize]
             }
-        } else if (MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END).contains(&loc) {
-            self.vram.lock().expect("Cannot lock vram")[(loc - MEM_AREA_VRAM_START) as usize]
-        } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
-            self.oam_ram.lock().expect("Cannot lock oam ram")[(loc - MEM_AREA_OAM_START) as usize]
         } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
             self.hram[(loc - MEM_AREA_HRAM_START) as usize]
         } else {
@@ -57,15 +44,8 @@ impl Mem {
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
-        if (MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END).contains(&loc) {
-            self.vram.lock().expect("Cannot lock vram")[(loc - MEM_AREA_VRAM_START) as usize] =
-                byte;
-        } else if (MEM_AREA_WRAM_START..=MEM_AREA_WRAM_END).contains(&loc) {
-            self.wram.lock().expect("Cannot lock wram")[(loc - MEM_AREA_WRAM_START) as usize] =
-                byte;
-        } else if (MEM_AREA_OAM_START..=MEM_AREA_OAM_END).contains(&loc) {
-            self.oam_ram.lock().expect("Cannot lock oam ram")
-                [(loc - MEM_AREA_OAM_START) as usize] = byte;
+        if (MEM_AREA_WRAM_START..=MEM_AREA_WRAM_END).contains(&loc) {
+            self.wram[(loc - MEM_AREA_WRAM_START) as usize] = byte;
         } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
             self.hram[(loc - MEM_AREA_HRAM_START) as usize] = byte;
         } else {

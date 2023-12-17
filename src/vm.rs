@@ -5,6 +5,7 @@ use std::io::Read;
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use crate::cartridge::*;
 use crate::conf::*;
@@ -32,25 +33,22 @@ pub struct VM {
     state: State,
     timer: Timer,
     sound: Sound,
-    video: Video,
     interrupt_master_enable_flag: bool,
     interrupt_enable: u8,
     interrupt_flag: u8,
+    video: Arc<RwLock<Video>>,
 }
 
 impl VM {
     pub fn new(
         global_exit_flag: Arc<AtomicBool>,
         cartridge: Cartridge,
-        vram: Vram,
-        oam_ram: OamVram,
-        wram: Wram,
         debugger: Debugger,
-        canvas: CanvasT,
+        video: Arc<RwLock<Video>>,
     ) -> Result<Self, Error> {
         Ok(VM {
             global_exit_flag,
-            mem: Mem::new(cartridge, vram.clone(), oam_ram.clone(), wram.clone())?,
+            mem: Mem::new(cartridge)?,
             cpu: Cpu::new(),
             serial: Serial::new(),
             debugger,
@@ -58,10 +56,10 @@ impl VM {
             state: State::Running,
             timer: Timer::new(),
             sound: Sound::new(),
-            video: Video::new(canvas),
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
             interrupt_flag: 0,
+            video,
         })
     }
 
@@ -115,7 +113,7 @@ impl VM {
 
                 self.timer.handle_ticks(old_tac)?;
 
-                let should_call_vblank_interrupt = self.video.update(diff_mcycle);
+                let should_call_vblank_interrupt = self.video.write().unwrap().update(diff_mcycle);
                 if should_call_vblank_interrupt {
                     self.set_interrupt_flag(self.interrupt_flag | 0b1);
                 }
@@ -134,7 +132,7 @@ impl VM {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.mem.reset()?;
-        self.video.reset();
+        self.video.write().unwrap().reset();
 
         // Byte 7/6/5: Unused.
         // Byte 0: VBlank interrupt.
@@ -3344,7 +3342,7 @@ impl VM {
             "\x1B[93mD\x1B[0m {:02X} {:02X} \x1B[93mE\x1B[0m |             | \x1B[93mLY\x1B[0m {:02X}",
             self.cpu.get_d(),
             self.cpu.get_e(),
-            self.video.ly
+            self.video.read().unwrap().ly
         );
         println!(
             "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m",
@@ -3393,7 +3391,7 @@ impl VM {
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
         } else if loc <= MEM_AREA_VRAM_END {
-            self.mem.write(loc, byte)?;
+            self.video.write().unwrap().write(loc, byte);
         } else if loc <= MEM_AREA_EXTERNAL_END {
             unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
         } else if loc <= MEM_AREA_WRAM_END {
@@ -3401,7 +3399,7 @@ impl VM {
         } else if loc <= MEM_AREA_ECHO_END {
             unimplemented!("Write to MEM_AREA_ECHO is not implemented")
         } else if loc <= MEM_AREA_OAM_END {
-            unimplemented!("Write to MEM_AREA_OAM is not implemented")
+            self.video.write().unwrap().write(loc, byte);
         } else if loc <= MEM_AREA_PROHIBITED_END {
             unimplemented!("Write to MEM_AREA_PROHIBITED is not implemented")
         } else if loc <= MEM_AREA_IO_END {
@@ -3415,7 +3413,7 @@ impl VM {
                 MEM_LOC_TAC => self.timer.tac = byte,
                 MEM_LOC_IF => self.set_interrupt_flag(byte),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
-                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.write(loc, byte),
+                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.write().unwrap().write(loc, byte),
                 MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
                 MEM_LOC_VBK => unimplemented!("Write to register VBK is not implemented"),
                 MEM_LOC_BOOT_LOCK_REG => {
@@ -3480,7 +3478,7 @@ impl VM {
                 MEM_LOC_TAC => Ok(self.timer.tac),
                 MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
-                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read(loc),
+                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read().unwrap().read(loc),
                 MEM_LOC_KEY1 => unimplemented!("Read from register KEY1 is not implemented"),
                 MEM_LOC_VBK => unimplemented!("Read from register VBK is not implemented"),
                 MEM_LOC_BOOT_LOCK_REG => Ok(self.mem.boot_lock_reg),

@@ -6,6 +6,7 @@ pub const ROM_BANK_SIZE: usize = 0x4000;
 
 pub const DISPLAY_WIDTH: u32 = 160;
 pub const DISPLAY_HEIGHT: u32 = 144;
+pub const DISPLAY_PIXELS_COUNT: usize = (DISPLAY_WIDTH * DISPLAY_HEIGHT) as usize;
 
 const CYCLE_PER_MCYCLE: u64 = 4;
 
@@ -718,9 +719,4 @@ pub const WRAM_SIZE: usize = (MEM_AREA_WRAM_END - MEM_AREA_WRAM_START + 1) as us
 pub const OAM_RAM_SIZE: usize = (MEM_AREA_OAM_END - MEM_AREA_OAM_START + 1) as usize;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Vram = Arc<Mutex<[u8; VRAM_SIZE]>>;
-pub type OamVram = Arc<Mutex<[u8; OAM_RAM_SIZE]>>;
 pub type Wram = Arc<Mutex<[u8; WRAM_SIZE]>>;
-
-pub const DISPLAY_PIXELS_COUNT: u32 = DISPLAY_WIDTH * DISPLAY_HEIGHT;
-pub type CanvasT = Arc<Mutex<[u8; DISPLAY_PIXELS_COUNT as usize]>>;
