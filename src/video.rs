@@ -116,7 +116,7 @@ impl Video {
 
                     self.prev_m3_len = m3_len;
 
-                    // Todo: draw for line LY.
+                    self.draw_line_to_screen(self.ly);
 
                     // Mode to 0.
                     self.set_lcd_stat_ppu_mode(0);
@@ -157,6 +157,9 @@ impl Video {
                     self.set_lcd_stat_ppu_mode(2);
                 } else {
                     self.ly = 144 + (self.stat_counter / 506) as u8;
+                    if self.ly == self.lyc {
+                        unimplemented!("LYC STAT INT");
+                    }
                 }
             }
         };
@@ -172,6 +175,8 @@ impl Video {
 
         should_call_vblank_interrupt
     }
+
+    pub fn draw_line_to_screen(&self, line: u8) {}
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         let byte = match loc {

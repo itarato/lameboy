@@ -57,13 +57,7 @@ impl Drawer {
                         let gb_pixel_color = (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
                             | ((byte1 >> (7 - sprite_x)) & 0b1);
 
-                        let pixel_color = match gb_pixel_color {
-                            0b00 => [0x10, 0x40, 0x20, 0xff],
-                            0b01 => [0x10, 0x80, 0x40, 0xff],
-                            0b10 => [0x10, 0xa0, 0x50, 0xff],
-                            0b11 => [0x10, 0xf0, 0x80, 0xff],
-                            _ => unimplemented!("Unknown gb pixel color"),
-                        };
+                        let pixel_color = self.pixel_color(gb_pixel_color);
 
                         let frame_pos_pixel_offset = sprite_x * 4;
                         frame
@@ -85,8 +79,29 @@ impl Drawer {
     }
 
     fn draw_display(&self, frame: &mut [u8]) {
+        let canvas = self.canvas.lock().expect("Cannot lock canvas for drawing");
+
         for y in 0..DISPLAY_HEIGHT {
-            for x in 0..DISPLAY_WIDTH {}
+            for x in 0..DISPLAY_WIDTH {
+                let pixel_pos: usize = ((y * DISPLAY_WIDTH) + x) as usize;
+                let frame_pos: usize = pixel_pos * 4;
+                let pixel_color = self.pixel_color(canvas[pixel_pos]);
+
+                frame[frame_pos + 0] = pixel_color[0];
+                frame[frame_pos + 1] = pixel_color[1];
+                frame[frame_pos + 2] = pixel_color[2];
+                frame[frame_pos + 3] = pixel_color[3];
+            }
+        }
+    }
+
+    fn pixel_color(&self, code: u8) -> [u8; 4] {
+        match code {
+            0b00 => [0x10, 0x40, 0x20, 0xff],
+            0b01 => [0x10, 0x80, 0x40, 0xff],
+            0b10 => [0x10, 0xa0, 0x50, 0xff],
+            0b11 => [0x10, 0xf0, 0x80, 0xff],
+            _ => unimplemented!("Unknown gb pixel color"),
         }
     }
 }
@@ -151,6 +166,7 @@ impl Gfx {
         event_loop.run(move |event, _, control_flow| {
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
+                drawer.draw_display(pixels.frame_mut());
                 if let Err(err) = pixels.render() {
                     global_exit_flag.store(false, Ordering::Release);
                     *control_flow = ControlFlow::Exit;
