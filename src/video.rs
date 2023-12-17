@@ -1,5 +1,8 @@
 use crate::conf::*;
 use crate::util::*;
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
 
 enum LcdPpuMode {
     M0,
@@ -45,6 +48,7 @@ pub struct Video {
     wy: u8,
     wx: u8,
     canvas: CanvasT,
+    fps_ctrl_time: Instant,
 }
 
 impl Video {
@@ -65,6 +69,7 @@ impl Video {
             wy: 0,
             wx: 0,
             canvas,
+            fps_ctrl_time: Instant::now(),
         }
     }
 
@@ -91,8 +96,6 @@ impl Video {
         }
 
         self.stat_counter += spent_mcycle;
-
-        println!("\nSTAT COUNTER: {}\n", self.stat_counter);
 
         // Mode 2  2_____2_____2_____2_____2_____2___________________2____
         // Mode 3  _33____33____33____33____33____33__________________3___
@@ -155,6 +158,8 @@ impl Video {
 
                     // Mode to 2.
                     self.set_lcd_stat_ppu_mode(2);
+
+                    self.ensure_fps();
                 } else {
                     self.ly = 144 + (self.stat_counter / 506) as u8;
                     if self.ly == self.lyc {
@@ -313,5 +318,12 @@ impl Video {
         assert!(mode <= 0b11);
         self.stat &= 0b1111_1100;
         self.stat |= mode;
+    }
+
+    fn ensure_fps(&mut self) {
+        let elapsed = self.fps_ctrl_time.elapsed().as_micros();
+        if elapsed < 16_666u128 {
+            thread::sleep(Duration::from_micros(16_666 - elapsed as u64));
+        }
     }
 }

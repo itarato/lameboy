@@ -5,9 +5,6 @@ use std::io::Read;
 use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-use std::time::Instant;
 
 use crate::cartridge::*;
 use crate::conf::*;
@@ -39,7 +36,6 @@ pub struct VM {
     interrupt_master_enable_flag: bool,
     interrupt_enable: u8,
     interrupt_flag: u8,
-    fps_ctrl_time: Instant,
 }
 
 impl VM {
@@ -66,7 +62,6 @@ impl VM {
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
             interrupt_flag: 0,
-            fps_ctrl_time: Instant::now(),
         })
     }
 
@@ -134,15 +129,6 @@ impl VM {
             {
                 return Ok(());
             }
-
-            self.ensure_fps();
-        }
-    }
-
-    fn ensure_fps(&mut self) {
-        let elapsed = self.fps_ctrl_time.elapsed().as_micros();
-        if elapsed < 16_666u128 {
-            thread::sleep(Duration::from_micros(16_666 - elapsed as u64));
         }
     }
 
