@@ -185,15 +185,40 @@ impl Video {
         should_call_vblank_interrupt
     }
 
-    pub fn draw_line_to_screen(&self, line: u8) {
+    pub fn draw_line_to_screen(&mut self, ly: u8) {
         let tile_map_start = self.window_tile_map_display_section_start();
         // There are 32x32 tiles on the map: 256x256 pixels
 
-        if line < self.scy {
-            //
-        }
+        let actual_ly = ly + self.scy;
+        let tile_row = actual_ly / 8;
+        let tile_y = actual_ly % 8;
 
-        let tile_line = line / 8;
+        for i in 0..DISPLAY_WIDTH {
+            let tile_col = self.scx as u16 + i as u16;
+            let tile_x = (self.scx + i as u8) % 8;
+            let tile_data_i = (tile_row as u16 * 32) + tile_col;
+            let tile_i = self
+                .read(tile_map_start + tile_data_i as u16)
+                .expect("Failed getting tile data");
+            let tile_lo = self
+                .read(
+                    self.backround_window_tile_data_section_start()
+                        + tile_i as u16 * 16
+                        + tile_y as u16 * 2,
+                )
+                .expect("Cannot load bg tile");
+            let tile_hi = self
+                .read(
+                    self.backround_window_tile_data_section_start()
+                        + tile_i as u16 * 16
+                        + tile_y as u16 * 2
+                        + 1,
+                )
+                .expect("Cannot load bg tile");
+            let color = (bit(tile_hi, tile_x) << 1) | bit(tile_lo, tile_x);
+
+            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
+        }
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
@@ -285,6 +310,13 @@ impl Video {
             BgrWinTileDataSelect::Section8000_8FFF
         } else {
             BgrWinTileDataSelect::Section8800_97FF
+        }
+    }
+
+    fn backround_window_tile_data_section_start(&self) -> u16 {
+        match self.backround_window_tile_data_section() {
+            BgrWinTileDataSelect::Section8000_8FFF => 0x8000,
+            BgrWinTileDataSelect::Section8800_97FF => 0x8800,
         }
     }
 
