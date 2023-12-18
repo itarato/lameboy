@@ -385,16 +385,14 @@ impl Video {
     }
 
     fn ensure_fps(&mut self) {
-        // let elapsed = self.fps_ctrl_time.elapsed().as_micros();
-        // if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
-        //     thread::sleep(Duration::from_micros(
-        //         ONE_FRAME_IN_MICROSECONDS as u64 - elapsed as u64,
-        //     ));
-        // }
+        let elapsed = self.fps_ctrl_time.elapsed().as_micros();
+        if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
+            thread::sleep(Duration::from_micros(
+                ONE_FRAME_IN_MICROSECONDS as u64 - elapsed as u64,
+            ));
+        }
 
-        // self.fps_ctrl_time = Instant::now();
-        thread::sleep(Duration::from_millis(1000));
-        println!("ENSURE FPS");
+        self.fps_ctrl_time = Instant::now();
     }
 
     /**
