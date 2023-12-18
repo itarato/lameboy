@@ -6,6 +6,7 @@ pub enum DebugCmd {
     Continue,
     PrintCpu,
     PrintMemory(u16, usize),
+    PrintOpHistory,
 }
 
 pub struct Debugger {
@@ -72,6 +73,8 @@ impl Debugger {
         } else if raw == "s" {
             self.set_step_by_step();
             None
+        } else if raw == "hist" {
+            Some(DebugCmd::PrintOpHistory)
         } else if parts.len() == 3 && parts[0] == "m" {
             u16::from_str_radix(parts[1], 16)
                 .and_then(|from| {

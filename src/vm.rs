@@ -37,7 +37,7 @@ pub struct VM {
     interrupt_enable: u8,
     interrupt_flag: u8,
     video: Arc<RwLock<Video>>,
-    op_history: SizedQueue<u8>,
+    op_history: SizedQueue<(u16, u8)>,
 }
 
 impl VM {
@@ -100,6 +100,7 @@ impl VM {
                             self.debugger.clear_steps_and_continue();
                             break;
                         }
+                        Some(DebugCmd::PrintOpHistory) => self.dump_op_history(),
                         None => (),
                     };
                 }
@@ -151,7 +152,7 @@ impl VM {
         let mut is_alternative_mcycle = false;
         let op = self.read_op()?;
 
-        self.op_history.push(op);
+        self.op_history.push((self.cpu.pc, op));
 
         log::debug!(
             "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
@@ -3564,14 +3565,15 @@ impl VM {
         self.interrupt_flag = new_value;
     }
 
-    fn dump_op_history(&self) {
+    pub fn dump_op_history(&self) {
         let op_count = self.op_history.inner().len();
         println!("Last {} op:", op_count);
 
-        for (i, op) in self.op_history.inner().iter().enumerate() {
+        for (i, (pc, op)) in self.op_history.inner().iter().enumerate() {
             println!(
-                "\t#{}: {:#04X} -> {}",
-                i - op_count + 1,
+                "\t#{}: PC={:#06X} OP={:#04X} -> {}",
+                self.counter as usize - (op_count - i + 1),
+                *pc,
                 *op,
                 OPCODE_NAME[*op as usize]
             );

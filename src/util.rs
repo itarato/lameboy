@@ -105,6 +105,8 @@ impl<T> SizedQueue<T> {
         while self.deque.len() >= self.capacity {
             self.deque.pop_front();
         }
+
+        self.deque.push_back(e);
     }
 
     pub fn inner(&self) -> &VecDeque<T> {

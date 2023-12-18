@@ -13,7 +13,6 @@ mod vm;
 
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::RwLock;
 
 use crate::cartridge::*;
@@ -49,7 +48,7 @@ struct Args {
 fn main() -> Result<(), Error> {
     simple_logger::SimpleLogger::new()
         .env()
-        .with_module_level("wgpu_core", log::LevelFilter::Off)
+        .with_module_level("wgpu_core", log::LevelFilter::Error)
         .init()
         .unwrap();
     log::info!("Emulation start");
@@ -83,6 +82,7 @@ fn main() -> Result<(), Error> {
 
                 if let Err(err) = vm.run() {
                     log::error!("Failed VM run: {}", err);
+                    vm.dump_op_history();
                     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
                     return;
                 }
