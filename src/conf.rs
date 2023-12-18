@@ -8,6 +8,10 @@ pub const DISPLAY_WIDTH: u32 = 160;
 pub const DISPLAY_HEIGHT: u32 = 144;
 pub const DISPLAY_PIXELS_COUNT: usize = (DISPLAY_WIDTH * DISPLAY_HEIGHT) as usize;
 
+pub const FPS: u32 = 60;
+pub const SECOND_IN_MICROSECOND: u32 = 1_000_000;
+pub const ONE_FRAME_IN_MICROSECONDS: u32 = SECOND_IN_MICROSECOND / FPS;
+
 const CYCLE_PER_MCYCLE: u64 = 4;
 
 // Cycles per second.

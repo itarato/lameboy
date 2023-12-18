@@ -66,13 +66,10 @@ fn main() -> Result<(), Error> {
     }
 
     let cartridge = Cartridge::new(args.cartridge)?;
-    let wram = Arc::new(Mutex::new([0; WRAM_SIZE]));
-    let canvas = Arc::new(Mutex::new([0; DISPLAY_PIXELS_COUNT as usize]));
     let global_exit_flag = Arc::new(AtomicBool::new(false));
     let video = Arc::new(RwLock::new(Video::new()));
 
     let vm_thread = spawn({
-        let wram = wram.clone();
         let global_exit_flag = global_exit_flag.clone();
         let video = video.clone();
 

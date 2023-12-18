@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 pub fn is_carry_add_u8(acc: u8, add: u8) -> bool {
     (u8::MAX - acc) < add
 }
@@ -84,6 +86,30 @@ pub fn set_bit(mut byte: u8, n: u8, is_on: bool) -> u8 {
         byte |= 1 << n;
     }
     byte
+}
+
+pub struct SizedQueue<T> {
+    capacity: usize,
+    deque: VecDeque<T>,
+}
+
+impl<T> SizedQueue<T> {
+    pub fn new(capacity: usize) -> SizedQueue<T> {
+        SizedQueue {
+            deque: VecDeque::new(),
+            capacity,
+        }
+    }
+
+    pub fn push(&mut self, e: T) {
+        while self.deque.len() >= self.capacity {
+            self.deque.pop_front();
+        }
+    }
+
+    pub fn inner(&self) -> &VecDeque<T> {
+        &self.deque
+    }
 }
 
 #[cfg(test)]
