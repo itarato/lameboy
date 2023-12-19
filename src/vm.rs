@@ -128,11 +128,13 @@ impl VM {
                 .global_exit_flag
                 .load(std::sync::atomic::Ordering::Acquire)
             {
-                return Ok(());
+                break;
             }
         }
 
         self.dump_op_history();
+
+        Ok(())
     }
 
     fn reset(&mut self) -> Result<(), Error> {
