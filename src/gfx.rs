@@ -91,7 +91,6 @@ impl Gfx {
                         if window_id == &main_window.id() {
                             if let Err(err) = pixels.resize_surface(size.width, size.height) {
                                 error!("pixels.resize_surface error: {}", err);
-                                // *control_flow = ControlFlow::Exit;
                                 control_flow.set_exit();
                                 return;
                             }
@@ -102,7 +101,6 @@ impl Gfx {
                                 pixels_for_tile_debug_window.resize_surface(size.width, size.height)
                             {
                                 error!("pixels.resize_surface error: {}", err);
-                                // *control_flow = ControlFlow::Exit;
                                 control_flow.set_exit();
                                 return;
                             }
@@ -115,7 +113,7 @@ impl Gfx {
                         video.read().unwrap().draw_display(pixels.frame_mut());
                         if let Err(err) = pixels.render() {
                             global_exit_flag.store(false, Ordering::Release);
-                            *control_flow = ControlFlow::Exit;
+                            control_flow.set_exit();
                             return;
                         }
                     }
@@ -127,7 +125,7 @@ impl Gfx {
                             .draw_debug_tiles(pixels_for_tile_debug_window.frame_mut());
                         if let Err(err) = pixels_for_tile_debug_window.render() {
                             global_exit_flag.store(false, Ordering::Release);
-                            *control_flow = ControlFlow::Exit;
+                            control_flow.set_exit();
                             return;
                         }
                     }
@@ -143,7 +141,6 @@ impl Gfx {
                     || input.destroyed()
                 {
                     global_exit_flag.store(false, Ordering::Release);
-                    // *control_flow = ControlFlow::Exit;
                     control_flow.set_exit();
                     return;
                 }
@@ -154,7 +151,6 @@ impl Gfx {
             }
 
             if global_exit_flag.load(Ordering::Acquire) {
-                // *control_flow = ControlFlow::Exit;
                 control_flow.set_exit();
                 return;
             }
