@@ -194,8 +194,9 @@ impl Video {
         let tile_y = actual_ly % 8;
 
         for i in 0..DISPLAY_WIDTH {
-            let tile_col = self.scx as u16 + i as u16;
-            let tile_x = (self.scx + i as u8) % 8;
+            let actual_x = self.scx as u16 + i as u16;
+            let tile_col = actual_x / 8;
+            let tile_x = (actual_x % 8) as u8;
             let tile_data_i = (tile_row as u16 * 32) + tile_col;
             let tile_i = self
                 .read(tile_map_start + tile_data_i as u16)
@@ -215,7 +216,7 @@ impl Video {
                         + 1,
                 )
                 .expect("Cannot load bg tile");
-            let color = (bit(tile_hi, tile_x) << 1) | bit(tile_lo, tile_x);
+            let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
             self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
         }
