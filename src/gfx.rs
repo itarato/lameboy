@@ -18,7 +18,7 @@ use log::error;
 use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
-    event::{Event, VirtualKeyCode},
+    event::{Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
@@ -77,7 +77,7 @@ impl Gfx {
     pub fn run(&self) {
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
-        let (window, mut pixels) = self.make_main_window(&event_loop);
+        let (main_window, mut pixels) = self.make_main_window(&event_loop);
         let (tile_debug_window, mut pixels_for_tile_debug_window) =
             self.make_tile_debug_window(&event_loop);
 
@@ -85,25 +85,55 @@ impl Gfx {
         let video = self.video.clone();
 
         event_loop.run(move |event, _, control_flow| {
-            // Draw the current frame
-            if let Event::RedrawRequested(_) = event {
-                video.read().unwrap().draw_display(pixels.frame_mut());
-                if let Err(err) = pixels.render() {
-                    global_exit_flag.store(false, Ordering::Release);
-                    *control_flow = ControlFlow::Exit;
-                    return;
-                }
+            match &event {
+                Event::WindowEvent { window_id, event } => match event {
+                    WindowEvent::Resized(size) => {
+                        if window_id == &main_window.id() {
+                            if let Err(err) = pixels.resize_surface(size.width, size.height) {
+                                error!("pixels.resize_surface error: {}", err);
+                                // *control_flow = ControlFlow::Exit;
+                                control_flow.set_exit();
+                                return;
+                            }
+                        }
 
-                video
-                    .read()
-                    .unwrap()
-                    .draw_debug_tiles(pixels_for_tile_debug_window.frame_mut());
-                if let Err(err) = pixels_for_tile_debug_window.render() {
-                    global_exit_flag.store(false, Ordering::Release);
-                    *control_flow = ControlFlow::Exit;
-                    return;
+                        if window_id == &tile_debug_window.id() {
+                            if let Err(err) =
+                                pixels_for_tile_debug_window.resize_surface(size.width, size.height)
+                            {
+                                error!("pixels.resize_surface error: {}", err);
+                                // *control_flow = ControlFlow::Exit;
+                                control_flow.set_exit();
+                                return;
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                Event::RedrawRequested(window_id) => {
+                    if window_id == &main_window.id() {
+                        video.read().unwrap().draw_display(pixels.frame_mut());
+                        if let Err(err) = pixels.render() {
+                            global_exit_flag.store(false, Ordering::Release);
+                            *control_flow = ControlFlow::Exit;
+                            return;
+                        }
+                    }
+
+                    if window_id == &tile_debug_window.id() {
+                        video
+                            .read()
+                            .unwrap()
+                            .draw_debug_tiles(pixels_for_tile_debug_window.frame_mut());
+                        if let Err(err) = pixels_for_tile_debug_window.render() {
+                            global_exit_flag.store(false, Ordering::Release);
+                            *control_flow = ControlFlow::Exit;
+                            return;
+                        }
+                    }
                 }
-            }
+                _ => {}
+            };
 
             // Handle input events
             if input.update(&event) {
@@ -113,34 +143,19 @@ impl Gfx {
                     || input.destroyed()
                 {
                     global_exit_flag.store(false, Ordering::Release);
-                    *control_flow = ControlFlow::Exit;
+                    // *control_flow = ControlFlow::Exit;
+                    control_flow.set_exit();
                     return;
                 }
 
-                // Resize the window
-                if let Some(size) = input.window_resized() {
-                    if let Err(err) = pixels.resize_surface(size.width, size.height) {
-                        error!("pixels.resize_surface error: {}", err);
-                        *control_flow = ControlFlow::Exit;
-                        return;
-                    }
-
-                    if let Err(err) =
-                        pixels_for_tile_debug_window.resize_surface(size.width, size.height)
-                    {
-                        error!("pixels.resize_surface error: {}", err);
-                        *control_flow = ControlFlow::Exit;
-                        return;
-                    }
-                }
-
                 // Update internal state and request a redraw
-                window.request_redraw();
+                main_window.request_redraw();
                 tile_debug_window.request_redraw();
             }
 
             if global_exit_flag.load(Ordering::Acquire) {
-                *control_flow = ControlFlow::Exit;
+                // *control_flow = ControlFlow::Exit;
+                control_flow.set_exit();
                 return;
             }
         });
