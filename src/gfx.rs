@@ -19,7 +19,7 @@ use pixels::{Pixels, SurfaceTexture};
 use winit::{
     dpi::LogicalSize,
     event::{Event, VirtualKeyCode, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
 use winit_input_helper::WinitInputHelper;
@@ -111,7 +111,7 @@ impl Gfx {
                 Event::RedrawRequested(window_id) => {
                     if window_id == &main_window.id() {
                         video.read().unwrap().draw_display(pixels.frame_mut());
-                        if let Err(err) = pixels.render() {
+                        if let Err(_) = pixels.render() {
                             global_exit_flag.store(false, Ordering::Release);
                             control_flow.set_exit();
                             return;
@@ -123,7 +123,7 @@ impl Gfx {
                             .read()
                             .unwrap()
                             .draw_debug_tiles(pixels_for_tile_debug_window.frame_mut());
-                        if let Err(err) = pixels_for_tile_debug_window.render() {
+                        if let Err(_) = pixels_for_tile_debug_window.render() {
                             global_exit_flag.store(false, Ordering::Release);
                             control_flow.set_exit();
                             return;
