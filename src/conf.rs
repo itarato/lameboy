@@ -1,7 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-pub const MEM_ADDR_MAX: u16 = 0xFFFF;
-
 pub const ROM_BANK_SIZE: usize = 0x4000;
 
 pub const DISPLAY_WIDTH: u32 = 160;

@@ -1,4 +1,5 @@
 use crate::conf::*;
+use crate::util::*;
 
 pub struct Sound {
     nr10: u8,
@@ -53,20 +54,89 @@ impl Sound {
 
     pub fn write(&mut self, loc: u16, byte: u8) {
         match loc {
+            // NR11: Channel 1 length timer & duty cycle
             MEM_LOC_NR11 => self.nr11 = byte,
+            // NR12: Channel 1 volume & envelope
+            MEM_LOC_NR12 => self.nr12 = byte,
             // NR13: Channel 1 period low [write-only].
             MEM_LOC_NR13 => self.nr13 = byte,
             // FF14 — NR14: Channel 1 period high & control.
-            MEM_LOC_NR14 => self.nr14 = byte,
-            MEM_LOC_NR12 => self.nr12 = byte,
+            MEM_LOC_NR14 => {
+                self.nr14 = byte;
+                self.channel1_update();
+            }
+            // FF24 — NR50: Master volume & VIN panning
             MEM_LOC_NR50 => self.nr50 = byte,
+            // FF25 — NR51: Sound panning
             MEM_LOC_NR51 => self.nr51 = byte,
-            MEM_LOC_NR52 => self.nr52 = byte,
+            // FF26 — NR52: Audio master control
+            MEM_LOC_NR52 => {
+                // Cannot manually set CHx enable/disable flags.
+                assert!(byte & 0b1111 == 0);
+                self.nr52 = byte;
+            }
             _ => unimplemented!("Sound chip loc write: {:#06X} not implemented", loc),
         };
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         unimplemented!("Sound chip read not implemented")
+    }
+
+    fn audio_on(&self) -> bool {
+        is_bit(self.nr52, 7)
+    }
+
+    fn ch4_on(&self) -> bool {
+        is_bit(self.nr52, 3)
+    }
+
+    fn ch3_on(&self) -> bool {
+        is_bit(self.nr52, 2)
+    }
+
+    fn ch2_on(&self) -> bool {
+        is_bit(self.nr52, 1)
+    }
+
+    fn ch1_on(&self) -> bool {
+        is_bit(self.nr52, 0)
+    }
+
+    fn channel1_update(&self) {
+        // Triggers channel.
+        if !is_bit(self.nr14, 7) {
+            return;
+        }
+
+        set_bit(self.nr52, 0, true);
+
+        // 00: 12.5%
+        // 01: 25%
+        // 10: 50%
+        // 11: 75%
+        let wave_duty = self.nr11 >> 6;
+        // When the length timer reaches 64, the channel is turned off: nr52 bit-0 + nr14 bit-7 -> 0.
+        let init_length_timer = self.nr11 & 0b11_1111;
+
+        let init_volume = self.nr12 >> 4;
+        let is_envelope_direction_increase = is_bit(self.nr12, 3);
+        let sweep_pace = self.nr12 & 0b111;
+
+        let length_enable = is_bit(self.nr14, 6);
+        let period_hi = (self.nr14 & 0b111) as u16;
+        let period_lo = self.nr13 as u16;
+        let period = (period_hi << 8) | period_lo;
+
+        println!("wave_duty={}", wave_duty);
+        println!("init_length_timer={}", init_length_timer);
+        println!("init_volume={}", init_volume);
+        println!(
+            "is_envelope_direction_increase={}",
+            is_envelope_direction_increase
+        );
+        println!("sweep_pace={}", sweep_pace);
+        println!("length_enable={}", length_enable);
+        println!("period={}", period);
     }
 }
