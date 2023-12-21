@@ -1,3 +1,12 @@
+use std::thread;
+use std::time::Duration;
+
+use rodio::dynamic_mixer;
+use rodio::source::SineWave;
+use rodio::OutputStream;
+use rodio::Sink;
+use rodio::Source;
+
 use crate::conf::*;
 use crate::util::*;
 
@@ -128,15 +137,34 @@ impl Sound {
         let period_lo = self.nr13 as u16;
         let period = (period_hi << 8) | period_lo;
 
-        println!("wave_duty={}", wave_duty);
-        println!("init_length_timer={}", init_length_timer);
-        println!("init_volume={}", init_volume);
-        println!(
-            "is_envelope_direction_increase={}",
-            is_envelope_direction_increase
-        );
-        println!("sweep_pace={}", sweep_pace);
-        println!("length_enable={}", length_enable);
-        println!("period={}", period);
+        let out_freq = (CPU_HZ as f32 / 32.0) / (2048.0 - period as f32);
+        let out_volume = (1.0 / 15.0) * init_volume as f32;
+
+        // println!("wave_duty={}", wave_duty);
+        // println!("init_length_timer={}", init_length_timer);
+        // println!("init_volume={}", init_volume);
+        // println!(
+        //     "is_envelope_direction_increase={}",
+        //     is_envelope_direction_increase
+        // );
+        // println!("sweep_pace={}", sweep_pace);
+        // println!("length_enable={}", length_enable);
+        // println!("period={}", period);
+
+        thread::spawn(move || {
+            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+            let sink = Sink::try_new(&stream_handle).unwrap();
+            let (controller, mixer) = dynamic_mixer::mixer::<f32>(1, 44_100);
+
+            sink.append(mixer);
+
+            let source = SineWave::new(out_freq)
+                .take_duration(Duration::from_micros(300_000))
+                .amplify(out_volume);
+
+            controller.add(source);
+
+            sink.sleep_until_end();
+        });
     }
 }

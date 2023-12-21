@@ -32,6 +32,8 @@ impl Mem {
             } else {
                 self.cartridge.rom_0()[loc as usize]
             }
+        } else if (MEM_AREA_WRAM_START..=MEM_AREA_WRAM_END).contains(&loc) {
+            self.wram[(loc - MEM_AREA_WRAM_START) as usize]
         } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
             self.hram[(loc - MEM_AREA_HRAM_START) as usize]
         } else {

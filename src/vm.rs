@@ -154,7 +154,7 @@ impl VM {
         let mut is_alternative_mcycle = false;
         let op = self.read_op()?;
 
-        self.op_history.push((self.cpu.pc, op));
+        self.op_history.push((self.cpu.pc - 1, op));
 
         log::debug!(
             "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
@@ -3397,21 +3397,23 @@ impl VM {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
         if loc <= MEM_AREA_ROM_BANK_0_END {
-            return Err("Cannot write to ROM (0)".into());
+            // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).
+            // return Err("Cannot write to ROM (0)".into());
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
         } else if loc <= MEM_AREA_VRAM_END {
             self.video.write().unwrap().write(loc, byte);
         } else if loc <= MEM_AREA_EXTERNAL_END {
-            unimplemented!("Write to MEM_AREA_EXTERNAL is not implemented")
+            return Err("Write to MEM_AREA_EXTERNAL is not implemented".into());
         } else if loc <= MEM_AREA_WRAM_END {
             self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_ECHO_END {
-            unimplemented!("Write to MEM_AREA_ECHO is not implemented")
+            return Err("Write to MEM_AREA_ECHO is not implemented".into());
         } else if loc <= MEM_AREA_OAM_END {
             self.video.write().unwrap().write(loc, byte);
         } else if loc <= MEM_AREA_PROHIBITED_END {
-            unimplemented!("Write to MEM_AREA_PROHIBITED is not implemented")
+            // Ignore for now. BGB seems to do nothing with these (eg LD (0xFEFF) a).
+            // return Err("Write to MEM_AREA_PROHIBITED is not implemented".into());
         } else if loc <= MEM_AREA_IO_END {
             match loc {
                 MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
@@ -3447,7 +3449,12 @@ impl VM {
                 MEM_LOC_OCPS => unimplemented!("Write to register OCPS is not implemented"),
                 MEM_LOC_OCPD => unimplemented!("Write to register OCPD is not implemented"),
                 MEM_LOC_SVBK => unimplemented!("Write to register SVBK is not implemented"),
-                _ => unimplemented!("Write to MEM_AREA_IO is not implemented"),
+                _ => {
+                    // Ignore for now - BGB seems to ignore this.
+                    // return Err(
+                    //     format!("Write to MEM_AREA_IO is not implemented: {:#06X}", loc).into(),
+                    // );
+                }
             };
         } else if loc <= MEM_AREA_HRAM_END {
             self.mem.write(loc, byte)?;

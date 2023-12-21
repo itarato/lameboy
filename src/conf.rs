@@ -13,7 +13,7 @@ pub const ONE_FRAME_IN_MICROSECONDS: u32 = SECOND_IN_MICROSECOND / FPS;
 const CYCLE_PER_MCYCLE: u64 = 4;
 
 // Cycles per second.
-const CPU_HZ: u64 = 4194304;
+pub const CPU_HZ: u64 = 4194304;
 
 // Cycles per second.
 const DIV_REG_UPDATE_HZ: u64 = 16384;
