@@ -165,7 +165,7 @@ impl Video {
 
                     self.ensure_fps();
                 } else {
-                    self.ly = 144 + (self.stat_counter / 506) as u8;
+                    self.ly = 144 + (self.stat_counter / 456) as u8;
                     if self.ly == self.lyc {
                         unimplemented!("LYC STAT INT");
                     }
@@ -189,7 +189,17 @@ impl Video {
         let tile_map_start = self.window_tile_map_display_section_start();
         // There are 32x32 tiles on the map: 256x256 pixels
 
+        if ly >= 0xFF - self.scy {
+            // Would be overflow.
+            return;
+        }
+
         let actual_ly = ly + self.scy;
+        if actual_ly >= DISPLAY_HEIGHT as u8 {
+            // Out of screen.
+            return;
+        }
+
         let tile_row = actual_ly / 8;
         let tile_y = actual_ly % 8;
 

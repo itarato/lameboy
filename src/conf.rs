@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 pub const ROM_BANK_SIZE: usize = 0x4000;
 
 pub const DISPLAY_WIDTH: u32 = 160;
@@ -721,4 +719,3 @@ pub const WRAM_SIZE: usize = (MEM_AREA_WRAM_END - MEM_AREA_WRAM_START + 1) as us
 pub const OAM_RAM_SIZE: usize = (MEM_AREA_OAM_END - MEM_AREA_OAM_START + 1) as usize;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
-pub type Wram = Arc<Mutex<[u8; WRAM_SIZE]>>;
