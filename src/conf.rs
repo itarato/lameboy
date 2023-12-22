@@ -8,28 +8,24 @@ pub const FPS: u32 = 60;
 pub const SECOND_IN_MICROSECOND: u32 = 1_000_000;
 pub const ONE_FRAME_IN_MICROSECONDS: u32 = SECOND_IN_MICROSECOND / FPS;
 
-const CYCLE_PER_MCYCLE: u64 = 4;
+// Cycles per second.
+pub const CPU_HZ: u32 = 4194304;
 
 // Cycles per second.
-pub const CPU_HZ: u64 = 4194304;
-
-// Cycles per second.
-const DIV_REG_UPDATE_HZ: u64 = 16384;
+const DIV_REG_UPDATE_HZ: u32 = 16384;
 /**
  * 1s = CPU_HZ cycle (4194304)
- * 1s = CPU_HZ / CYCLE_PER_MCYCLE mcycle (1048576)
  * 1s = DIM 16384 update
- * CPU_HZ / CYCLE_PER_MCYCLE mcycle (1048576) = DIM 16384 update
- * 1048576 mcycle = 16384 update
- * 64 mcycle = 1 update
+ * 4194304 mcycle = 16384 update
+ * 256 mcycle = 1 update
  */
-pub const DIV_REG_UPDATE_PER_MCYCLE: u16 = (CPU_HZ / CYCLE_PER_MCYCLE / DIV_REG_UPDATE_HZ) as u16;
+pub const DIV_REG_UPDATE_PER_MCYCLE: u32 = CPU_HZ / DIV_REG_UPDATE_HZ;
 
 pub const TIMA_UPDATE_PER_MCYCLE: [u32; 4] = [
-    (CPU_HZ / CYCLE_PER_MCYCLE / 1024) as u32,
-    (CPU_HZ / CYCLE_PER_MCYCLE / 16) as u32,
-    (CPU_HZ / CYCLE_PER_MCYCLE / 64) as u32,
-    (CPU_HZ / CYCLE_PER_MCYCLE / 256) as u32,
+    (CPU_HZ / 1024) as u32,
+    (CPU_HZ / 16) as u32,
+    (CPU_HZ / 64) as u32,
+    (CPU_HZ / 256) as u32,
 ];
 
 /// 16 KiB ROM bank 00	From cartridge, usually a fixed bank.

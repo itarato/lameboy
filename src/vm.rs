@@ -107,14 +107,14 @@ impl VM {
             }
 
             if let State::Running = self.state {
-                let old_tac = self.timer.tac;
                 let old_cpu_mcycle: u64 = self.cpu.mcycle;
+                let pre_exec_tma = self.mem_read(MEM_LOC_TMA)?;
 
                 self.exec_op()?;
 
                 let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
 
-                self.timer.handle_ticks(old_tac)?;
+                self.timer.handle_ticks(pre_exec_tma)?;
 
                 let should_call_vblank_interrupt = self.video.write().unwrap().update(diff_mcycle);
                 if should_call_vblank_interrupt {
@@ -3420,6 +3420,8 @@ impl VM {
                 MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
                 MEM_LOC_SB => self.serial.set_sb(byte),
                 MEM_LOC_SC => self.serial.set_sc(byte),
+                // TODO: Additionally, this register is reset when executing the stop instruction,
+                //       and only begins ticking again once stop mode ends.
                 MEM_LOC_DIV => self.timer.div = 0,
                 MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
@@ -3496,7 +3498,7 @@ impl VM {
                 MEM_LOC_SC => unimplemented!("Read from register SC is not implemented"),
                 MEM_LOC_DIV => Ok(self.timer.div),
                 MEM_LOC_TIMA => unimplemented!("Read from register TIMA is not implemented"),
-                MEM_LOC_TMA => unimplemented!("Read from register TMA is not implemented"),
+                MEM_LOC_TMA => Ok(self.timer.tma),
                 MEM_LOC_TAC => Ok(self.timer.tac),
                 MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),

@@ -38,7 +38,7 @@ struct Args {
 
     /// Breakpoints.
     #[arg(short = 'b', long)]
-    breakpoint: String,
+    breakpoint: Option<String>,
 
     /// Step by step.
     #[arg(short = 's', long)]
@@ -46,9 +46,11 @@ struct Args {
 }
 
 impl Args {
-    fn breakpoint_parsed(&self) -> u16 {
-        u16::from_str_radix(self.breakpoint.as_str(), 16)
-            .expect("Failed converting base-16 breakpoint address")
+    fn breakpoint_parsed(&self) -> Option<u16> {
+        self.breakpoint.as_ref().map(|breakpoint| {
+            u16::from_str_radix(breakpoint.as_str(), 16)
+                .expect("Failed converting base-16 breakpoint address")
+        })
     }
 }
 
@@ -64,7 +66,8 @@ fn main() -> Result<(), Error> {
 
     let mut debugger = Debugger::new();
     if args.debug {
-        debugger.add_breakpoint(args.breakpoint_parsed());
+        args.breakpoint_parsed()
+            .map(|breakpoint| debugger.add_breakpoint(breakpoint));
         if args.step_by_step {
             debugger.set_break_on_start();
             debugger.set_step_by_step();

@@ -404,6 +404,7 @@ impl Video {
         }
 
         self.fps_ctrl_time = Instant::now();
+        println!("T: {:?}", std::time::SystemTime::now());
     }
 
     /**
