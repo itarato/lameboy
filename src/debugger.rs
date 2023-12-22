@@ -49,7 +49,7 @@ impl Debugger {
         } else if parts.len() == 2 && parts[0] == "b" {
             usize::from_str_radix(parts[1], 16)
                 .ok()
-                .map(|pc| self.add_breakpoints(vec![pc as u16]));
+                .map(|pc| self.add_breakpoint(pc as u16));
             self.dump_breakpoints();
             None
         } else if raw == "b?" {
@@ -104,9 +104,9 @@ impl Debugger {
         self.step_by_step = true;
     }
 
-    pub fn add_breakpoints(&mut self, mut breakpoints: Vec<u16>) {
-        info!("Breakpoints has been added: {:?}", breakpoints);
-        self.pc_breakpoints.append(&mut breakpoints);
+    pub fn add_breakpoint(&mut self, breakpoint: u16) {
+        info!("Breakpoint has been added: {:?}", breakpoint);
+        self.pc_breakpoints.push(breakpoint);
     }
 
     pub fn should_stop(&mut self, pc: u16) -> bool {
@@ -119,7 +119,7 @@ impl Debugger {
             return true;
         }
 
-        if (pc == 0 || pc == 0x100) && self.break_on_start {
+        if pc == 0 && self.break_on_start {
             return true;
         }
 

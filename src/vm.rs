@@ -3365,6 +3365,7 @@ impl VM {
             "\x1B[93mIME\x1B[0m {} | \x1B[93mIE\x1B[0m {:02X} | \x1B[93mIF\x1B[0m {:02X}",
             self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
         );
+        println!("\x1B[93mBIOS\x1B[0m {}", self.mem.boot_lock_reg == 0);
         println!();
     }
 
@@ -3481,7 +3482,11 @@ impl VM {
 
     fn mem_read(&self, loc: u16) -> Result<u8, Error> {
         match loc {
-            0..=MEM_AREA_OAM_END => self.mem.read(loc),
+            // TODO: Add oam/vram read here proxy to video
+            MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_N_END => self.mem.read(loc),
+            MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => self.video.read().unwrap().read(loc),
+            MEM_AREA_EXTERNAL_START..=MEM_AREA_ECHO_END => self.mem.read(loc),
+            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => self.mem.read(loc),
             MEM_AREA_PROHIBITED_START..=MEM_AREA_PROHIBITED_END => {
                 Err(format!("Read from prohibited mem area: {:#06X}", loc).into())
             }

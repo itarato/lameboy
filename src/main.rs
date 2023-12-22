@@ -38,11 +38,18 @@ struct Args {
 
     /// Breakpoints.
     #[arg(short = 'b', long)]
-    breakpoints: Vec<u16>,
+    breakpoint: String,
 
     /// Step by step.
     #[arg(short = 's', long)]
     step_by_step: bool,
+}
+
+impl Args {
+    fn breakpoint_parsed(&self) -> u16 {
+        u16::from_str_radix(self.breakpoint.as_str(), 16)
+            .expect("Failed converting base-16 breakpoint address")
+    }
 }
 
 fn main() -> Result<(), Error> {
@@ -57,9 +64,9 @@ fn main() -> Result<(), Error> {
 
     let mut debugger = Debugger::new();
     if args.debug {
-        debugger.set_break_on_start();
-        debugger.add_breakpoints(args.breakpoints);
+        debugger.add_breakpoint(args.breakpoint_parsed());
         if args.step_by_step {
+            debugger.set_break_on_start();
             debugger.set_step_by_step();
         }
     }
