@@ -8,6 +8,8 @@ pub const FPS: u32 = 60;
 pub const SECOND_IN_MICROSECOND: u32 = 1_000_000;
 pub const ONE_FRAME_IN_MICROSECONDS: u32 = SECOND_IN_MICROSECOND / FPS;
 
+pub const CYCLE_PER_MCYCLE: u8 = 4;
+
 // Cycles per second.
 pub const CPU_HZ: u32 = 4194304;
 

@@ -116,7 +116,11 @@ impl VM {
 
                 self.timer.handle_ticks(pre_exec_tma)?;
 
-                let should_call_vblank_interrupt = self.video.write().unwrap().update(diff_mcycle);
+                let should_call_vblank_interrupt = self
+                    .video
+                    .write()
+                    .unwrap()
+                    .update(diff_mcycle * CYCLE_PER_MCYCLE as u64);
                 if should_call_vblank_interrupt {
                     self.set_interrupt_flag(self.interrupt_flag | 0b1);
                 }
@@ -3394,7 +3398,7 @@ impl VM {
 
     fn tick(&mut self, add: u8) {
         self.cpu.mcycle += add as u64;
-        self.timer.tick(add);
+        self.timer.tick(add * CYCLE_PER_MCYCLE);
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
