@@ -26,13 +26,8 @@ enum ObjSpriteSize {
     Size8x16,
 }
 
-enum Coincidence {
-    LycIsNotLy,
-    LyxIsLy,
-}
-
 pub struct Video {
-    stat_counter: u64,
+    pub stat_counter: u64,
     // Used to know the variable len of an M3 phase, so M0 can be adjusted.
     prev_m3_len: u64,
     lcdc: u8,
@@ -80,8 +75,7 @@ impl Video {
     pub fn reset(&mut self) {
         // Bit-7: Should be unused, not sure why BGB has it set.
         // Bit-2: LYC == LY (Read-only): Set when LY contains the same value as LYC; it is constantly updated.
-        self.stat = 0b1000_0100;
-
+        self.stat = 0b1000_0110;
         self.ly = 0;
     }
 
@@ -139,9 +133,7 @@ impl Video {
 
                     // Increase LY.
                     self.ly += 1;
-                    if self.ly == self.lyc {
-                        unimplemented!("LYC STAT INT");
-                    }
+                    self.update_ly_lyc_coincidence();
 
                     if self.ly < 144 {
                         // Mode to 2.
@@ -166,21 +158,10 @@ impl Video {
                     self.ensure_fps();
                 } else {
                     self.ly = 144 + (self.stat_counter / 456) as u8;
-                    if self.ly == self.lyc {
-                        unimplemented!("LYC STAT INT");
-                    }
+                    self.update_ly_lyc_coincidence();
                 }
             }
         };
-
-        // Update LY
-        // Update LYC
-        if self.ly == self.lyc {
-            self.stat |= 0b0100;
-        } else {
-            self.stat &= !0b0100;
-        }
-        // Handle draw stages/modes
 
         should_call_vblank_interrupt
     }
@@ -229,6 +210,15 @@ impl Video {
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
             self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
+        }
+    }
+
+    fn update_ly_lyc_coincidence(&mut self) {
+        if self.ly == self.lyc {
+            self.stat |= 0b0100;
+            unimplemented!("STAT interrupt is not implemented");
+        } else {
+            self.stat &= 0b1111_1011;
         }
     }
 
@@ -371,14 +361,6 @@ impl Video {
         is_bit(self.stat, 3)
     }
 
-    fn coincidence_flag(&self) -> Coincidence {
-        if is_bit(self.stat, 2) {
-            Coincidence::LyxIsLy
-        } else {
-            Coincidence::LycIsNotLy
-        }
-    }
-
     fn lcd_ppu_mode(&self) -> LcdPpuMode {
         match self.stat & 0b11 {
             0b00 => LcdPpuMode::M0,
@@ -404,7 +386,6 @@ impl Video {
         }
 
         self.fps_ctrl_time = Instant::now();
-        println!("T: {:?}", std::time::SystemTime::now());
     }
 
     /**

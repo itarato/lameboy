@@ -153,6 +153,7 @@ impl VM {
     fn exec_op(&mut self) -> Result<(), Error> {
         let mut is_alternative_mcycle = false;
         let op = self.read_op()?;
+        let mut iteration_mcycle = 0u8;
 
         self.op_history.push((self.cpu.pc - 1, op));
 
@@ -2989,7 +2990,7 @@ impl VM {
                     }
                 };
 
-                self.tick(OPCODE_MCYCLE_PREFIX[op_cb as usize]);
+                iteration_mcycle += OPCODE_MCYCLE_PREFIX[op_cb as usize];
             }
             0xCC => {
                 // CALL Z,a16 3 24/12 | - - - -
@@ -3266,10 +3267,11 @@ impl VM {
         };
 
         if is_alternative_mcycle {
-            self.tick(OPCODE_MCYCLE_ALT[op as usize]);
+            iteration_mcycle += OPCODE_MCYCLE_ALT[op as usize];
         } else {
-            self.tick(OPCODE_MCYCLE[op as usize]);
+            iteration_mcycle += OPCODE_MCYCLE[op as usize];
         }
+        self.tick(iteration_mcycle);
 
         Ok(())
     }
@@ -3355,9 +3357,10 @@ impl VM {
             self.video.read().unwrap().ly
         );
         println!(
-            "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m",
+            "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m  |             | \x1B[93mSTAT CTR\x1B[0m {:04X}",
             self.cpu.get_h(),
-            self.cpu.get_l()
+            self.cpu.get_l(),
+            self.video.read().unwrap().stat_counter
         );
         println!("\x1B[93mSP\x1B[0m {:04X}", self.cpu.sp);
         println!("\x1B[93mPC\x1B[0m {:04X}", self.cpu.pc);
