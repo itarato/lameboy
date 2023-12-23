@@ -189,7 +189,7 @@ impl Cpu {
     }
 
     pub fn xor(&mut self, xor: u8) {
-        let byte = self.get_a() | xor;
+        let byte = self.get_a() ^ xor;
         self.set_a(byte);
 
         self.set_fz(byte == 0);

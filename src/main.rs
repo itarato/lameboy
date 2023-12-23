@@ -43,6 +43,10 @@ struct Args {
     /// Step by step.
     #[arg(short = 's', long)]
     step_by_step: bool,
+
+    // Skip FPS limiter.
+    #[arg(short, long)]
+    nofps: bool,
 }
 
 impl Args {
@@ -76,7 +80,7 @@ fn main() -> Result<(), Error> {
 
     let cartridge = Cartridge::new(args.cartridge)?;
     let global_exit_flag = Arc::new(AtomicBool::new(false));
-    let video = Arc::new(RwLock::new(Video::new()));
+    let video = Arc::new(RwLock::new(Video::new(args.nofps)));
 
     let vm_thread = spawn({
         let global_exit_flag = global_exit_flag.clone();

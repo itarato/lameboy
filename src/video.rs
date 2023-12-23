@@ -46,10 +46,11 @@ pub struct Video {
     vram: [u8; VRAM_SIZE],
     oam_ram: [u8; OAM_RAM_SIZE],
     display_buffer: [u8; DISPLAY_PIXELS_COUNT],
+    ignore_fps_limiter: bool,
 }
 
 impl Video {
-    pub fn new() -> Self {
+    pub fn new(ignore_fps_limiter: bool) -> Self {
         Video {
             stat_counter: 0,
             prev_m3_len: 204,
@@ -69,6 +70,7 @@ impl Video {
             vram: [0; VRAM_SIZE],
             oam_ram: [0; OAM_RAM_SIZE],
             display_buffer: [0; DISPLAY_PIXELS_COUNT],
+            ignore_fps_limiter,
         }
     }
 
@@ -378,6 +380,10 @@ impl Video {
     }
 
     fn ensure_fps(&mut self) {
+        if self.ignore_fps_limiter {
+            return;
+        }
+
         let elapsed = self.fps_ctrl_time.elapsed().as_micros();
         if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
             thread::sleep(Duration::from_micros(
