@@ -219,7 +219,7 @@ impl Cpu {
     }
 
     pub fn shift_left_instrucrtion(&mut self, reg: Reg) {
-        let is_carry = is_carry_rot_left_u8(self.get_reg(reg), 1);
+        let is_carry = is_carry_rot_left_u8(self.get_reg(reg));
         let byte = (self.get_reg(reg) << 1) | self.get_fc();
 
         self.set_reg(reg, byte);
@@ -227,7 +227,7 @@ impl Cpu {
     }
 
     pub fn shift_right_instruction(&mut self, reg: Reg) {
-        let is_carry = is_carry_rot_right_u8(self.get_reg(reg), 1);
+        let is_carry = is_carry_rot_right_u8(self.get_reg(reg));
         let byte = (self.get_reg(reg) >> 1) | (self.get_fc() << 7);
 
         self.set_reg(reg, byte);

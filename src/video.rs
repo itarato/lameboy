@@ -173,19 +173,15 @@ impl Video {
         // There are 32x32 tiles on the map: 256x256 pixels
 
         let actual_ly = ly.wrapping_add(self.scy);
-        if actual_ly >= DISPLAY_HEIGHT as u8 {
-            // Out of screen.
-            return;
-        }
 
         let tile_row = actual_ly / 8;
         let tile_y = actual_ly % 8;
 
         for i in 0..DISPLAY_WIDTH {
-            let actual_x = self.scx as u16 + i as u16;
+            let actual_x = self.scx.wrapping_add(i as u8);
             let tile_col = actual_x / 8;
             let tile_x = (actual_x % 8) as u8;
-            let tile_data_i = (tile_row as u16 * 32) + tile_col;
+            let tile_data_i = (tile_row as u16 * 32) + tile_col as u16;
             let tile_i = self
                 .read(tile_map_start + tile_data_i as u16)
                 .expect("Failed getting tile data");

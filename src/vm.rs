@@ -224,7 +224,7 @@ impl VM {
             }
             0x07 => {
                 // RLCA 1 4 | 0 0 0 C
-                let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                let is_carry = is_carry_rot_left_u8(self.cpu.get_a());
                 let new_a = self.cpu.get_a().rotate_left(1);
                 self.cpu.set_a(new_a);
                 // Not set flag-zero.
@@ -284,7 +284,7 @@ impl VM {
             }
             0x0F => {
                 // RRCA 1 4 | 0 0 0 C
-                let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
+                let is_carry = is_carry_rot_right_u8(self.cpu.get_a());
                 let new_a = self.cpu.get_a().rotate_right(1);
                 self.cpu.set_a(new_a);
                 // Not setting flag-zero.
@@ -338,7 +338,7 @@ impl VM {
             }
             0x17 => {
                 // RLA 1 4 | 0 0 0 C
-                let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                let is_carry = is_carry_rot_left_u8(self.cpu.get_a());
                 let new_a = (self.cpu.get_a() << 1) | self.cpu.get_fc();
 
                 self.cpu.set_a(new_a);
@@ -400,7 +400,7 @@ impl VM {
             }
             0x1F => {
                 // RRA 1 4 | 0 0 0 C
-                let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
+                let is_carry = is_carry_rot_right_u8(self.cpu.get_a());
                 let new_a = (self.cpu.get_a() >> 1) | (self.cpu.get_fc() << 7);
 
                 self.cpu.set_a(new_a);
@@ -1405,7 +1405,7 @@ impl VM {
                 match op_cb {
                     0x00 => {
                         // RLC B 2 8F | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_b(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_b());
                         let new_b = self.cpu.get_b().rotate_left(1);
 
                         self.cpu.set_b(new_b);
@@ -1416,7 +1416,7 @@ impl VM {
                     }
                     0x01 => {
                         // RLC C 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_c(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_c());
                         let new_c = self.cpu.get_c().rotate_left(1);
 
                         self.cpu.set_c(new_c);
@@ -1427,7 +1427,7 @@ impl VM {
                     }
                     0x02 => {
                         // RLC D 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_d(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_d());
                         let new_d = self.cpu.get_d().rotate_left(1);
 
                         self.cpu.set_d(new_d);
@@ -1438,7 +1438,7 @@ impl VM {
                     }
                     0x03 => {
                         // RLC E 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_e(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_e());
                         let new_e = self.cpu.get_e().rotate_left(1);
 
                         self.cpu.set_e(new_e);
@@ -1449,7 +1449,7 @@ impl VM {
                     }
                     0x04 => {
                         // RLC H 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_h(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_h());
                         let new_h = self.cpu.get_h().rotate_left(1);
 
                         self.cpu.set_h(new_h);
@@ -1460,7 +1460,7 @@ impl VM {
                     }
                     0x05 => {
                         // RLC L 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_l(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_l());
                         let new_l = self.cpu.get_l().rotate_left(1);
 
                         self.cpu.set_l(new_l);
@@ -1473,7 +1473,7 @@ impl VM {
                         // RLC (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
 
-                        let is_carry = is_carry_rot_left_u8(byte, 1);
+                        let is_carry = is_carry_rot_left_u8(byte);
                         let new_byte = byte.rotate_left(1);
 
                         self.write_hl(new_byte)?;
@@ -1485,7 +1485,7 @@ impl VM {
                     }
                     0x07 => {
                         // RLC A 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_left_u8(self.cpu.get_a(), 1);
+                        let is_carry = is_carry_rot_left_u8(self.cpu.get_a());
                         let new_a = self.cpu.get_a().rotate_left(1);
 
                         self.cpu.set_a(new_a);
@@ -1496,7 +1496,7 @@ impl VM {
                     }
                     0x08 => {
                         // RRC B 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_b(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_b());
                         let new_b = self.cpu.get_b().rotate_right(1);
 
                         self.cpu.set_b(new_b);
@@ -1507,7 +1507,7 @@ impl VM {
                     }
                     0x09 => {
                         // RRC C 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_c(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_c());
                         let new_c = self.cpu.get_c().rotate_right(1);
 
                         self.cpu.set_c(new_c);
@@ -1518,7 +1518,7 @@ impl VM {
                     }
                     0x0A => {
                         // RRC D 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_d(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_d());
                         let new_d = self.cpu.get_d().rotate_right(1);
 
                         self.cpu.set_d(new_d);
@@ -1529,7 +1529,7 @@ impl VM {
                     }
                     0x0B => {
                         // RRC E 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_e(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_e());
                         let new_e = self.cpu.get_e().rotate_right(1);
 
                         self.cpu.set_e(new_e);
@@ -1540,7 +1540,7 @@ impl VM {
                     }
                     0x0C => {
                         // RRC H 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_h(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_h());
                         let new_h = self.cpu.get_h().rotate_right(1);
 
                         self.cpu.set_h(new_h);
@@ -1551,7 +1551,7 @@ impl VM {
                     }
                     0x0D => {
                         // RRC L 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_l(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_l());
                         let new_l = self.cpu.get_l().rotate_right(1);
 
                         self.cpu.set_l(new_l);
@@ -1564,7 +1564,7 @@ impl VM {
                         // RRC (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
 
-                        let is_carry = is_carry_rot_right_u8(byte, 1);
+                        let is_carry = is_carry_rot_right_u8(byte);
                         let new_byte = byte.rotate_right(1);
 
                         self.write_hl(new_byte)?;
@@ -1576,7 +1576,7 @@ impl VM {
                     }
                     0x0F => {
                         // RRC A 2 8 | Z 0 0 C
-                        let is_carry = is_carry_rot_right_u8(self.cpu.get_a(), 1);
+                        let is_carry = is_carry_rot_right_u8(self.cpu.get_a());
                         let new_a = self.cpu.get_a().rotate_right(1);
 
                         self.cpu.set_a(new_a);
@@ -1612,7 +1612,7 @@ impl VM {
                     0x16 => {
                         // RL (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
-                        let is_carry = is_carry_rot_left_u8(byte, 1);
+                        let is_carry = is_carry_rot_left_u8(byte);
                         let new_byte = (byte << 1) | self.cpu.get_fc();
 
                         self.write_hl(new_byte)?;
@@ -1649,7 +1649,7 @@ impl VM {
                     0x1E => {
                         // RR (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
-                        let is_carry = is_carry_rot_right_u8(byte, 1);
+                        let is_carry = is_carry_rot_right_u8(byte);
                         let new_byte = (byte >> 1) | (self.cpu.get_fc() << 7);
 
                         self.write_hl(new_byte)?;
@@ -1661,7 +1661,7 @@ impl VM {
                     }
                     0x20 => {
                         // SLA B 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_b(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_b());
                         let byte = shift_left_a(self.cpu.get_b());
 
                         self.cpu.set_b(byte);
@@ -1669,7 +1669,7 @@ impl VM {
                     }
                     0x21 => {
                         // SLA C 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_c(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_c());
                         let byte = shift_left_a(self.cpu.get_c());
 
                         self.cpu.set_c(byte);
@@ -1677,7 +1677,7 @@ impl VM {
                     }
                     0x22 => {
                         // SLA D 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_d(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_d());
                         let byte = shift_left_a(self.cpu.get_d());
 
                         self.cpu.set_d(byte);
@@ -1685,7 +1685,7 @@ impl VM {
                     }
                     0x23 => {
                         // SLA E 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_e(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_e());
                         let byte = shift_left_a(self.cpu.get_e());
 
                         self.cpu.set_e(byte);
@@ -1693,7 +1693,7 @@ impl VM {
                     }
                     0x24 => {
                         // SLA H 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_h(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_h());
                         let byte = shift_left_a(self.cpu.get_h());
 
                         self.cpu.set_h(byte);
@@ -1701,7 +1701,7 @@ impl VM {
                     }
                     0x25 => {
                         // SLA L 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_l(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_l());
                         let byte = shift_left_a(self.cpu.get_l());
 
                         self.cpu.set_l(byte);
@@ -1710,7 +1710,7 @@ impl VM {
                     0x26 => {
                         // SLA (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_a(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_a());
                         let new_byte = shift_left_a(byte);
 
                         self.write_hl(new_byte)?;
@@ -1718,7 +1718,7 @@ impl VM {
                     }
                     0x27 => {
                         // SLA A 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_a(), 1);
+                        let is_carry = is_carry_shift_left_u8(self.cpu.get_a());
                         let byte = shift_left_a(self.cpu.get_a());
 
                         self.cpu.set_a(byte);
@@ -1847,7 +1847,7 @@ impl VM {
                     }
                     0x38 => {
                         // SRL B 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_b(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_b());
                         let byte = shift_right_logical(self.cpu.get_b());
 
                         self.cpu.set_b(byte);
@@ -1855,7 +1855,7 @@ impl VM {
                     }
                     0x39 => {
                         // SRL C 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_c(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_c());
                         let byte = shift_right_logical(self.cpu.get_c());
 
                         self.cpu.set_c(byte);
@@ -1863,7 +1863,7 @@ impl VM {
                     }
                     0x3A => {
                         // SRL D 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_d(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_d());
                         let byte = shift_right_logical(self.cpu.get_d());
 
                         self.cpu.set_d(byte);
@@ -1871,7 +1871,7 @@ impl VM {
                     }
                     0x3B => {
                         // SRL E 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_e(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_e());
                         let byte = shift_right_logical(self.cpu.get_e());
 
                         self.cpu.set_e(byte);
@@ -1879,7 +1879,7 @@ impl VM {
                     }
                     0x3C => {
                         // SRL H 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_h(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_h());
                         let byte = shift_right_logical(self.cpu.get_h());
 
                         self.cpu.set_h(byte);
@@ -1887,7 +1887,7 @@ impl VM {
                     }
                     0x3D => {
                         // SRL L 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_l(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_l());
                         let byte = shift_right_logical(self.cpu.get_l());
 
                         self.cpu.set_l(byte);
@@ -1896,7 +1896,7 @@ impl VM {
                     0x3E => {
                         // SRL (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
-                        let is_carry = is_carry_shift_right_u8(byte, 1);
+                        let is_carry = is_carry_shift_right_u8(byte);
                         let new_byte = shift_right_logical(byte);
 
                         self.write_hl(new_byte)?;
@@ -1904,7 +1904,7 @@ impl VM {
                     }
                     0x3F => {
                         // SRL A 2 8 | Z 0 0 C
-                        let is_carry = is_carry_shift_right_u8(self.cpu.get_a(), 1);
+                        let is_carry = is_carry_shift_right_u8(self.cpu.get_a());
                         let byte = shift_right_logical(self.cpu.get_a());
 
                         self.cpu.set_a(byte);
@@ -3166,7 +3166,7 @@ impl VM {
 
                 is_carry = is_carry_add_u16(self.cpu.sp, word as u16);
                 is_half_carry = is_half_carry_add_u16(self.cpu.sp, word as u16);
-                self.cpu.sp = self.cpu.sp.wrapping_add(word as u16);
+                self.cpu.sp = word;
 
                 self.cpu.set_fc(is_carry);
                 self.cpu.set_fh(is_half_carry);
@@ -3234,19 +3234,10 @@ impl VM {
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
+                // TODO: Are we sure this is signed?
                 let offs = self.read_op()? as i8;
                 let word = wrapping_add_u16_i8(self.cpu.sp, offs);
-                let is_carry;
-                let is_half_carry;
-
-                is_carry = is_carry_add_u16(self.cpu.sp, word as u16);
-                is_half_carry = is_half_carry_add_u16(self.cpu.sp, word as u16);
-                self.cpu.hl = self.cpu.sp.wrapping_add(word as u16);
-
-                self.cpu.set_fc(is_carry);
-                self.cpu.set_fh(is_half_carry);
-                self.cpu.set_fz(false);
-                self.cpu.set_fn(false);
+                self.cpu.hl = word;
             }
             0xF9 => {
                 // LD SP,HL 1 8 | - - - -

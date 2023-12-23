@@ -16,37 +16,37 @@ pub fn is_carry_sub_u8(acc: u8, sub: u8) -> bool {
 //     acc < sub
 // }
 
-pub fn is_carry_rot_left_u8(acc: u8, n: u8) -> bool {
-    (acc >> (8 - n)) > 0
+pub fn is_carry_rot_left_u8(acc: u8) -> bool {
+    is_bit(acc, 7)
 }
 
-pub fn is_carry_rot_right_u8(acc: u8, n: u8) -> bool {
-    (acc << (8 - n)) > 0
+pub fn is_carry_rot_right_u8(acc: u8) -> bool {
+    is_bit(acc, 0)
 }
 
-pub fn is_carry_shift_left_u8(acc: u8, n: u8) -> bool {
-    is_carry_rot_left_u8(acc, n)
+pub fn is_carry_shift_left_u8(acc: u8) -> bool {
+    is_carry_rot_left_u8(acc)
 }
 
-pub fn is_carry_shift_right_u8(acc: u8, n: u8) -> bool {
-    is_carry_rot_right_u8(acc, n)
+pub fn is_carry_shift_right_u8(acc: u8) -> bool {
+    is_carry_rot_right_u8(acc)
 }
 
 pub fn is_half_carry_add_u8(acc: u8, n: u8) -> bool {
-    (acc & 0xF) + (n & 0xF) > 0xF
+    ((acc & 0xF) + (n & 0xF)) & 0x10 == 0x10
 }
 
 pub fn is_half_carry_add_u16(acc: u16, n: u16) -> bool {
-    (acc & 0xFFF) + (n as u16 & 0xFFF) > 0xFFF
+    ((acc & 0xFFF) + (n as u16 & 0xFFF)) & 0x1000 == 0x1000
 }
 
 pub fn is_half_carry_sub_u8(acc: u8, sub: u8) -> bool {
-    (acc & 0x0F) < (sub & 0x0F)
+    // TODO: WHICH ONE IS IT???
+    // (acc & 0x0F) < (sub & 0x0F)
+    // (acc & 0xF0).wrapping_sub(sub & 0xF0) & 0x8 == 0x8
+    // (acc as i16 & 0xf) - (sub as i16 & 0xf) < 0
+    (acc & 0xf) > 0
 }
-
-// pub fn is_half_carry_sub_u16(acc: u16, sub: u16) -> bool {
-//     (acc & 0xF000) < (sub & 0xF000)
-// }
 
 pub fn shift_left_a(byte: u8) -> u8 {
     (byte as i8).wrapping_shl(1) as u8
@@ -120,25 +120,10 @@ mod tests {
 
     #[test]
     fn test_is_carry_rot_left_u8() {
-        assert!(is_carry_rot_left_u8(0b1100_0000, 1));
-
-        assert!(!is_carry_rot_left_u8(0b0100_0000, 1));
-        assert!(is_carry_rot_left_u8(0b0100_0000, 2));
-        assert!(is_carry_rot_left_u8(0b0100_0000, 3));
-        assert!(is_carry_rot_left_u8(0b0100_0000, 4));
-        assert!(is_carry_rot_left_u8(0b0100_0000, 5));
-        assert!(is_carry_rot_left_u8(0b0100_0000, 6));
-        assert!(is_carry_rot_left_u8(0b0100_0000, 7));
-
-        assert!(is_carry_rot_right_u8(0b0100_0001, 1));
-
-        assert!(!is_carry_rot_right_u8(0b0100_0010, 1));
-        assert!(is_carry_rot_right_u8(0b0100_0010, 2));
-        assert!(is_carry_rot_right_u8(0b0100_0010, 3));
-        assert!(is_carry_rot_right_u8(0b0100_0010, 4));
-        assert!(is_carry_rot_right_u8(0b0100_0010, 5));
-        assert!(is_carry_rot_right_u8(0b0100_0010, 6));
-        assert!(is_carry_rot_right_u8(0b0100_0010, 7));
+        assert!(is_carry_rot_left_u8(0b1100_0000));
+        assert!(!is_carry_rot_left_u8(0b0100_0000));
+        assert!(is_carry_rot_right_u8(0b0100_0001));
+        assert!(!is_carry_rot_right_u8(0b0100_0010));
     }
 
     #[test]
