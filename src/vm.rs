@@ -3205,7 +3205,8 @@ impl VM {
             }
             0xF1 => {
                 // POP AF 1 12 | Z N H C
-                self.cpu.af = self.pop_u16()?;
+                // The rightmost 4 bits of F in AF is unused and must remain 0 at all times.
+                self.cpu.af = self.pop_u16()? & !0xFu16;
             }
             0xF2 => {
                 // LD A,(C) 2 8 | - - - -
