@@ -3367,7 +3367,7 @@ impl VM {
             self.video.read().unwrap().ly
         );
         println!(
-            "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m  |             | \x1B[93mSTAT CTR\x1B[0m {:04X}",
+            "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m |             | \x1B[93mSTAT CTR\x1B[0m {:04X}",
             self.cpu.get_h(),
             self.cpu.get_l(),
             self.video.read().unwrap().stat_counter
