@@ -35,6 +35,11 @@ impl Cartridge {
             assert!(self.mem_bank_n >= 1);
             let physical_loc = self.mem_bank_n * 0x4000 + (loc as usize - 0x4000);
             self.data[physical_loc]
+        } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
+            // // From cartridge, switchable bank if any
+            // // TODO Not sure if this is correct.
+            // self.data[loc as usize]
+            panic!("Not sure about reading from external mem from cartridge")
         } else {
             return Err(format!("Unexpected catridge addr: {:#06X}", loc).into());
         };

@@ -172,12 +172,7 @@ impl Video {
         let tile_map_start = self.window_tile_map_display_section_start();
         // There are 32x32 tiles on the map: 256x256 pixels
 
-        if ly >= 0xFF - self.scy {
-            // Would be overflow.
-            return;
-        }
-
-        let actual_ly = ly + self.scy;
+        let actual_ly = ly.wrapping_add(self.scy);
         if actual_ly >= DISPLAY_HEIGHT as u8 {
             // Out of screen.
             return;
