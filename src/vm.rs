@@ -1069,43 +1069,35 @@ impl VM {
             }
             0x88 => {
                 // ADC A,B 1 4 | Z 0 H C
-                let byte = self.cpu.get_b().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_b());
             }
             0x89 => {
                 // ADC A,C 1 4 | Z 0 H C
-                let byte = self.cpu.get_c().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_c());
             }
             0x8A => {
                 // ADC A,D 1 4 | Z 0 H C
-                let byte = self.cpu.get_d().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_d());
             }
             0x8B => {
                 // ADC A,E 1 4 | Z 0 H C
-                let byte = self.cpu.get_e().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_e());
             }
             0x8C => {
                 // ADC A,H 1 4 | Z 0 H C
-                let byte = self.cpu.get_h().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_h());
             }
             0x8D => {
                 // ADC A,L 1 4 | Z 0 H C
-                let byte = self.cpu.get_l().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_l());
             }
             0x8E => {
                 // ADC A,(HL) 1 8 | Z 0 H C
-                let byte = self.read_hl()?;
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.read_hl()?);
             }
             0x8F => {
                 // ADC A,A 1 4 | Z 0 H C
-                let byte = self.cpu.get_a().wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                self.cpu.add_with_carry(self.cpu.get_a());
             }
             0x90 => {
                 // SUB B 1 4 | Z 1 H C
@@ -1149,43 +1141,43 @@ impl VM {
             }
             0x98 => {
                 // SBC A,B 1 4 | Z 1 H C
-                let byte = self.cpu.get_b().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_b();
+                self.cpu.sub_with_carry(byte);
             }
             0x99 => {
                 // SBC A,C 1 4 | Z 1 H C
-                let byte = self.cpu.get_c().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_c();
+                self.cpu.sub_with_carry(byte);
             }
             0x9A => {
                 // SBC A,D 1 4 | Z 1 H C
-                let byte = self.cpu.get_d().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_d();
+                self.cpu.sub_with_carry(byte);
             }
             0x9B => {
                 // SBC A,E 1 4 | Z 1 H C
-                let byte = self.cpu.get_e().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_e();
+                self.cpu.sub_with_carry(byte);
             }
             0x9C => {
                 // SBC A,H 1 4 | Z 1 H C
-                let byte = self.cpu.get_h().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_h();
+                self.cpu.sub_with_carry(byte);
             }
             0x9D => {
                 // SBC A,L 1 4 | Z 1 H C
-                let byte = self.cpu.get_l().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_l();
+                self.cpu.sub_with_carry(byte);
             }
             0x9E => {
                 // SBC A,(HL) 1 8 | Z 1 H C
                 let byte = self.read_hl()?;
-                self.cpu.sub(byte);
+                self.cpu.sub_with_carry(byte);
             }
             0x9F => {
                 // SBC A,A 1 4 | Z 1 H C
-                let byte = self.cpu.get_a().wrapping_sub(self.cpu.get_fc());
-                self.cpu.sub(byte);
+                let byte = self.cpu.get_a();
+                self.cpu.sub_with_carry(byte);
             }
             0xA0 => {
                 // AND B 1 4 | Z 0 1 0
@@ -3058,8 +3050,8 @@ impl VM {
             }
             0xCE => {
                 // ADC A,d8 2 8 | Z 0 H C
-                let byte = self.read_op()?.wrapping_add(self.cpu.get_fc());
-                self.cpu.add(byte);
+                let byte = self.read_op()?;
+                self.cpu.add_with_carry(byte);
             }
             0xCF => {
                 // RST 08H 1 16 | - - - -
@@ -3154,7 +3146,7 @@ impl VM {
             0xDE => {
                 // SBC A,d8 2 8 | Z 1 H C
                 let byte = self.read_op()?;
-                self.cpu.sub(byte);
+                self.cpu.sub_with_carry(byte);
             }
             0xDF => {
                 // RST 18H 1 16 | - - - -

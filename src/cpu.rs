@@ -150,6 +150,22 @@ impl Cpu {
         self.set_fc(is_carry);
     }
 
+    pub fn add_with_carry(&mut self, add: u8) {
+        let carry = self.get_fc();
+
+        let is_half_carry = ((self.get_a() & 0xF) + (add & 0xF) + carry) > 0xF;
+        let is_carry = self.get_a() as u16 + add as u16 + carry as u16 > 0xffu16;
+
+        let byte = self.get_a().wrapping_add(add).wrapping_add(carry);
+
+        self.set_a(byte);
+
+        self.set_fz(byte == 0);
+        self.set_fn(false);
+        self.set_fh(is_half_carry);
+        self.set_fc(is_carry);
+    }
+
     pub fn cp(&mut self, sub: u8) -> u8 {
         let is_half_carry = is_half_carry_sub_u8(self.get_a(), sub);
         let is_carry = is_carry_sub_u8(self.get_a(), sub);
@@ -165,6 +181,20 @@ impl Cpu {
 
     pub fn sub(&mut self, sub: u8) {
         let byte = self.cp(sub);
+        self.set_a(byte);
+    }
+
+    pub fn sub_with_carry(&mut self, sub: u8) {
+        let is_half_carry = is_half_carry_sub_with_carry_u8(self.get_a(), sub, self.get_fc());
+        let is_carry = is_carry_sub_with_carry_u8(self.get_a(), sub, self.get_fc());
+
+        let byte = self.get_a().wrapping_sub(sub).wrapping_sub(self.get_fc());
+
+        self.set_fz(byte == 0);
+        self.set_fn(true);
+        self.set_fh(is_half_carry);
+        self.set_fc(is_carry);
+
         self.set_a(byte);
     }
 

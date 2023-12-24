@@ -12,6 +12,10 @@ pub fn is_carry_sub_u8(acc: u8, sub: u8) -> bool {
     acc < sub
 }
 
+pub fn is_carry_sub_with_carry_u8(acc: u8, sub: u8, carry: u8) -> bool {
+    (acc as u16) < sub as u16 + carry as u16
+}
+
 pub fn is_carry_rot_left_u8(acc: u8) -> bool {
     is_bit(acc, 7)
 }
@@ -39,6 +43,11 @@ pub fn is_half_carry_add_u16(acc: u16, n: u16) -> bool {
 pub fn is_half_carry_sub_u8(acc: u8, sub: u8) -> bool {
     // TODO: Reaaaaaly not sure about this.
     (acc & 0x0F) < (sub & 0x0F)
+}
+
+pub fn is_half_carry_sub_with_carry_u8(acc: u8, sub: u8, carry: u8) -> bool {
+    // TODO: Reaaaaaly not sure about this.
+    (acc & 0x0F) < (sub & 0x0F) + carry
 }
 
 pub fn shift_left_a(byte: u8) -> u8 {
