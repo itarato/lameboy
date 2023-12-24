@@ -89,13 +89,13 @@ impl Video {
     //       - use is_stat_mode_0_interrupt_selected ...
     //       - make return a list of instructions
     #[must_use]
-    pub fn update(&mut self, spent_mcycle: u64) -> bool {
+    pub fn update(&mut self, cpu_cycles: u64) -> bool {
         let mut should_call_vblank_interrupt = false;
         if !self.is_lcd_display_enabled() {
             return should_call_vblank_interrupt;
         }
 
-        self.stat_counter += spent_mcycle;
+        self.stat_counter += cpu_cycles;
 
         // Mode 2  2_____2_____2_____2_____2_____2___________________2____
         // Mode 3  _33____33____33____33____33____33__________________3___

@@ -77,9 +77,9 @@ impl Gfx {
     pub fn run(&self) {
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
-        let (main_window, mut pixels) = self.make_main_window(&event_loop);
         let (tile_debug_window, mut pixels_for_tile_debug_window) =
             self.make_tile_debug_window(&event_loop);
+        let (main_window, mut pixels) = self.make_main_window(&event_loop);
 
         let global_exit_flag = self.global_exit_flag.clone();
         let video = self.video.clone();

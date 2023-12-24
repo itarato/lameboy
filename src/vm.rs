@@ -23,6 +23,37 @@ enum State {
     Stop,
 }
 
+#[derive(Debug)]
+enum Interrupt {
+    VBlank,
+    LCD,
+    Timer,
+    Serial,
+    Joypad,
+}
+
+impl Interrupt {
+    fn addr(&self) -> u16 {
+        match self {
+            Interrupt::VBlank => 0x40,
+            Interrupt::LCD => 0x48,
+            Interrupt::Timer => 0x50,
+            Interrupt::Serial => 0x58,
+            Interrupt::Joypad => 0x60,
+        }
+    }
+
+    fn bit(&self) -> u8 {
+        match self {
+            Interrupt::VBlank => 0,
+            Interrupt::LCD => 1,
+            Interrupt::Timer => 2,
+            Interrupt::Serial => 3,
+            Interrupt::Joypad => 4,
+        }
+    }
+}
+
 pub struct VM {
     global_exit_flag: Arc<AtomicBool>,
     mem: Mem,
@@ -116,7 +147,10 @@ impl VM {
 
                 let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
 
-                self.timer.handle_ticks(pre_exec_tma)?;
+                let should_call_times_interrupt = self.timer.handle_ticks(pre_exec_tma)?;
+                if should_call_times_interrupt {
+                    self.interrupt_flag = self.interrupt_flag | 0b0100;
+                }
 
                 let should_call_vblank_interrupt = self
                     .video
@@ -124,8 +158,10 @@ impl VM {
                     .unwrap()
                     .update(diff_mcycle * CYCLE_PER_MCYCLE as u64);
                 if should_call_vblank_interrupt {
-                    self.set_interrupt_flag(self.interrupt_flag | 0b1);
+                    self.interrupt_flag = self.interrupt_flag | 0b0001;
                 }
+
+                self.check_interrupt();
 
                 self.counter += 1;
             }
@@ -3400,9 +3436,9 @@ impl VM {
         println!("");
     }
 
-    fn tick(&mut self, add: u8) {
-        self.cpu.mcycle += add as u64;
-        self.timer.tick(add * CYCLE_PER_MCYCLE);
+    fn tick(&mut self, mcycles: u8) {
+        self.cpu.mcycle += mcycles as u64;
+        self.timer.tick(mcycles * CYCLE_PER_MCYCLE);
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
@@ -3433,11 +3469,11 @@ impl VM {
                 MEM_LOC_SC => self.serial.set_sc(byte),
                 // TODO: Additionally, this register is reset when executing the stop instruction,
                 //       and only begins ticking again once stop mode ends.
-                MEM_LOC_DIV => self.timer.div = 0,
-                MEM_LOC_TIMA => unimplemented!("Write to register TIMA is not implemented"),
+                MEM_LOC_DIV => self.timer.set_div(),
+                MEM_LOC_TIMA => self.timer.set_tima(byte),
                 MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
-                MEM_LOC_TAC => self.timer.tac = byte,
-                MEM_LOC_IF => self.set_interrupt_flag(byte),
+                MEM_LOC_TAC => self.timer.set_tac(byte),
+                MEM_LOC_IF => self.interrupt_flag = byte,
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
                 MEM_LOC_LCDC..=MEM_LOC_WX => self.video.write().unwrap().write(loc, byte),
                 MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
@@ -3507,11 +3543,11 @@ impl VM {
                 MEM_LOC_P1 => unimplemented!("Read from register P1 is not implemented"),
                 MEM_LOC_SB => unimplemented!("Read from register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Read from register SC is not implemented"),
-                MEM_LOC_DIV => Ok(self.timer.div),
-                MEM_LOC_TIMA => unimplemented!("Read from register TIMA is not implemented"),
-                MEM_LOC_TMA => Ok(self.timer.tma),
-                MEM_LOC_TAC => Ok(self.timer.tac),
-                MEM_LOC_IF => unimplemented!("Read from register IF is not implemented"),
+                MEM_LOC_DIV => Ok(self.timer.div()),
+                MEM_LOC_TIMA => Ok(self.timer.tima()),
+                MEM_LOC_TMA => Ok(self.timer.tma()),
+                MEM_LOC_TAC => Ok(self.timer.tac()),
+                MEM_LOC_IF => Ok(self.interrupt_flag),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
                 MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read().unwrap().read(loc),
                 MEM_LOC_KEY1 => unimplemented!("Read from register KEY1 is not implemented"),
@@ -3568,28 +3604,34 @@ impl VM {
         (self.interrupt_enable & 0b1_0000) > 0
     }
 
-    fn set_interrupt_flag(&mut self, new_value: u8) {
+    fn check_interrupt(&mut self) {
         if self.interrupt_master_enable_flag {
-            let diff = !self.interrupt_flag & new_value;
-
-            if (diff & 0b1) > 0 && self.is_vblank_interrupt_enabled() {
-                unimplemented!("VBlank interrupt not implemented")
-            }
-            if (diff & 0b10) > 0 && self.is_lcd_interrupt_enabled() {
-                unimplemented!("LCD interrupt not implemented")
-            }
-            if (diff & 0b100) > 0 && self.is_timer_interrupt_enabled() {
-                unimplemented!("Timer interrupt not implemented")
-            }
-            if (diff & 0b1000) > 0 && self.is_serial_interrupt_enabled() {
-                unimplemented!("Serial interrupt not implemented")
-            }
-            if (diff & 0b1_0000) > 0 && self.is_joypad_interrupt_enabled() {
-                unimplemented!("Joypad interrupt not implemented")
+            // If IME and IE allow the servicing of more than one of the requested interrupts,
+            // the interrupt with the highest priority is serviced first. The priorities follow
+            // the order of the bits in the IE and IF registers: Bit 0 (VBlank) has the highest
+            // priority, and Bit 4 (Joypad) has the lowest priority.
+            if is_bit(self.interrupt_flag, Interrupt::VBlank.bit())
+                && self.is_vblank_interrupt_enabled()
+            {
+                self.interrupt(Interrupt::VBlank);
+            } else if is_bit(self.interrupt_flag, Interrupt::LCD.bit())
+                && self.is_lcd_interrupt_enabled()
+            {
+                self.interrupt(Interrupt::LCD);
+            } else if is_bit(self.interrupt_flag, Interrupt::Timer.bit())
+                && self.is_timer_interrupt_enabled()
+            {
+                self.interrupt(Interrupt::Timer);
+            } else if is_bit(self.interrupt_flag, Interrupt::Serial.bit())
+                && self.is_serial_interrupt_enabled()
+            {
+                self.interrupt(Interrupt::Serial);
+            } else if is_bit(self.interrupt_flag, Interrupt::Joypad.bit())
+                && self.is_joypad_interrupt_enabled()
+            {
+                self.interrupt(Interrupt::Joypad);
             }
         }
-
-        self.interrupt_flag = new_value;
     }
 
     pub fn dump_op_history(&self) {
@@ -3611,5 +3653,14 @@ impl VM {
                 OPCODE_NAME[*op as usize]
             );
         }
+    }
+
+    fn interrupt(&mut self, interrupt: Interrupt) {
+        self.interrupt_master_enable_flag = false;
+
+        self.interrupt_flag &= !(1u8 << interrupt.bit());
+        self.push_u16(self.cpu.pc).expect("Failed stacking PC");
+        self.cpu.pc = interrupt.addr();
+        self.tick(5);
     }
 }
