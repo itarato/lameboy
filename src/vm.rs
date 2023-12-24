@@ -3160,12 +3160,10 @@ impl VM {
             0xE8 => {
                 // ADD SP,r8 2 16 | 0 0 H C
                 let offs = self.read_op()? as i8;
-                let word = wrapping_add_u16_i8(self.cpu.sp, offs);
-                let is_carry;
-                let is_half_carry;
+                let word = (self.cpu.sp as i32 + offs as i32) as u16;
 
-                is_carry = is_carry_add_u16(self.cpu.sp, word as u16);
-                is_half_carry = is_half_carry_add_u16(self.cpu.sp, word as u16);
+                let is_carry = is_carry_add_u8((self.cpu.sp & 0xFF) as u8, offs as u8);
+                let is_half_carry = is_half_carry_add_u8((self.cpu.sp & 0xFF) as u8, offs as u8);
                 self.cpu.sp = word;
 
                 self.cpu.set_fc(is_carry);
@@ -3237,8 +3235,16 @@ impl VM {
                 // LD HL,SP+r8 2 12 | 0 0 H C
                 // TODO: Are we sure this is signed?
                 let offs = self.read_op()? as i8;
-                let word = wrapping_add_u16_i8(self.cpu.sp, offs);
+                let word = (self.cpu.sp as i32 + offs as i32) as u16;
+
+                let is_carry = is_carry_add_u8((self.cpu.sp & 0xFF) as u8, offs as u8);
+                let is_half_carry = is_half_carry_add_u8((self.cpu.sp & 0xFF) as u8, offs as u8);
                 self.cpu.hl = word;
+
+                self.cpu.set_fc(is_carry);
+                self.cpu.set_fh(is_half_carry);
+                self.cpu.set_fz(false);
+                self.cpu.set_fn(false);
             }
             0xF9 => {
                 // LD SP,HL 1 8 | - - - -
