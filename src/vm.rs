@@ -263,7 +263,8 @@ impl VM {
                 let is_carry = is_carry_rot_left_u8(self.cpu.get_a());
                 let new_a = self.cpu.get_a().rotate_left(1);
                 self.cpu.set_a(new_a);
-                // Not set flag-zero.
+
+                self.cpu.set_fz(false);
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
@@ -323,7 +324,7 @@ impl VM {
                 let is_carry = is_carry_rot_right_u8(self.cpu.get_a());
                 let new_a = self.cpu.get_a().rotate_right(1);
                 self.cpu.set_a(new_a);
-                // Not setting flag-zero.
+                self.cpu.set_fz(false);
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
@@ -379,7 +380,7 @@ impl VM {
 
                 self.cpu.set_a(new_a);
 
-                // No reset for flag-zero.
+                self.cpu.set_fz(false);
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
@@ -441,7 +442,7 @@ impl VM {
 
                 self.cpu.set_a(new_a);
 
-                // Not setting flag-zero.
+                self.cpu.set_fz(false);
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(false);
                 self.cpu.set_fc(is_carry);
