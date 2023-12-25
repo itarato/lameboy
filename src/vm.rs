@@ -622,8 +622,10 @@ impl VM {
                 let byte = self.read_hl()?;
                 let is_half_carry = is_half_carry_add_u8(byte, 1);
 
-                self.write_hl(byte.wrapping_add(1))?;
-                self.cpu.set_fz(byte == 0);
+                let new_byte = byte.wrapping_add(1);
+                self.write_hl(new_byte)?;
+
+                self.cpu.set_fz(new_byte == 0);
                 self.cpu.set_fn(false);
                 self.cpu.set_fh(is_half_carry);
             }
@@ -632,8 +634,10 @@ impl VM {
                 let byte = self.read_hl()?;
                 let is_half_carry = is_half_carry_sub_u8(byte, 1);
 
-                self.write_hl(byte.wrapping_sub(1))?;
-                self.cpu.set_fz(byte == 0);
+                let new_byte = byte.wrapping_sub(1);
+                self.write_hl(new_byte)?;
+
+                self.cpu.set_fz(new_byte == 0);
                 self.cpu.set_fn(true);
                 self.cpu.set_fh(is_half_carry);
             }
@@ -1739,7 +1743,7 @@ impl VM {
                     0x26 => {
                         // SLA (HL) 2 16 | Z 0 0 C
                         let byte = self.read_hl()?;
-                        let is_carry = is_carry_shift_left_u8(self.cpu.get_a());
+                        let is_carry = is_carry_shift_left_u8(byte);
                         let new_byte = shift_left_a(byte);
 
                         self.write_hl(new_byte)?;
