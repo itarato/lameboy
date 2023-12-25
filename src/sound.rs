@@ -63,6 +63,7 @@ impl Sound {
 
     pub fn write(&mut self, loc: u16, byte: u8) {
         match loc {
+            MEM_LOC_NR10 => self.nr10 = byte,
             // NR11: Channel 1 length timer & duty cycle
             MEM_LOC_NR11 => self.nr11 = byte,
             // NR12: Channel 1 volume & envelope
@@ -74,6 +75,22 @@ impl Sound {
                 self.nr14 = byte;
                 self.channel1_update();
             }
+            MEM_LOC_NR21 => self.nr21 = byte,
+            MEM_LOC_NR22 => self.nr22 = byte,
+            MEM_LOC_NR23 => self.nr23 = byte,
+            MEM_LOC_NR24 => {
+                self.nr24 = byte;
+                self.channel2_update();
+            }
+            MEM_LOC_NR30 => self.nr30 = byte,
+            MEM_LOC_NR31 => self.nr31 = byte,
+            MEM_LOC_NR32 => self.nr32 = byte,
+            MEM_LOC_NR33 => self.nr33 = byte,
+            MEM_LOC_NR34 => self.nr34 = byte,
+            MEM_LOC_NR41 => self.nr41 = byte,
+            MEM_LOC_NR42 => self.nr42 = byte,
+            MEM_LOC_NR43 => self.nr43 = byte,
+            MEM_LOC_NR44 => self.nr44 = byte,
             // FF24 — NR50: Master volume & VIN panning
             MEM_LOC_NR50 => self.nr50 = byte,
             // FF25 — NR51: Sound panning
@@ -166,5 +183,9 @@ impl Sound {
 
             sink.sleep_until_end();
         });
+    }
+
+    fn channel2_update(&self) {
+        log::error!("Channel 2 is not implemented");
     }
 }

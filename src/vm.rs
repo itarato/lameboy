@@ -3467,7 +3467,22 @@ impl VM {
                 MEM_LOC_TAC => self.timer.set_tac(byte),
                 MEM_LOC_IF => self.interrupt_flag = byte,
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
-                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.write().unwrap().write(loc, byte),
+                MEM_LOC_LCDC..=MEM_LOC_WX => {
+                    if loc == MEM_LOC_DMA {
+                        assert!(byte <= 0xDF);
+                        let addr = (byte as u16) << 8;
+                        let block = (0..0xA0)
+                            .map(|offs| self.mem_read(addr + offs).expect("Cannot read for DMA"))
+                            .collect::<Vec<_>>();
+                        self.video
+                            .write()
+                            .expect("Failed locking for DMA write")
+                            .dma_oam_transfer(block);
+                        // Not sure if we should spend 160 mcycle here.
+                    } else {
+                        self.video.write().unwrap().write(loc, byte);
+                    }
+                }
                 MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
                 MEM_LOC_VBK => unimplemented!("Write to register VBK is not implemented"),
                 MEM_LOC_BOOT_LOCK_REG => {

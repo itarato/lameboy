@@ -36,7 +36,6 @@ pub struct Video {
     scx: u8,
     pub ly: u8,
     lyc: u8,
-    dma: u8,
     bgp: u8,
     obp0: u8,
     obp1: u8,
@@ -60,7 +59,6 @@ impl Video {
             scx: 0,
             ly: 0,
             lyc: 0,
-            dma: 0,
             bgp: 0,
             obp0: 0,
             obp1: 0,
@@ -229,7 +227,6 @@ impl Video {
             MEM_LOC_SCX => self.scx,
             MEM_LOC_LY => self.ly,
             MEM_LOC_LYC => self.lyc,
-            MEM_LOC_DMA => self.dma,
             MEM_LOC_BGP => self.bgp,
             MEM_LOC_OBP0 => self.obp0,
             MEM_LOC_OBP1 => self.obp1,
@@ -263,16 +260,20 @@ impl Video {
             MEM_LOC_SCX => self.scx = byte,
             MEM_LOC_LY => self.ly = byte,
             MEM_LOC_LYC => self.lyc = byte,
-            MEM_LOC_DMA => {
-                unimplemented!("Unimplemented DMA write. This starts an OAM copy.");
-                self.dma = byte;
-            }
             MEM_LOC_BGP => self.bgp = byte,
             MEM_LOC_OBP0 => self.obp0 = byte,
             MEM_LOC_OBP1 => self.obp1 = byte,
             MEM_LOC_WY => self.wy = byte,
             MEM_LOC_WX => self.wx = byte,
             _ => panic!("Illegal video address write: {:#06X}", loc),
+        }
+    }
+
+    pub fn dma_oam_transfer(&mut self, block: Vec<u8>) {
+        assert!(block.len() == 0xA0);
+
+        for (i, byte) in block.iter().enumerate() {
+            self.write(MEM_AREA_OAM_START + i as u16, *byte);
         }
     }
 
