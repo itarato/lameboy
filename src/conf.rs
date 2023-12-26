@@ -14,7 +14,7 @@ pub const CYCLE_PER_MCYCLE: u8 = 4;
 pub const CPU_HZ: u32 = 4194304;
 
 // Cycles per second.
-const DIV_REG_UPDATE_HZ: u32 = 16384;
+const DIV_REG_UPDATE_HZ: u32 = 256;
 /**
  * 1s = CPU_HZ cycle (4194304)
  * 1s = DIM 16384 update
@@ -23,12 +23,7 @@ const DIV_REG_UPDATE_HZ: u32 = 16384;
  */
 pub const DIV_REG_UPDATE_PER_MCYCLE: u32 = CPU_HZ / DIV_REG_UPDATE_HZ;
 
-pub const TIMA_UPDATE_PER_MCYCLE: [u32; 4] = [
-    (CPU_HZ / 1024) as u32,
-    (CPU_HZ / 16) as u32,
-    (CPU_HZ / 64) as u32,
-    (CPU_HZ / 256) as u32,
-];
+pub const TIMA_UPDATE_PER_MCYCLE: [u32; 4] = [1024u32, 16u32, 64u32, 256u32];
 
 /// 16 KiB ROM bank 00	From cartridge, usually a fixed bank.
 pub const MEM_AREA_ROM_BANK_0_START: u16 = 0x0000;
@@ -72,7 +67,7 @@ pub const MEM_AREA_HRAM_END: u16 = 0xFFFE;
 
 /// Interrupt Enable register (IE).
 // pub const MEM_AREA_IE_START: u16 = 0xFFFF;
-pub const MEM_AREA_IE_END: u16 = 0xFFFF;
+// pub const MEM_AREA_IE_END: u16 = 0xFFFF;
 
 pub const MEM_LOC_P1: u16 = 0xFF00;
 pub const MEM_LOC_SB: u16 = 0xFF01;

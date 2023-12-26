@@ -18,8 +18,12 @@ use crate::timer::*;
 use crate::util::*;
 use crate::video::*;
 
+#[derive(PartialEq)]
 enum State {
     Running,
+    // Power down CPU until an interrupt occurs. Use this when ever possible to reduce energy consumption.
+    Halt,
+    // Halt CPU & LCD display until button pressed.
     Stop,
 }
 
@@ -140,19 +144,21 @@ impl VM {
                 }
             }
 
-            if let State::Running = self.state {
-                let old_cpu_mcycle: u64 = self.cpu.mcycle;
-                let pre_exec_tma = self.mem_read(MEM_LOC_TMA)?;
+            let old_cpu_mcycle: u64 = self.cpu.mcycle;
+            let pre_exec_tma = self.mem_read(MEM_LOC_TMA)?;
 
+            if self.state == State::Running {
                 self.exec_op()?;
+            }
 
-                let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
+            let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
 
-                let should_call_times_interrupt = self.timer.handle_ticks(pre_exec_tma)?;
-                if should_call_times_interrupt {
-                    self.interrupt_flag = self.interrupt_flag | 0b0100;
-                }
+            let should_call_times_interrupt = self.timer.handle_ticks(pre_exec_tma)?;
+            if should_call_times_interrupt {
+                self.interrupt_flag = self.interrupt_flag | 0b0100;
+            }
 
+            if self.state != State::Stop {
                 let should_call_vblank_interrupt = self
                     .video
                     .write()
@@ -161,11 +167,11 @@ impl VM {
                 if should_call_vblank_interrupt {
                     self.interrupt_flag = self.interrupt_flag | 0b0001;
                 }
-
-                self.check_interrupt();
-
-                self.counter += 1;
             }
+
+            self.check_interrupt();
+
+            self.counter += 1;
 
             if self
                 .global_exit_flag
@@ -986,7 +992,7 @@ impl VM {
             }
             0x76 => {
                 // HALT 1 4 | - - - -
-                unimplemented!("Opcode 0x76 (HALT 1 4) not implemented");
+                self.state = State::Halt;
             }
             0x77 => {
                 // LD (HL),A 1 8 | - - - -
@@ -3462,7 +3468,7 @@ impl VM {
             // return Err("Write to MEM_AREA_PROHIBITED is not implemented".into());
         } else if loc <= MEM_AREA_IO_END {
             match loc {
-                MEM_LOC_P1 => unimplemented!("Write to register P1 is not implemented"),
+                MEM_LOC_P1 => return Err("Write to reg P1 is not implemented".into()),
                 MEM_LOC_SB => self.serial.set_sb(byte),
                 MEM_LOC_SC => self.serial.set_sc(byte),
                 // TODO: Additionally, this register is reset when executing the stop instruction,
@@ -3521,7 +3527,7 @@ impl VM {
             };
         } else if loc <= MEM_AREA_HRAM_END {
             self.mem.write(loc, byte)?;
-        } else if loc <= MEM_AREA_IE_END {
+        } else if loc == MEM_LOC_IE {
             self.set_interrupt_enable(byte);
         } else {
             return Err("Write outside of memory".into());
@@ -3553,7 +3559,7 @@ impl VM {
                 Err(format!("Read from prohibited mem area: {:#06X}", loc).into())
             }
             MEM_AREA_IO_START..=MEM_AREA_IO_END => match loc {
-                MEM_LOC_P1 => unimplemented!("Read from register P1 is not implemented"),
+                MEM_LOC_P1 => Err("Read from P1 reg is not implented".into()),
                 MEM_LOC_SB => unimplemented!("Read from register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Read from register SC is not implemented"),
                 MEM_LOC_DIV => Ok(self.timer.div()),
@@ -3563,7 +3569,10 @@ impl VM {
                 MEM_LOC_IF => Ok(self.interrupt_flag),
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
                 MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read().unwrap().read(loc),
-                MEM_LOC_KEY1 => unimplemented!("Read from register KEY1 is not implemented"),
+                MEM_LOC_KEY1 => {
+                    // FF4D — KEY1 (CGB Mode only): Prepare speed switch --> ignore.
+                    Ok(0xFF)
+                }
                 MEM_LOC_VBK => unimplemented!("Read from register VBK is not implemented"),
                 MEM_LOC_BOOT_LOCK_REG => Ok(self.mem.boot_lock_reg),
                 MEM_LOC_HDMA1 => unimplemented!("Read from register HDMA1 is not implemented"),
@@ -3580,9 +3589,7 @@ impl VM {
                 _ => unimplemented!("Read from MEM_AREA_IO is not implemented"),
             },
             MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END => self.mem.read(loc),
-            MEM_AREA_IE_END => {
-                unimplemented!("Read from MEM_AREA_IE not handled yet")
-            }
+            MEM_LOC_IE => Ok(self.interrupt_enable),
         }
     }
 
@@ -3644,6 +3651,12 @@ impl VM {
             {
                 self.interrupt(Interrupt::Joypad);
             }
+        } else {
+            // If an interrupt is pending, halt immediately exits, as expected, however the “halt bug”, explained below,
+            // is triggered.
+            if self.interrupt_flag & 0b0001_1111 > 0 {
+                self.state = State::Running;
+            }
         }
     }
 
@@ -3669,6 +3682,8 @@ impl VM {
     }
 
     fn interrupt(&mut self, interrupt: Interrupt) {
+        self.state = State::Running;
+
         self.interrupt_master_enable_flag = false;
 
         self.interrupt_flag &= !(1u8 << interrupt.bit());
