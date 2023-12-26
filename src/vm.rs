@@ -91,7 +91,8 @@ impl VM {
             sound: Sound::new(),
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
-            interrupt_flag: 0,
+            // Top 3 bits are unused - BGB reads them as 0b111x_xxxx.
+            interrupt_flag: 0xE0,
             video,
             op_history: SizedQueue::new(128),
             deep_op_history: SizedQueue::new(128),
@@ -3468,9 +3469,9 @@ impl VM {
                 //       and only begins ticking again once stop mode ends.
                 MEM_LOC_DIV => self.timer.set_div(),
                 MEM_LOC_TIMA => self.timer.set_tima(byte),
-                MEM_LOC_TMA => unimplemented!("Write to register TMA is not implemented"),
+                MEM_LOC_TMA => self.timer.set_tma(byte),
                 MEM_LOC_TAC => self.timer.set_tac(byte),
-                MEM_LOC_IF => self.interrupt_flag = byte,
+                MEM_LOC_IF => self.interrupt_flag = byte | 0xE0,
                 MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
                 MEM_LOC_LCDC..=MEM_LOC_WX => {
                     if loc == MEM_LOC_DMA {

@@ -14,7 +14,8 @@ impl Timer {
     pub fn new() -> Self {
         Timer {
             div: 0,
-            tac: 0,
+            // High 5 bytes unused - set to 1.
+            tac: 0b1111_1000,
             tma: 0,
             tima: 0,
             div_ticker: 0,
@@ -41,7 +42,7 @@ impl Timer {
             if self.tima_ticker >= tima_freq {
                 self.tima_ticker -= tima_freq;
 
-                if self.tima == u8::MAX {
+                if self.tima == 0xFF {
                     self.tima = pre_exec_tma;
 
                     needs_tima_interrupt = true;
@@ -72,7 +73,7 @@ impl Timer {
         self.tima = self.tma;
     }
     pub fn set_tac(&mut self, byte: u8) {
-        self.tac = byte;
+        self.tac = byte | 0b1111_1000;
     }
     pub fn set_tma(&mut self, byte: u8) {
         self.tma = byte;
