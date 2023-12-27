@@ -3275,7 +3275,6 @@ impl VM {
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
-                // TODO: Are we sure this is signed?
                 let offs = self.read_op()? as i8;
                 let word = (self.cpu.sp as i32 + offs as i32) as u16;
 
