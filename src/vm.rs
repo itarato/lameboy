@@ -149,6 +149,8 @@ impl VM {
 
             if self.state == State::Running {
                 self.exec_op()?;
+            } else {
+                self.tick(1);
             }
 
             let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
@@ -1401,7 +1403,7 @@ impl VM {
             0xC7 => {
                 // RST 00H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x00;
             }
             0xC8 => {
                 // RET Z 1 20/8 | - - - -
@@ -3068,7 +3070,7 @@ impl VM {
             0xCF => {
                 // RST 08H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x08;
             }
             0xD0 => {
                 // RET NC 1 20/8 | - - - -
@@ -3116,7 +3118,7 @@ impl VM {
             0xD7 => {
                 // RST 10H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x10;
             }
             0xD8 => {
                 // RET C 1 20/8 | - - - -
@@ -3163,7 +3165,7 @@ impl VM {
             0xDF => {
                 // RST 18H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x18;
             }
             0xE0 => {
                 // LDH (a8),A 2 12 | - - - -
@@ -3195,7 +3197,7 @@ impl VM {
             0xE7 => {
                 // RST 20H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x20;
             }
             0xE8 => {
                 // ADD SP,r8 2 16 | 0 0 H C
@@ -3233,7 +3235,7 @@ impl VM {
             0xEF => {
                 // RST 28H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x28;
             }
             0xF0 => {
                 // LDH A,(a8) 2 12 | - - - -
@@ -3269,7 +3271,7 @@ impl VM {
             0xF7 => {
                 // RST 30H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x30;
             }
             0xF8 => {
                 // LD HL,SP+r8 2 12 | 0 0 H C
@@ -3310,7 +3312,7 @@ impl VM {
             0xFF => {
                 // RST 38H 1 16 | - - - -
                 self.push_u16(self.cpu.pc)?;
-                self.cpu.pc = (op - 0xC7) as u16;
+                self.cpu.pc = 0x38;
             }
         };
 
