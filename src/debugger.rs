@@ -14,6 +14,7 @@ pub struct Debugger {
     step_by_step: bool,
     pc_breakpoints: Vec<u16>,
     auto_step_count: usize,
+    one_time_break: bool,
 }
 
 impl Debugger {
@@ -23,6 +24,7 @@ impl Debugger {
             step_by_step: false,
             pc_breakpoints: vec![],
             auto_step_count: 0,
+            one_time_break: false,
         }
     }
 
@@ -109,6 +111,10 @@ impl Debugger {
         self.pc_breakpoints.push(breakpoint);
     }
 
+    pub fn request_one_time_break(&mut self) {
+        self.one_time_break = true;
+    }
+
     pub fn should_stop(&mut self, pc: u16) -> bool {
         if self.auto_step_count > 0 {
             self.auto_step_count -= 1;
@@ -124,6 +130,11 @@ impl Debugger {
         }
 
         if self.pc_breakpoints.contains(&pc) {
+            return true;
+        }
+
+        if self.one_time_break {
+            self.one_time_break = false;
             return true;
         }
 

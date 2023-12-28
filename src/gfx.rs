@@ -41,7 +41,7 @@ impl Gfx {
         let size = LogicalSize::new(DISPLAY_WIDTH as f64, DISPLAY_HEIGHT as f64);
         let window = WindowBuilder::new()
             .with_title("Lameboy")
-            .with_inner_size(size.to_physical::<f64>(4.0))
+            .with_inner_size(size.to_physical::<f64>(2.0))
             .with_min_inner_size(size)
             .build(&event_loop)
             .unwrap();
@@ -61,7 +61,7 @@ impl Gfx {
         let size = LogicalSize::new((8 * 16) as f64, (8 * 24) as f64);
         let window = WindowBuilder::new()
             .with_title("Tile debug")
-            .with_inner_size(size.to_physical::<f64>(4.0))
+            .with_inner_size(size.to_physical::<f64>(2.0))
             .with_min_inner_size(size)
             .build(&event_loop)
             .unwrap();

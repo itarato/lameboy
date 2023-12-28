@@ -150,6 +150,12 @@ impl VM {
         log::info!("VM eval loop start");
 
         loop {
+            // DEBUGGING!
+            // if self.cpu.pc == 0x0207 && self.cpu.de == 0xc638 {
+            //     self.debugger.request_one_time_break();
+            // }
+            // DEBUGGING END!
+
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
                 loop {
@@ -3503,9 +3509,14 @@ impl VM {
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
+        // if loc == 0xc464 {
+        //     self.debugger.request_one_time_break();
+        // }
+
         if loc <= MEM_AREA_ROM_BANK_0_END {
             // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).
             // return Err("Cannot write to ROM (0)".into());
+            self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
         } else if loc <= MEM_AREA_VRAM_END {
@@ -3680,38 +3691,46 @@ impl VM {
     }
 
     fn check_interrupt(&mut self) {
-        if self.interrupt_master_enable_flag {
-            // If IME and IE allow the servicing of more than one of the requested interrupts,
-            // the interrupt with the highest priority is serviced first. The priorities follow
-            // the order of the bits in the IE and IF registers: Bit 0 (VBlank) has the highest
-            // priority, and Bit 4 (Joypad) has the lowest priority.
-            if is_bit(self.interrupt_flag, Interrupt::VBlank.bit())
-                && self.is_vblank_interrupt_enabled()
-            {
-                self.interrupt(Interrupt::VBlank);
-            } else if is_bit(self.interrupt_flag, Interrupt::LCD.bit())
-                && self.is_lcd_interrupt_enabled()
-            {
-                self.interrupt(Interrupt::LCD);
-            } else if is_bit(self.interrupt_flag, Interrupt::Timer.bit())
-                && self.is_timer_interrupt_enabled()
-            {
-                self.interrupt(Interrupt::Timer);
-            } else if is_bit(self.interrupt_flag, Interrupt::Serial.bit())
-                && self.is_serial_interrupt_enabled()
-            {
-                self.interrupt(Interrupt::Serial);
-            } else if is_bit(self.interrupt_flag, Interrupt::Joypad.bit())
-                && self.is_joypad_interrupt_enabled()
-            {
-                self.interrupt(Interrupt::Joypad);
-            }
-        } else {
-            // If an interrupt is pending, halt immediately exits, as expected, however the “halt bug”, explained below,
-            // is triggered.
-            if self.interrupt_flag & 0b0001_1111 > 0 {
-                self.state = State::Running;
-            }
+        if !self.interrupt_master_enable_flag && self.state != State::Halt {
+            return;
+        }
+
+        // If an interrupt is pending, halt immediately exits, as expected, however the “halt bug”, explained below,
+        // is triggered.
+        if self.interrupt_flag & self.interrupt_enable == 0 {
+            return;
+        }
+
+        self.state = State::Running;
+
+        if !self.interrupt_master_enable_flag {
+            return;
+        }
+
+        // If IME and IE allow the servicing of more than one of the requested interrupts,
+        // the interrupt with the highest priority is serviced first. The priorities follow
+        // the order of the bits in the IE and IF registers: Bit 0 (VBlank) has the highest
+        // priority, and Bit 4 (Joypad) has the lowest priority.
+        if is_bit(self.interrupt_flag, Interrupt::VBlank.bit())
+            && self.is_vblank_interrupt_enabled()
+        {
+            self.interrupt(Interrupt::VBlank);
+        } else if is_bit(self.interrupt_flag, Interrupt::LCD.bit())
+            && self.is_lcd_interrupt_enabled()
+        {
+            self.interrupt(Interrupt::LCD);
+        } else if is_bit(self.interrupt_flag, Interrupt::Timer.bit())
+            && self.is_timer_interrupt_enabled()
+        {
+            self.interrupt(Interrupt::Timer);
+        } else if is_bit(self.interrupt_flag, Interrupt::Serial.bit())
+            && self.is_serial_interrupt_enabled()
+        {
+            self.interrupt(Interrupt::Serial);
+        } else if is_bit(self.interrupt_flag, Interrupt::Joypad.bit())
+            && self.is_joypad_interrupt_enabled()
+        {
+            self.interrupt(Interrupt::Joypad);
         }
     }
 
@@ -3737,13 +3756,11 @@ impl VM {
     }
 
     fn interrupt(&mut self, interrupt: Interrupt) {
-        self.state = State::Running;
-
         self.interrupt_master_enable_flag = false;
 
         self.interrupt_flag &= !(1u8 << interrupt.bit());
         self.push_u16(self.cpu.pc).expect("Failed stacking PC");
         self.cpu.pc = interrupt.addr();
-        self.tick(5);
+        self.tick(4);
     }
 }

@@ -48,7 +48,7 @@ impl Mem {
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
-        if (0x0000..=0x1FFF).contains(&loc) {
+        if (0x0000..=0x7FFF).contains(&loc) {
             self.cartridge.write(loc, byte);
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
             self.cartridge.write(loc, byte);
