@@ -3,6 +3,7 @@ mod conf;
 mod cpu;
 mod debugger;
 mod gfx;
+mod joypad;
 mod mem;
 mod serial;
 mod sound;

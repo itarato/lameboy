@@ -11,6 +11,7 @@ use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
+use crate::joypad::Joypad;
 use crate::mem::*;
 use crate::serial::Serial;
 use crate::sound::*;
@@ -68,6 +69,7 @@ pub struct VM {
     state: State,
     timer: Timer,
     sound: Sound,
+    joypad: Joypad,
     interrupt_master_enable_flag: bool,
     interrupt_enable: u8,
     interrupt_flag: u8,
@@ -93,6 +95,7 @@ impl VM {
             state: State::Running,
             timer: Timer::new(),
             sound: Sound::new(),
+            joypad: Joypad::new(),
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
             // Top 3 bits are unused - BGB reads them as 0b111x_xxxx.
@@ -161,13 +164,16 @@ impl VM {
             }
 
             if self.state != State::Stop {
-                let should_call_vblank_interrupt = self
+                let video_interrupt_mask = self
                     .video
                     .write()
                     .unwrap()
                     .update(diff_mcycle * CYCLE_PER_MCYCLE as u64);
-                if should_call_vblank_interrupt {
-                    self.interrupt_flag = self.interrupt_flag | 0b0001;
+                if video_interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT > 0 {
+                    self.interrupt_flag |= 0b10;
+                }
+                if video_interrupt_mask & VIDEO_RESULT_MASK_VBLANK_INTERRUPT > 0 {
+                    self.interrupt_flag |= 0b1;
                 }
             }
 
@@ -3469,7 +3475,7 @@ impl VM {
             // return Err("Write to MEM_AREA_PROHIBITED is not implemented".into());
         } else if loc <= MEM_AREA_IO_END {
             match loc {
-                MEM_LOC_P1 => return Err("Write to reg P1 is not implemented".into()),
+                MEM_LOC_P1 => self.joypad.set_p1(byte),
                 MEM_LOC_SB => self.serial.set_sb(byte),
                 MEM_LOC_SC => self.serial.set_sc(byte),
                 // TODO: Additionally, this register is reset when executing the stop instruction,
@@ -3560,7 +3566,7 @@ impl VM {
                 Err(format!("Read from prohibited mem area: {:#06X}", loc).into())
             }
             MEM_AREA_IO_START..=MEM_AREA_IO_END => match loc {
-                MEM_LOC_P1 => Err("Read from P1 reg is not implented".into()),
+                MEM_LOC_P1 => Ok(self.joypad.get_p1()),
                 MEM_LOC_SB => unimplemented!("Read from register SB is not implemented"),
                 MEM_LOC_SC => unimplemented!("Read from register SC is not implemented"),
                 MEM_LOC_DIV => Ok(self.timer.div()),

@@ -30,15 +30,10 @@ impl Mem {
             if loc < BIOS_SIZE as u16 && self.is_bios_mounted() {
                 self.bios[loc as usize]
             } else {
-                self.cartridge.rom_0()[loc as usize]
+                self.cartridge.read(loc)?
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&loc) {
             self.cartridge.read(loc)?
-        } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
-            // From cartridge, switchable bank if any.
-            // TODO: Not sure at all how to use external ram.
-            // self.cartridge.read(loc)?
-            panic!("Not sure about reading from external mem from cartridge")
         } else if (MEM_AREA_WRAM_START..=MEM_AREA_WRAM_END).contains(&loc) {
             self.wram[(loc - MEM_AREA_WRAM_START) as usize]
         } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {

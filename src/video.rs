@@ -26,6 +26,9 @@ enum ObjSpriteSize {
     Size8x16,
 }
 
+pub const VIDEO_RESULT_MASK_STAT_INTERRUPT: u8 = 0b1;
+pub const VIDEO_RESULT_MASK_VBLANK_INTERRUPT: u8 = 0b10;
+
 pub struct Video {
     pub stat_counter: u64,
     // Used to know the variable len of an M3 phase, so M0 can be adjusted.
@@ -80,17 +83,17 @@ impl Video {
     }
 
     /**
-     * Return: whether vblank interrupt should be called.
+     * Return: interrupt mask.
      */
     // TODO: Use stat interrupt:
     //       - leverage https://gbdev.io/pandocs/Interrupt_Sources.html#int-48--stat-interrupt
     //       - use is_stat_mode_0_interrupt_selected ...
     //       - make return a list of instructions
     #[must_use]
-    pub fn update(&mut self, cpu_cycles: u64) -> bool {
-        let mut should_call_vblank_interrupt = false;
+    pub fn update(&mut self, cpu_cycles: u64) -> u8 {
+        let mut interrupt_mask = 0;
         if !self.is_lcd_display_enabled() {
-            return should_call_vblank_interrupt;
+            return interrupt_mask;
         }
 
         self.stat_counter += cpu_cycles;
@@ -132,8 +135,7 @@ impl Video {
                     self.stat_counter -= m0_len;
 
                     // Increase LY.
-                    self.ly += 1;
-                    self.update_ly_lyc_coincidence();
+                    self.update_ly(self.ly + 1, &mut interrupt_mask);
 
                     if self.ly < 144 {
                         // Mode to 2.
@@ -141,7 +143,7 @@ impl Video {
                     } else {
                         // Mode to 1.
                         self.set_lcd_stat_ppu_mode(1);
-                        should_call_vblank_interrupt = true;
+                        interrupt_mask |= VIDEO_RESULT_MASK_VBLANK_INTERRUPT;
                     }
                 }
             }
@@ -150,20 +152,33 @@ impl Video {
                 if self.stat_counter >= 4560 {
                     self.stat_counter -= 4560;
 
-                    self.ly = 0;
+                    self.update_ly(0, &mut interrupt_mask);
 
                     // Mode to 2.
                     self.set_lcd_stat_ppu_mode(2);
 
                     self.ensure_fps();
                 } else {
-                    self.ly = 144 + (self.stat_counter / 456) as u8;
-                    self.update_ly_lyc_coincidence();
+                    self.update_ly(144 + (self.stat_counter / 456) as u8, &mut interrupt_mask);
                 }
             }
         };
 
-        should_call_vblank_interrupt
+        interrupt_mask
+    }
+
+    fn update_ly(&mut self, new_ly: u8, interrupt_mask: &mut u8) {
+        self.ly = new_ly;
+
+        if self.ly == self.lyc {
+            self.stat |= 0b0100;
+
+            if self.is_lyc_coincidence_interrupt_enabled() {
+                *interrupt_mask = *interrupt_mask | VIDEO_RESULT_MASK_STAT_INTERRUPT;
+            }
+        } else {
+            self.stat &= 0b1111_1011;
+        }
     }
 
     pub fn draw_line_to_screen(&mut self, ly: u8) {
@@ -201,15 +216,6 @@ impl Video {
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
             self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
-        }
-    }
-
-    fn update_ly_lyc_coincidence(&mut self) {
-        if self.ly == self.lyc {
-            self.stat |= 0b0100;
-            unimplemented!("STAT interrupt is not implemented");
-        } else {
-            self.stat &= 0b1111_1011;
         }
     }
 
@@ -258,8 +264,11 @@ impl Video {
             }
             MEM_LOC_SCY => self.scy = byte,
             MEM_LOC_SCX => self.scx = byte,
-            MEM_LOC_LY => self.ly = byte,
-            MEM_LOC_LYC => self.lyc = byte,
+            MEM_LOC_LY => panic!("Cannot write LY"),
+            MEM_LOC_LYC => {
+                self.lyc = byte;
+                // TODO: This probably needs an LY==LYC interrupt check.
+            }
             MEM_LOC_BGP => self.bgp = byte,
             MEM_LOC_OBP0 => self.obp0 = byte,
             MEM_LOC_OBP1 => self.obp1 = byte,
