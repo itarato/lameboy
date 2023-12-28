@@ -19,6 +19,30 @@ use crate::timer::*;
 use crate::util::*;
 use crate::video::*;
 
+enum DelayedOp {
+    MasterInterruptEnable,
+    MasterInterruptDisable,
+}
+
+struct DelayedCommand {
+    cycle_delay: usize,
+    op: DelayedOp,
+}
+
+impl DelayedCommand {
+    fn new(cycle_delay: usize, op: DelayedOp) -> DelayedCommand {
+        DelayedCommand { cycle_delay, op }
+    }
+
+    fn dec(&mut self) {
+        self.cycle_delay -= 1;
+    }
+
+    fn is_ready(&self) -> bool {
+        self.cycle_delay == 0
+    }
+}
+
 #[derive(PartialEq)]
 enum State {
     Running,
@@ -76,6 +100,7 @@ pub struct VM {
     video: Arc<RwLock<Video>>,
     op_history: SizedQueue<(u16, u8)>,           // pc + op
     deep_op_history: SizedQueue<(u64, u16, u8)>, // counter + pc + op
+    delayed_cmds: Vec<DelayedCommand>,
 }
 
 impl VM {
@@ -103,6 +128,7 @@ impl VM {
             video,
             op_history: SizedQueue::new(128),
             deep_op_history: SizedQueue::new(128),
+            delayed_cmds: vec![],
         })
     }
 
@@ -154,6 +180,26 @@ impl VM {
                 self.exec_op()?;
             } else {
                 self.tick(1);
+            }
+
+            let mut delayed_cmds_to_delete = vec![];
+            for (i, delayed_cmd) in self.delayed_cmds.iter_mut().enumerate() {
+                delayed_cmd.dec();
+                if delayed_cmd.is_ready() {
+                    delayed_cmds_to_delete.push(i);
+
+                    match delayed_cmd.op {
+                        DelayedOp::MasterInterruptEnable => {
+                            self.interrupt_master_enable_flag = true;
+                        }
+                        DelayedOp::MasterInterruptDisable => {
+                            self.interrupt_master_enable_flag = false;
+                        }
+                    };
+                }
+            }
+            for i in delayed_cmds_to_delete.iter().rev() {
+                self.delayed_cmds.remove(*i);
             }
 
             let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
@@ -3262,12 +3308,13 @@ impl VM {
             }
             0xF3 => {
                 // DI 1 4 | - - - -
-                self.interrupt_master_enable_flag = false;
+                self.delayed_cmds
+                    .push(DelayedCommand::new(2, DelayedOp::MasterInterruptDisable));
             }
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
                 // PUSH AF 1 16 | - - - -
-                self.push_u16(self.cpu.af)?;
+                self.push_u16(self.cpu.af & 0xFFF0)?;
             }
             0xF6 => {
                 // OR d8 2 8 | Z 0 0 0
@@ -3305,7 +3352,8 @@ impl VM {
             }
             0xFB => {
                 // EI 1 4 | - - - -
-                self.interrupt_master_enable_flag = true;
+                self.delayed_cmds
+                    .push(DelayedCommand::new(2, DelayedOp::MasterInterruptEnable));
             }
             0xFC => panic!("Opcode 0xFC is invalid"),
             0xFD => panic!("Opcode 0xFD is invalid"),
