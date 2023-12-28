@@ -46,8 +46,6 @@ impl MBC1 {
 
 impl CartridgeController for MBC1 {
     fn set_register(&mut self, loc: u16, byte: u8) {
-        panic!("Check this before first use!");
-
         if (0x0000..=0x1FFF).contains(&loc) {
             if byte & 0xF == 0b1010 {
                 self.ram_gate_reg = RamGate::EnableRamAccess;
@@ -103,7 +101,6 @@ impl CartridgeController for MBC1 {
 
 pub struct Cartridge {
     data: Vec<u8>,
-    mem_bank_n: usize,
     ctrl: Box<dyn CartridgeController + Send>,
 }
 
@@ -119,20 +116,17 @@ impl Cartridge {
             code => unimplemented!("Unimplemented cartridge type: {}", code),
         };
 
-        Ok(Cartridge {
-            data,
-            mem_bank_n: 1,
-            ctrl,
-        })
+        Ok(Cartridge { data, ctrl })
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         let byte = if (MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_0_END).contains(&loc) {
             self.data[loc as usize]
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&loc) {
-            assert!(self.mem_bank_n >= 1);
-            let physical_loc = self.mem_bank_n * 0x4000 + loc as usize;
-            self.data[physical_loc]
+            match self.ctrl.translate_addr(loc) {
+                PhysicalAddr::Ok(addr) => self.data[addr as usize],
+                _ => return Err("Error when loading data from BANK N".into()),
+            }
         } else {
             return Err(format!("Unexpected catridge addr: {:#06X}", loc).into());
         };
