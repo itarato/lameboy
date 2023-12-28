@@ -26,6 +26,25 @@ enum Bank2Mode {
     Mode1,
 }
 
+struct RomOnly;
+
+impl CartridgeController for RomOnly {
+    fn set_register(&mut self, loc: u16, byte: u8) {
+        log::error!("No write for RomOnly regs: ({:#06X}) = {:#04X}", loc, byte);
+    }
+
+    fn translate_addr(&self, virtual_loc: u16) -> PhysicalAddr {
+        if (MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
+            PhysicalAddr::Ok(virtual_loc as u32)
+        } else {
+            unimplemented!(
+                "Unimplemented RomOnly read at virtual addr: {:#06X}",
+                virtual_loc
+            );
+        }
+    }
+}
+
 struct MBC1 {
     ram_gate_reg: RamGate,
     bank_1_reg: u8,
@@ -75,16 +94,14 @@ impl CartridgeController for MBC1 {
         if (MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_0_END).contains(&virtual_loc) {
             match self.bank2_mode_reg {
                 Bank2Mode::Mode0 => PhysicalAddr::Ok(virtual_loc as u32),
-                // UNTESTED!
                 Bank2Mode::Mode1 => {
-                    PhysicalAddr::Ok(((self.bank_2_reg as u32) << 5) as u32 + virtual_loc as u32)
+                    PhysicalAddr::Ok(((self.bank_2_reg as u32) << 19) as u32 | virtual_loc as u32)
                 }
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
-            // TODO: VERIFY THIS!
             let rom_bank_number = ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32;
             let physical_addr =
-                ((virtual_loc as u32) & 0b11_1111_1111_1111) | (rom_bank_number << 14);
+                ((virtual_loc as u32) & 0b0000_0011_1111_1111_1111) | (rom_bank_number << 14);
             PhysicalAddr::Ok(physical_addr)
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&virtual_loc) {
             match self.ram_gate_reg {
@@ -112,7 +129,8 @@ impl Cartridge {
         let mut file = File::open(filename)?;
         file.read_to_end(&mut data)?;
 
-        let ctrl = match data[0x0147] {
+        let ctrl: Box<dyn CartridgeController + Send> = match data[0x0147] {
+            0x00 => Box::new(RomOnly),
             0x01 => Box::new(MBC1::new()),
             code => unimplemented!("Unimplemented cartridge type: {}", code),
         };
