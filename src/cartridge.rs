@@ -81,6 +81,7 @@ impl CartridgeController for MBC1 {
                 }
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
+            // TODO: VERIFY THIS!
             let rom_bank_number = ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32;
             let physical_addr =
                 ((virtual_loc as u32) & 0b11_1111_1111_1111) | (rom_bank_number << 14);
