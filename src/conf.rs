@@ -1,5 +1,3 @@
-pub const ROM_BANK_SIZE: usize = 0x4000;
-
 pub const DISPLAY_WIDTH: u32 = 160;
 pub const DISPLAY_HEIGHT: u32 = 144;
 pub const DISPLAY_PIXELS_COUNT: usize = (DISPLAY_WIDTH * DISPLAY_HEIGHT) as usize;
@@ -21,7 +19,7 @@ const DIV_REG_UPDATE_HZ: u32 = 256;
  * 4194304 mcycle = 16384 update
  * 256 mcycle = 1 update
  */
-pub const DIV_REG_UPDATE_PER_MCYCLE: u32 = CPU_HZ / DIV_REG_UPDATE_HZ;
+pub const DIV_REG_UPDATE_PER_MCYCLE: u32 = DIV_REG_UPDATE_HZ;
 
 pub const TIMA_UPDATE_PER_MCYCLE: [u32; 4] = [1024u32, 16u32, 64u32, 256u32];
 

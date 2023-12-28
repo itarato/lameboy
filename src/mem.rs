@@ -48,7 +48,11 @@ impl Mem {
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
-        if (MEM_AREA_WRAM_START..=MEM_AREA_WRAM_END).contains(&loc) {
+        if (0x0000..=0x1FFF).contains(&loc) {
+            self.cartridge.write(loc, byte);
+        } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
+            self.cartridge.write(loc, byte);
+        } else if (MEM_AREA_WRAM_START..=MEM_AREA_WRAM_END).contains(&loc) {
             self.wram[(loc - MEM_AREA_WRAM_START) as usize] = byte;
         } else if (MEM_AREA_HRAM_START..=MEM_AREA_HRAM_END).contains(&loc) {
             self.hram[(loc - MEM_AREA_HRAM_START) as usize] = byte;

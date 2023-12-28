@@ -5,6 +5,7 @@ use crate::conf::*;
 pub struct Cartridge {
     data: Vec<u8>,
     mem_bank_n: usize,
+    ram_enabled: bool,
 }
 
 impl Cartridge {
@@ -17,6 +18,7 @@ impl Cartridge {
         Ok(Cartridge {
             data,
             mem_bank_n: 1,
+            ram_enabled: false,
         })
     }
 
@@ -32,5 +34,26 @@ impl Cartridge {
         };
 
         Ok(byte)
+    }
+
+    pub fn write(&mut self, loc: u16, __byte: u8) {
+        if (0x0000..=0x1FFF).contains(&loc) {
+            // Before external RAM can be read or written, it must be enabled by writing $A to anywhere in
+            // this address space. Any value with $A in the lower 4 bits enables the RAM attached to the MBC,
+            // and any other value disables the RAM. It is unknown why $A is the value used to enable RAM.
+            unimplemented!("Unimplemented write to RAM-ENABLE: {:#06X}", loc);
+
+            // TODO: handle self.ram_enabled.
+        } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
+            if self.ram_enabled {
+                unimplemented!("External ram write is not implemented");
+            } else {
+                // This area is used to address external RAM in the cartridge (if any). The RAM is only accessible
+                // if RAM is enabled, otherwise reads return open bus values (often $FF, but not guaranteed)
+                // and writes are ignored.
+            }
+        } else {
+            unimplemented!("Unimplemented write to cartridge: {:#06X}", loc);
+        }
     }
 }

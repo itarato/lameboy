@@ -3463,7 +3463,7 @@ impl VM {
         } else if loc <= MEM_AREA_VRAM_END {
             self.video.write().unwrap().write(loc, byte);
         } else if loc <= MEM_AREA_EXTERNAL_END {
-            return Err("Write to MEM_AREA_EXTERNAL is not implemented".into());
+            self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_WRAM_END {
             self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_ECHO_END {
