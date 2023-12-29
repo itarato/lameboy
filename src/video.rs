@@ -182,7 +182,29 @@ impl Video {
     }
 
     pub fn draw_line_to_screen(&mut self, ly: u8) {
-        let tile_map_start = self.window_tile_map_display_section_start();
+        if self.is_window_display_enabled() {
+            self.draw_window_to_screen(ly);
+        }
+
+        if self.is_background_window_display_priority() {
+            self.draw_background_map_to_screen(ly);
+        }
+
+        if self.is_obj_sprite_display_enabled() {
+            self.draw_objects_to_screen(ly);
+        }
+    }
+
+    fn draw_window_to_screen(&mut self, ly: u8) {
+        // NOT IMPLEMENTED
+    }
+
+    fn draw_objects_to_screen(&mut self, ly: u8) {
+        // NOT IMPLEMENTED
+    }
+
+    fn draw_background_map_to_screen(&mut self, ly: u8) {
+        let tile_map_start = self.background_tile_map_display_section_start();
         // There are 32x32 tiles on the map: 256x256 pixels
 
         let actual_ly = ly.wrapping_add(self.scy);
@@ -332,6 +354,13 @@ impl Video {
         }
     }
 
+    fn background_tile_map_display_section_start(&self) -> u16 {
+        match self.background_tile_map_display_section() {
+            TileMapDisplaySelect::Section9800_9BFF => 0x9800,
+            TileMapDisplaySelect::Section9C00_9FFF => 0x9C00,
+        }
+    }
+
     fn obj_sprite_size(&self) -> ObjSpriteSize {
         if is_bit(self.lcdc, 2) {
             ObjSpriteSize::Size8x16
@@ -454,10 +483,10 @@ impl Video {
 
     fn pixel_color(&self, code: u8) -> [u8; 4] {
         match code {
-            0b00 => [0x10, 0x40, 0x20, 0xff],
-            0b01 => [0x10, 0x80, 0x40, 0xff],
-            0b10 => [0x10, 0xa0, 0x50, 0xff],
-            0b11 => [0x10, 0xf0, 0x80, 0xff],
+            0b11 => [0x10, 0x40, 0x20, 0xff],
+            0b10 => [0x10, 0x80, 0x40, 0xff],
+            0b01 => [0x10, 0xa0, 0x50, 0xff],
+            0b00 => [0x10, 0xf0, 0x80, 0xff],
             _ => unimplemented!("Unknown gb pixel color"),
         }
     }
