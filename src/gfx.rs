@@ -74,7 +74,7 @@ impl Gfx {
         (window, pixels)
     }
 
-    pub fn run(&self) {
+    pub fn run(&self, breakpoint_flag: Arc<AtomicBool>) {
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
         let (tile_debug_window, mut pixels_for_tile_debug_window) =
@@ -143,6 +143,10 @@ impl Gfx {
                     global_exit_flag.store(false, Ordering::Release);
                     control_flow.set_exit();
                     return;
+                }
+
+                if input.key_pressed(VirtualKeyCode::B) {
+                    breakpoint_flag.store(true, Ordering::Relaxed);
                 }
 
                 // Update internal state and request a redraw

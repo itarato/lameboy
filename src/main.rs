@@ -69,7 +69,8 @@ fn main() -> Result<(), Error> {
 
     let args = Args::parse();
 
-    let mut debugger = Debugger::new();
+    let breakpoint_flag = Arc::new(AtomicBool::new(false));
+    let mut debugger = Debugger::new(breakpoint_flag.clone());
     if args.debug {
         args.breakpoint_parsed()
             .map(|breakpoint| debugger.add_breakpoint(breakpoint));
@@ -108,7 +109,7 @@ fn main() -> Result<(), Error> {
     });
 
     let gfx = Gfx::new(global_exit_flag.clone(), video.clone());
-    gfx.run();
+    gfx.run(breakpoint_flag);
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
 

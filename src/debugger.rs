@@ -1,3 +1,8 @@
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use log::info;
 
 pub enum DebugCmd {
@@ -15,16 +20,18 @@ pub struct Debugger {
     pc_breakpoints: Vec<u16>,
     auto_step_count: usize,
     one_time_break: bool,
+    breakpoint_flag: Arc<AtomicBool>,
 }
 
 impl Debugger {
-    pub fn new() -> Self {
+    pub fn new(breakpoint_flag: Arc<AtomicBool>) -> Self {
         Self {
             break_on_start: false,
             step_by_step: false,
             pc_breakpoints: vec![],
             auto_step_count: 0,
             one_time_break: false,
+            breakpoint_flag,
         }
     }
 
@@ -135,6 +142,13 @@ impl Debugger {
 
         if self.one_time_break {
             self.one_time_break = false;
+            return true;
+        }
+
+        if let Ok(_) =
+            self.breakpoint_flag
+                .compare_exchange(true, false, Ordering::Relaxed, Ordering::Relaxed)
+        {
             return true;
         }
 
