@@ -238,6 +238,10 @@ impl VM {
                 }
             }
 
+            if self.joypad.consume_interrupt() {
+                self.interrupt_flag |= 0b1_0000;
+            }
+
             self.check_interrupt();
 
             self.counter += 1;
