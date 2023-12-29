@@ -206,7 +206,7 @@ impl Video {
     }
 
     fn draw_window_to_screen(&mut self, ly: u8) {
-        // NOT IMPLEMENTED
+        self.draw_background_or_window_to_screen(ly, self.window_tile_map_display_section_start());
     }
 
     fn draw_objects_to_screen(&mut self, ly: u8) {
@@ -214,9 +214,16 @@ impl Video {
     }
 
     fn draw_background_map_to_screen(&mut self, ly: u8) {
-        let tile_map_start = self.background_tile_map_display_section_start();
-        // There are 32x32 tiles on the map: 256x256 pixels
+        self.draw_background_or_window_to_screen(
+            ly,
+            self.background_tile_map_display_section_start(),
+        );
+    }
 
+    fn draw_background_or_window_to_screen(&mut self, ly: u8, tile_map_start: u16) {
+        let tile_data_section_start = self.backround_window_tile_data_section_start();
+
+        // There are 32x32 tiles on the map: 256x256 pixels.
         let actual_ly = ly.wrapping_add(self.scy);
 
         let tile_row = actual_ly / 8;
@@ -231,19 +238,10 @@ impl Video {
                 .read(tile_map_start + tile_data_i as u16)
                 .expect("Failed getting tile data");
             let tile_lo = self
-                .read(
-                    self.backround_window_tile_data_section_start()
-                        + tile_i as u16 * 16
-                        + tile_y as u16 * 2,
-                )
+                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2)
                 .expect("Cannot load bg tile");
             let tile_hi = self
-                .read(
-                    self.backround_window_tile_data_section_start()
-                        + tile_i as u16 * 16
-                        + tile_y as u16 * 2
-                        + 1,
-                )
+                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2 + 1)
                 .expect("Cannot load bg tile");
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
