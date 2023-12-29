@@ -210,7 +210,66 @@ impl Video {
     }
 
     fn draw_objects_to_screen(&mut self, ly: u8) {
-        // NOT IMPLEMENTED
+        // Object attributes reside in the object attribute memory (OAM) at $FE00-FE9F.
+
+        // In 8×8 mode (LCDC bit 2 = 0), this byte specifies the object’s only tile index ($00-$FF).
+        // This unsigned value selects a tile from the memory area at $8000-$8FFF.
+        // In 8×16 mode (LCDC bit 2 = 1), the memory area at $8000-$8FFF is still interpreted as a
+        // series of 8×8 tiles, where every 2 tiles form an object.
+        let tile_height = match self.obj_sprite_size() {
+            ObjSpriteSize::Size8x8 => 8,
+            ObjSpriteSize::Size8x16 => 16,
+        } as i16;
+
+        for i in 0..40 {
+            let byte_y_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 0).unwrap() as i16;
+            if byte_y_pos - 16 + tile_height < ly as i16 {
+                // Bottom of the tile is above LY.
+                continue;
+            }
+            if byte_y_pos - 16 > ly as i16 {
+                // Top of the tile is below LY.
+                continue;
+            }
+
+            let byte_x_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 1).unwrap() as i16;
+            if byte_x_pos - 8 <= 0 {
+                continue;
+            }
+            if byte_x_pos - 8 > DISPLAY_WIDTH as i16 {
+                continue;
+            }
+
+            let byte_tile_index = self.read(MEM_AREA_OAM_START + (i * 4) + 2).unwrap();
+            let byte_attr_and_flags = self.read(MEM_AREA_OAM_START + (i * 4) + 3).unwrap();
+
+            let priority = is_bit(byte_attr_and_flags, 7);
+            let y_flip = is_bit(byte_attr_and_flags, 6);
+            let x_flip = is_bit(byte_attr_and_flags, 5);
+            // DMG palette [Non CGB Mode only]: 0 = OBP0, 1 = OBP1
+            let palette = bit(byte_attr_and_flags, 4);
+
+            let tile_start_addr =
+                MEM_AREA_VRAM_START + (byte_tile_index as u16 * tile_height as u16 * 2);
+            let y = ly as i16 - (byte_y_pos - 16);
+            assert!(y < tile_height);
+
+            let row_lo = self.read(tile_start_addr + (y as u16 * 2) + 0).unwrap();
+            let row_hi = self.read(tile_start_addr + (y as u16 * 2) + 1).unwrap();
+            for x in 0..8 {
+                let color = (bit(row_hi, 7 - x) << 1) | bit(row_lo, 7 - x);
+
+                let physical_x = byte_x_pos + 8 + x as i16;
+                if physical_x < 0 || physical_x >= DISPLAY_WIDTH as i16 {
+                    continue;
+                }
+
+                let physical_y = byte_y_pos + 16 + y;
+
+                self.display_buffer
+                    [physical_y as usize * DISPLAY_WIDTH as usize + physical_x as usize] = color;
+            }
+        }
     }
 
     fn draw_background_map_to_screen(&mut self, ly: u8) {
