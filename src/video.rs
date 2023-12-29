@@ -182,16 +182,16 @@ impl Video {
     }
 
     pub fn draw_line_to_screen(&mut self, ly: u8) {
-        if self.is_window_display_enabled() {
-            self.draw_window_to_screen(ly);
-        }
-
         if self.is_background_window_display_priority() {
             self.draw_background_map_to_screen(ly);
         }
 
         if self.is_obj_sprite_display_enabled() {
             self.draw_objects_to_screen(ly);
+        }
+
+        if self.is_window_display_enabled() {
+            self.draw_window_to_screen(ly);
         }
     }
 
