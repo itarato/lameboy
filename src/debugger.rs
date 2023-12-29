@@ -84,10 +84,15 @@ impl Debugger {
             None
         } else if raw == "hist" {
             Some(DebugCmd::PrintOpHistory)
-        } else if parts.len() == 3 && parts[0] == "m" {
+        } else if parts.len() >= 2 && parts[0] == "m" {
             u16::from_str_radix(parts[1], 16)
                 .and_then(|from| {
-                    usize::from_str_radix(parts[2], 10).map(|len| DebugCmd::PrintMemory(from, len))
+                    if parts.len() == 2 {
+                        Ok(DebugCmd::PrintMemory(from, 1))
+                    } else {
+                        usize::from_str_radix(parts[2], 10)
+                            .map(|len| DebugCmd::PrintMemory(from, len))
+                    }
                 })
                 .ok()
         } else {

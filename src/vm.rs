@@ -101,6 +101,7 @@ pub struct VM {
     op_history: SizedQueue<(u16, u8)>,           // pc + op
     deep_op_history: SizedQueue<(u64, u16, u8)>, // counter + pc + op
     delayed_cmds: Vec<DelayedCommand>,
+    opcode_dump_file: Option<File>,
 }
 
 impl VM {
@@ -109,7 +110,14 @@ impl VM {
         cartridge: Cartridge,
         debugger: Debugger,
         video: Arc<RwLock<Video>>,
+        is_opcode_file_dump: bool,
     ) -> Result<Self, Error> {
+        let opcode_dump_file = if is_opcode_file_dump {
+            Some(File::create("/tmp/lameboy_dump.txt").unwrap())
+        } else {
+            None
+        };
+
         Ok(VM {
             global_exit_flag,
             mem: Mem::new(cartridge)?,
@@ -129,6 +137,7 @@ impl VM {
             op_history: SizedQueue::new(128),
             deep_op_history: SizedQueue::new(128),
             delayed_cmds: vec![],
+            opcode_dump_file,
         })
     }
 
@@ -269,6 +278,24 @@ impl VM {
             self.deep_op_history
                 .push((self.counter, self.cpu.pc - 1, op));
         }
+
+        if let Some(ref mut opcode_dump_file) = self.opcode_dump_file {
+            opcode_dump_file
+                .write_fmt(format_args!(
+                    "PC={:04X} OP={:02X} AF={:04X} BC={:04X} DE=={:04X} HL={:04X} SP={:04X}\n",
+                    self.cpu.pc - 1,
+                    op,
+                    self.cpu.af,
+                    self.cpu.bc,
+                    self.cpu.de,
+                    self.cpu.hl,
+                    self.cpu.sp,
+                ))
+                .unwrap();
+        }
+        // if self.counter >= 2355146 {
+        //     return Err("DONE".into());
+        // }
 
         log::debug!(
             "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
@@ -3509,7 +3536,7 @@ impl VM {
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
-        // if loc == 0xc464 {
+        // if loc == 0x8002 {
         //     self.debugger.request_one_time_break();
         // }
 

@@ -57,7 +57,7 @@ impl Video {
             stat_counter: 0,
             prev_m3_len: 204,
             lcdc: 0,
-            stat: 0,
+            stat: 0x80,
             scy: 0,
             scx: 0,
             ly: 0,
@@ -258,7 +258,7 @@ impl Video {
             }
             MEM_LOC_LCDC => self.lcdc = byte,
             MEM_LOC_STAT => {
-                self.stat = byte;
+                self.stat = byte | 0x80;
                 // These 3 bytes are the stat interrupt enable bytes. We do not handle them on PPU  mode change.
                 assert!((byte & 0b0011_1000) == 0);
             }

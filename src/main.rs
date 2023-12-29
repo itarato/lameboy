@@ -48,6 +48,10 @@ struct Args {
     // Skip FPS limiter.
     #[arg(short, long)]
     nofps: bool,
+
+    // Dump opcode list to file.
+    #[arg(long)]
+    dump: bool,
 }
 
 impl Args {
@@ -83,13 +87,20 @@ fn main() -> Result<(), Error> {
     let cartridge = Cartridge::new(args.cartridge)?;
     let global_exit_flag = Arc::new(AtomicBool::new(false));
     let video = Arc::new(RwLock::new(Video::new(args.nofps)));
+    let is_opcode_dump = args.dump;
 
     let vm_thread = spawn({
         let global_exit_flag = global_exit_flag.clone();
         let video = video.clone();
 
         move || {
-            if let Ok(mut vm) = VM::new(global_exit_flag.clone(), cartridge, debugger, video) {
+            if let Ok(mut vm) = VM::new(
+                global_exit_flag.clone(),
+                cartridge,
+                debugger,
+                video,
+                is_opcode_dump,
+            ) {
                 if let Err(err) = vm.setup() {
                     log::error!("Failed VM setup: {}", err);
                     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
