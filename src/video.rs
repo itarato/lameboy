@@ -108,7 +108,9 @@ impl Video {
                 if self.stat_counter >= 80 {
                     self.stat_counter -= 80;
                     // Mode to 3.
-                    self.set_lcd_stat_ppu_mode(3);
+                    if self.set_lcd_stat_ppu_mode(3) {
+                        interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                    }
                 }
             }
             // Sending pixels to the LCD.
@@ -123,7 +125,9 @@ impl Video {
                     self.draw_line_to_screen(self.ly);
 
                     // Mode to 0.
-                    self.set_lcd_stat_ppu_mode(0);
+                    if self.set_lcd_stat_ppu_mode(0) {
+                        interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                    }
                 }
             }
             // Waiting until the end of the scanline.
@@ -139,10 +143,14 @@ impl Video {
 
                     if self.ly < 144 {
                         // Mode to 2.
-                        self.set_lcd_stat_ppu_mode(2);
+                        if self.set_lcd_stat_ppu_mode(2) {
+                            interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                        }
                     } else {
                         // Mode to 1.
-                        self.set_lcd_stat_ppu_mode(1);
+                        if self.set_lcd_stat_ppu_mode(1) {
+                            interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                        }
                         interrupt_mask |= VIDEO_RESULT_MASK_VBLANK_INTERRUPT;
                     }
                 }
@@ -155,7 +163,9 @@ impl Video {
                     self.update_ly(0, &mut interrupt_mask);
 
                     // Mode to 2.
-                    self.set_lcd_stat_ppu_mode(2);
+                    if self.set_lcd_stat_ppu_mode(2) {
+                        interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                    }
 
                     self.ensure_fps();
                 } else {
@@ -403,10 +413,18 @@ impl Video {
         }
     }
 
-    fn set_lcd_stat_ppu_mode(&mut self, mode: u8) {
+    #[must_use]
+    fn set_lcd_stat_ppu_mode(&mut self, mode: u8) -> bool {
         assert!(mode <= 0b11);
         self.stat &= 0b1111_1100;
         self.stat |= mode;
+
+        match self.lcd_ppu_mode() {
+            LcdPpuMode::M0 => self.is_mode0_hblank_interrupt_enabled(),
+            LcdPpuMode::M1 => self.is_mode1_vblank_interrupt_enabled(),
+            LcdPpuMode::M2 => self.is_mode2_oam_interrupt_enabled(),
+            _ => false,
+        }
     }
 
     fn ensure_fps(&mut self) {
