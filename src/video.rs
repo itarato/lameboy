@@ -223,20 +223,15 @@ impl Video {
 
         for i in 0..40 {
             let byte_y_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 0).unwrap() as i16;
-            if byte_y_pos - 16 + tile_height < ly as i16 {
-                // Bottom of the tile is above LY.
-                continue;
-            }
-            if byte_y_pos - 16 > ly as i16 {
-                // Top of the tile is below LY.
+            let tile_y = ly as i16 - (byte_y_pos - 16);
+            if tile_y < 0 || tile_y >= tile_height {
+                // Tile surface does not cover LY.
                 continue;
             }
 
             let byte_x_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 1).unwrap() as i16;
-            if byte_x_pos - 8 <= 0 {
-                continue;
-            }
-            if byte_x_pos - 8 > DISPLAY_WIDTH as i16 {
+            if byte_x_pos == 0 || byte_x_pos - 8 >= DISPLAY_WIDTH as i16 {
+                // Horizontally out of screen.
                 continue;
             }
 
@@ -251,23 +246,25 @@ impl Video {
 
             let tile_start_addr =
                 MEM_AREA_VRAM_START + (byte_tile_index as u16 * tile_height as u16 * 2);
-            let y = ly as i16 - (byte_y_pos - 16);
-            assert!(y < tile_height);
 
-            let row_lo = self.read(tile_start_addr + (y as u16 * 2) + 0).unwrap();
-            let row_hi = self.read(tile_start_addr + (y as u16 * 2) + 1).unwrap();
+            assert!(tile_y < tile_height);
+
+            let row_lo = self
+                .read(tile_start_addr + (tile_y as u16 * 2) + 0)
+                .unwrap();
+            let row_hi = self
+                .read(tile_start_addr + (tile_y as u16 * 2) + 1)
+                .unwrap();
             for x in 0..8 {
                 let color = (bit(row_hi, 7 - x) << 1) | bit(row_lo, 7 - x);
 
-                let physical_x = byte_x_pos + 8 + x as i16;
+                let physical_x = byte_x_pos - 8 + x as i16;
                 if physical_x < 0 || physical_x >= DISPLAY_WIDTH as i16 {
                     continue;
                 }
 
-                let physical_y = byte_y_pos + 16 + y;
-
-                self.display_buffer
-                    [physical_y as usize * DISPLAY_WIDTH as usize + physical_x as usize] = color;
+                self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
+                    color;
             }
         }
     }
