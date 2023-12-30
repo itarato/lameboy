@@ -12,7 +12,7 @@ use std::sync::{
     Arc, RwLock,
 };
 
-use crate::{conf::*, video::Video};
+use crate::{conf::*, joypad::JoypadInputRequest, video::Video};
 
 use log::error;
 use pixels::{Pixels, SurfaceTexture};
@@ -74,7 +74,7 @@ impl Gfx {
         (window, pixels)
     }
 
-    pub fn run(&self, breakpoint_flag: Arc<AtomicBool>) {
+    pub fn run(&self, breakpoint_flag: Arc<AtomicBool>, buttons: Arc<RwLock<JoypadInputRequest>>) {
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
         let (tile_debug_window, mut pixels_for_tile_debug_window) =
@@ -147,6 +147,58 @@ impl Gfx {
 
                 if input.key_pressed(VirtualKeyCode::B) {
                     breakpoint_flag.store(true, Ordering::Relaxed);
+                }
+
+                if input.key_pressed(VirtualKeyCode::Z) {
+                    buttons.write().expect("Cannot lock buttons").Start = true;
+                }
+                if input.key_pressed(VirtualKeyCode::X) {
+                    buttons.write().expect("Cannot lock buttons").Select = true;
+                }
+                if input.key_pressed(VirtualKeyCode::N) {
+                    buttons.write().expect("Cannot lock buttons").A = true;
+                }
+                if input.key_pressed(VirtualKeyCode::M) {
+                    buttons.write().expect("Cannot lock buttons").B = true;
+                }
+
+                if input.key_pressed(VirtualKeyCode::W) {
+                    buttons.write().expect("Cannot lock buttons").Up = true;
+                }
+                if input.key_pressed(VirtualKeyCode::S) {
+                    buttons.write().expect("Cannot lock buttons").Down = true;
+                }
+                if input.key_pressed(VirtualKeyCode::A) {
+                    buttons.write().expect("Cannot lock buttons").Left = true;
+                }
+                if input.key_pressed(VirtualKeyCode::D) {
+                    buttons.write().expect("Cannot lock buttons").Right = true;
+                }
+
+                if input.key_released(VirtualKeyCode::Z) {
+                    buttons.write().expect("Cannot lock buttons").Start = false;
+                }
+                if input.key_released(VirtualKeyCode::X) {
+                    buttons.write().expect("Cannot lock buttons").Select = false;
+                }
+                if input.key_released(VirtualKeyCode::N) {
+                    buttons.write().expect("Cannot lock buttons").A = false;
+                }
+                if input.key_released(VirtualKeyCode::M) {
+                    buttons.write().expect("Cannot lock buttons").B = false;
+                }
+
+                if input.key_released(VirtualKeyCode::W) {
+                    buttons.write().expect("Cannot lock buttons").Up = false;
+                }
+                if input.key_released(VirtualKeyCode::S) {
+                    buttons.write().expect("Cannot lock buttons").Down = false;
+                }
+                if input.key_released(VirtualKeyCode::A) {
+                    buttons.write().expect("Cannot lock buttons").Left = false;
+                }
+                if input.key_released(VirtualKeyCode::D) {
+                    buttons.write().expect("Cannot lock buttons").Right = false;
                 }
 
                 // Update internal state and request a redraw

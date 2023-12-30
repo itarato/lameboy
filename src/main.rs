@@ -88,6 +88,8 @@ fn main() -> Result<(), Error> {
     let global_exit_flag = Arc::new(AtomicBool::new(false));
     let video = Arc::new(RwLock::new(Video::new(args.nofps)));
     let is_opcode_dump = args.dump;
+    let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
+    let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
 
     let vm_thread = spawn({
         let global_exit_flag = global_exit_flag.clone();
@@ -100,6 +102,7 @@ fn main() -> Result<(), Error> {
                 debugger,
                 video,
                 is_opcode_dump,
+                joypad,
             ) {
                 if let Err(err) = vm.setup() {
                     log::error!("Failed VM setup: {}", err);
@@ -120,7 +123,7 @@ fn main() -> Result<(), Error> {
     });
 
     let gfx = Gfx::new(global_exit_flag.clone(), video.clone());
-    gfx.run(breakpoint_flag);
+    gfx.run(breakpoint_flag, joypad_button_input_requester);
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
 

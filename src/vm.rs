@@ -11,6 +11,7 @@ use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
+use crate::joypad;
 use crate::joypad::Joypad;
 use crate::mem::*;
 use crate::serial::Serial;
@@ -111,6 +112,7 @@ impl VM {
         debugger: Debugger,
         video: Arc<RwLock<Video>>,
         is_opcode_file_dump: bool,
+        joypad: Joypad,
     ) -> Result<Self, Error> {
         let opcode_dump_file = if is_opcode_file_dump {
             Some(File::create("/tmp/lameboy_dump.txt").unwrap())
@@ -128,7 +130,7 @@ impl VM {
             state: State::Running,
             timer: Timer::new(),
             sound: Sound::new(),
-            joypad: Joypad::new(),
+            joypad,
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
             // Top 3 bits are unused - BGB reads them as 0b111x_xxxx.
@@ -159,12 +161,6 @@ impl VM {
         log::info!("VM eval loop start");
 
         loop {
-            // DEBUGGING!
-            // if self.cpu.pc == 0x0207 && self.cpu.de == 0xc638 {
-            //     self.debugger.request_one_time_break();
-            // }
-            // DEBUGGING END!
-
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
                 loop {
@@ -3540,10 +3536,6 @@ impl VM {
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
-        // if loc == 0x8002 {
-        //     self.debugger.request_one_time_break();
-        // }
-
         if loc <= MEM_AREA_ROM_BANK_0_END {
             // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).
             // return Err("Cannot write to ROM (0)".into());
@@ -3565,7 +3557,7 @@ impl VM {
             // return Err("Write to MEM_AREA_PROHIBITED is not implemented".into());
         } else if loc <= MEM_AREA_IO_END {
             match loc {
-                MEM_LOC_P1 => self.joypad.set_p1(byte),
+                MEM_LOC_P1 => self.joypad.set_p1_button_selector(byte),
                 MEM_LOC_SB => self.serial.set_sb(byte),
                 MEM_LOC_SC => self.serial.set_sc(byte),
                 // TODO: Additionally, this register is reset when executing the stop instruction,
