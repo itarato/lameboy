@@ -1,3 +1,5 @@
+pub struct JoypadInputRequest {}
+
 pub struct Joypad {
     p1: u8,
     need_interrupt: bool,
