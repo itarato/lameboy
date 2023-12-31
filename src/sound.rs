@@ -1,7 +1,5 @@
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread;
-use std::time::Duration;
 
 use sdl2::audio::AudioCallback;
 use sdl2::audio::AudioDevice;
@@ -118,32 +116,48 @@ pub struct Sound {
     nr51: u8,
     nr52: u8,
 
-    _audio_device: AudioDevice<SquareWave>,
+    _channel_1_device: AudioDevice<SquareWave>,
     channel_1_out: Arc<Mutex<Option<SoundPacket>>>,
+
+    _channel_2_device: AudioDevice<SquareWave>,
+    channel_2_out: Arc<Mutex<Option<SoundPacket>>>,
 }
 
 impl Sound {
     pub fn new() -> Self {
         let sdl_context = sdl2::init().unwrap();
+
         let desired_spec = AudioSpecDesired {
             freq: Some(44_100),
             channels: Some(1),
             samples: None,
         };
 
-        let pocket = Arc::new(Mutex::new(None));
-
-        let audio_device = sdl_context
+        let channel_1_out = Arc::new(Mutex::new(None));
+        let _channel_1_device = sdl_context
             .audio()
             .unwrap()
             .open_playback(None, &desired_spec, |spec| SquareWave {
                 freq: spec.freq as f32,
                 phase: 0.5,
-                pocket: pocket.clone(),
+                pocket: channel_1_out.clone(),
                 envelope_sweep_counter: 0,
             })
             .unwrap();
-        audio_device.resume();
+        _channel_1_device.resume();
+
+        let channel_2_out = Arc::new(Mutex::new(None));
+        let _channel_2_device = sdl_context
+            .audio()
+            .unwrap()
+            .open_playback(None, &desired_spec, |spec| SquareWave {
+                freq: spec.freq as f32,
+                phase: 0.5,
+                pocket: channel_2_out.clone(),
+                envelope_sweep_counter: 0,
+            })
+            .unwrap();
+        _channel_2_device.resume();
 
         Sound {
             nr10: 0,
@@ -167,8 +181,10 @@ impl Sound {
             nr50: 0,
             nr51: 0,
             nr52: 0,
-            _audio_device: audio_device,
-            channel_1_out: pocket,
+            _channel_1_device,
+            channel_1_out,
+            _channel_2_device,
+            channel_2_out,
         }
     }
 
@@ -288,6 +304,49 @@ impl Sound {
     }
 
     fn channel2_update(&self) {
-        log::error!("Channel 2 is not implemented");
+        if !self.audio_on() || !is_bit(self.nr24, 7) {
+            return;
+        }
+
+        set_bit(self.nr52, 1, true);
+
+        // 00: 12.5%
+        // 01: 25%
+        // 10: 50%
+        // 11: 75%
+        let wave_duty = self.nr21 >> 6;
+        // When the length timer reaches 64, the channel is turned off: nr52 bit-0 + nr14 bit-7 -> 0.
+        let init_length_timer = self.nr21 & 0b11_1111;
+
+        let init_volume = self.nr22 >> 4;
+        let is_envelope_direction_increase = is_bit(self.nr22, 3);
+        let sweep_pace = self.nr22 & 0b111;
+
+        let length_enable = is_bit(self.nr24, 6);
+        let period_hi = (self.nr24 & 0b111) as u16;
+        let period_lo = self.nr23 as u16;
+        let period = (period_hi << 8) | period_lo;
+
+        let out_freq = (CPU_HZ as f32 / 32.0) / (2048.0 - period as f32);
+        let out_volume = init_volume as f32 / 15.0;
+        let out_envelop_sweep_length = (44_100 * sweep_pace as usize) / 64;
+        let out_waveform = match wave_duty {
+            0b00 => 0.125,
+            0b01 => 0.25,
+            0b10 => 0.5,
+            0b11 => 0.75,
+            _ => panic!("Illegal wave form"),
+        };
+
+        {
+            let mut pocket = self.channel_2_out.lock().unwrap();
+            *pocket = Some(SoundPacket::new(
+                out_freq,
+                out_volume,
+                out_envelop_sweep_length,
+                !is_envelope_direction_increase,
+                out_waveform,
+            ))
+        }
     }
 }
