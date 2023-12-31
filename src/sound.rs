@@ -118,7 +118,7 @@ pub struct Sound {
     nr51: u8,
     nr52: u8,
 
-    audio_device: AudioDevice<SquareWave>,
+    _audio_device: AudioDevice<SquareWave>,
     channel_1_out: Arc<Mutex<Option<SoundPacket>>>,
 }
 
@@ -167,7 +167,7 @@ impl Sound {
             nr50: 0,
             nr51: 0,
             nr52: 0,
-            audio_device,
+            _audio_device: audio_device,
             channel_1_out: pocket,
         }
     }
@@ -241,8 +241,7 @@ impl Sound {
     }
 
     fn channel1_update(&self) {
-        // Triggers channel.
-        if !is_bit(self.nr14, 7) {
+        if !self.audio_on() || !is_bit(self.nr14, 7) {
             return;
         }
 
