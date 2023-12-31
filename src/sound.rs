@@ -1,14 +1,99 @@
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-use rodio::dynamic_mixer;
-use rodio::source::SineWave;
-use rodio::OutputStream;
-use rodio::Sink;
-use rodio::Source;
+use sdl2::audio::AudioCallback;
+use sdl2::audio::AudioDevice;
+use sdl2::audio::AudioSpecDesired;
 
 use crate::conf::*;
 use crate::util::*;
+
+#[derive(Debug, Default)]
+struct SoundPacket {
+    pitch: f32,                   // 1.0 .. ~k
+    volume: f32,                  // 0.0 .. 1.0
+    envelope_sweep_length: usize, // 22050 = 1s
+    envelope_direction_down: bool,
+    waveform: f32, // 0.0 .. 1.0
+    restart: bool,
+}
+
+impl SoundPacket {
+    fn new(
+        pitch: f32,
+        volume: f32,
+        envelope_sweep_length: usize,
+        envelope_direction_down: bool,
+        waveform: f32,
+    ) -> SoundPacket {
+        SoundPacket {
+            pitch,
+            volume,
+            envelope_sweep_length,
+            envelope_direction_down,
+            waveform,
+            restart: true,
+        }
+    }
+}
+
+struct SquareWave {
+    freq: f32,
+    phase: f32,
+    pocket: Arc<Mutex<Option<SoundPacket>>>,
+    envelope_sweep_counter: usize,
+}
+
+impl AudioCallback for SquareWave {
+    type Channel = f32;
+
+    fn callback(&mut self, out: &mut [f32]) {
+        for x in out.iter_mut() {
+            let mut pocket = self.pocket.lock().unwrap();
+
+            *x = if pocket.is_some() {
+                if (*pocket).as_ref().unwrap().restart {
+                    (*pocket).as_mut().unwrap().restart = false;
+                    self.envelope_sweep_counter = (*pocket).as_mut().unwrap().envelope_sweep_length;
+                }
+
+                let pitch = pocket.as_ref().unwrap().pitch;
+                self.phase = (self.phase + (pitch / self.freq)) % 1.0;
+
+                if (*pocket).as_ref().unwrap().envelope_sweep_length > 0 {
+                    if self.envelope_sweep_counter > 0 {
+                        self.envelope_sweep_counter -= 1;
+                    } else {
+                        (*pocket).as_mut().unwrap().volume +=
+                            if (*pocket).as_mut().unwrap().envelope_direction_down {
+                                -1f32 / 15f32
+                            } else {
+                                1f32 / 15f32
+                            };
+                        self.envelope_sweep_counter =
+                            (*pocket).as_mut().unwrap().envelope_sweep_length;
+                    }
+                }
+
+                if (*pocket).as_ref().unwrap().volume < 0f32 {
+                    (*pocket).as_mut().unwrap().volume = 0.0;
+                } else if (*pocket).as_ref().unwrap().volume > 1f32 {
+                    (*pocket).as_mut().unwrap().volume = 1.0;
+                }
+
+                if self.phase <= pocket.as_ref().unwrap().waveform {
+                    pocket.as_ref().unwrap().volume
+                } else {
+                    -pocket.as_ref().unwrap().volume
+                }
+            } else {
+                0.0
+            };
+        }
+    }
+}
 
 pub struct Sound {
     nr10: u8,
@@ -32,10 +117,34 @@ pub struct Sound {
     nr50: u8,
     nr51: u8,
     nr52: u8,
+
+    audio_device: AudioDevice<SquareWave>,
+    channel_1_out: Arc<Mutex<Option<SoundPacket>>>,
 }
 
 impl Sound {
     pub fn new() -> Self {
+        let sdl_context = sdl2::init().unwrap();
+        let desired_spec = AudioSpecDesired {
+            freq: Some(44_100),
+            channels: Some(1),
+            samples: None,
+        };
+
+        let pocket = Arc::new(Mutex::new(None));
+
+        let audio_device = sdl_context
+            .audio()
+            .unwrap()
+            .open_playback(None, &desired_spec, |spec| SquareWave {
+                freq: spec.freq as f32,
+                phase: 0.5,
+                pocket: pocket.clone(),
+                envelope_sweep_counter: 0,
+            })
+            .unwrap();
+        audio_device.resume();
+
         Sound {
             nr10: 0,
             nr11: 0,
@@ -58,6 +167,8 @@ impl Sound {
             nr50: 0,
             nr51: 0,
             nr52: 0,
+            audio_device,
+            channel_1_out: pocket,
         }
     }
 
@@ -155,34 +266,26 @@ impl Sound {
         let period = (period_hi << 8) | period_lo;
 
         let out_freq = (CPU_HZ as f32 / 32.0) / (2048.0 - period as f32);
-        let out_volume = (1.0 / 15.0) * init_volume as f32;
+        let out_volume = init_volume as f32 / 15.0;
+        let out_envelop_sweep_length = (44_100 * sweep_pace as usize) / 64;
+        let out_waveform = match wave_duty {
+            0b00 => 0.125,
+            0b01 => 0.25,
+            0b10 => 0.5,
+            0b11 => 0.75,
+            _ => panic!("Illegal wave form"),
+        };
 
-        // println!("wave_duty={}", wave_duty);
-        // println!("init_length_timer={}", init_length_timer);
-        // println!("init_volume={}", init_volume);
-        // println!(
-        //     "is_envelope_direction_increase={}",
-        //     is_envelope_direction_increase
-        // );
-        // println!("sweep_pace={}", sweep_pace);
-        // println!("length_enable={}", length_enable);
-        // println!("period={}", period);
-
-        thread::spawn(move || {
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
-            let (controller, mixer) = dynamic_mixer::mixer::<f32>(1, 44_100);
-
-            sink.append(mixer);
-
-            let source = SineWave::new(out_freq)
-                .take_duration(Duration::from_micros(200_000))
-                .amplify(out_volume);
-
-            controller.add(source);
-
-            sink.sleep_until_end();
-        });
+        {
+            let mut pocket = self.channel_1_out.lock().unwrap();
+            *pocket = Some(SoundPacket::new(
+                out_freq,
+                out_volume,
+                out_envelop_sweep_length,
+                !is_envelope_direction_increase,
+                out_waveform,
+            ))
+        }
     }
 
     fn channel2_update(&self) {
