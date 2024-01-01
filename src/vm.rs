@@ -161,6 +161,12 @@ impl VM {
         log::info!("VM eval loop start");
 
         loop {
+            if self.mem_read(self.cpu.pc).unwrap() == 0xF4
+                || self.mem_read(self.cpu.pc).unwrap() == 0xFD
+            {
+                self.debugger.request_one_time_break();
+            }
+
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
                 loop {

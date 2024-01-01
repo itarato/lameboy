@@ -256,10 +256,15 @@ impl Video {
                 .read(tile_start_addr + (tile_y as u16 * 2) + 1)
                 .unwrap();
             for x in 0..8 {
-                let color = (bit(row_hi, 7 - x) << 1) | bit(row_lo, 7 - x);
+                let row_bit = if x_flip { x } else { 7 - x };
+                let color = (bit(row_hi, row_bit) << 1) | bit(row_lo, row_bit);
 
                 let physical_x = byte_x_pos - 8 + x as i16;
                 if physical_x < 0 || physical_x >= DISPLAY_WIDTH as i16 {
+                    continue;
+                }
+
+                if color == 0 {
                     continue;
                 }
 
