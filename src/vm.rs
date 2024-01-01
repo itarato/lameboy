@@ -295,9 +295,6 @@ impl VM {
                 ))
                 .unwrap();
         }
-        // if self.counter >= 2355146 {
-        //     return Err("DONE".into());
-        // }
 
         log::debug!(
             "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
@@ -3645,7 +3642,7 @@ impl VM {
             MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_N_END => self.mem.read(loc),
             MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => self.video.read().unwrap().read(loc),
             MEM_AREA_EXTERNAL_START..=MEM_AREA_ECHO_END => self.mem.read(loc),
-            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => self.mem.read(loc),
+            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => self.video.read().unwrap().read(loc),
             MEM_AREA_PROHIBITED_START..=MEM_AREA_PROHIBITED_END => {
                 Err(format!("Read from prohibited mem area: {:#06X}", loc).into())
             }

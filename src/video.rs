@@ -293,6 +293,18 @@ impl Video {
             let tile_i = self
                 .read(tile_map_start + tile_data_i as u16)
                 .expect("Failed getting tile data");
+
+            // FIXTHIS - READJUSTMENT
+            let tile_i = if tile_data_section_start == 0x8800 {
+                if tile_i <= 127 {
+                    tile_i + 128
+                } else {
+                    tile_i - 128
+                }
+            } else {
+                tile_i
+            };
+
             let tile_lo = self
                 .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2)
                 .expect("Cannot load bg tile");
