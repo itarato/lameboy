@@ -50,15 +50,17 @@ struct MBC1 {
     bank_1_reg: u8,
     bank_2_reg: u8,
     bank2_mode_reg: Bank2Mode,
+    rom_bank_size: usize,
 }
 
 impl MBC1 {
-    fn new() -> MBC1 {
+    fn new(rom_bank_size: usize) -> MBC1 {
         MBC1 {
             ram_gate_reg: RamGate::DisableRamAccess,
             bank_1_reg: 1,
             bank_2_reg: 0,
             bank2_mode_reg: Bank2Mode::Mode0,
+            rom_bank_size,
         }
     }
 }
@@ -78,7 +80,9 @@ impl CartridgeController for MBC1 {
             }
             self.bank_1_reg = byte;
         } else if (0x4000..=0x5FFF).contains(&loc) {
-            self.bank_2_reg = byte & 0b0011;
+            if self.rom_bank_size > 0x20 {
+                self.bank_2_reg = (byte & 0b0011) % (self.rom_bank_size >> 5) as u8;
+            }
         } else if (0x6000..=0x7FFF).contains(&loc) {
             self.bank2_mode_reg = if byte & 1 == 1 {
                 Bank2Mode::Mode1
@@ -91,17 +95,19 @@ impl CartridgeController for MBC1 {
     }
 
     fn translate_addr(&self, virtual_loc: u16) -> PhysicalAddr {
+        let rom_pins = 14;
         if (MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_0_END).contains(&virtual_loc) {
             match self.bank2_mode_reg {
                 Bank2Mode::Mode0 => PhysicalAddr::Ok(virtual_loc as u32),
-                Bank2Mode::Mode1 => {
-                    PhysicalAddr::Ok(((self.bank_2_reg as u32) << 19) as u32 | virtual_loc as u32)
-                }
+                Bank2Mode::Mode1 => PhysicalAddr::Ok(
+                    ((self.bank_2_reg as u32) << (rom_pins + 5)) as u32 | virtual_loc as u32,
+                ),
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
-            let rom_bank_number = ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32;
+            let rom_bank_number = (((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32)
+                % self.rom_bank_size as u32;
             let physical_addr =
-                ((virtual_loc as u32) & 0b0000_0011_1111_1111_1111) | (rom_bank_number << 14);
+                ((virtual_loc as u32) & ((1 << rom_pins) - 1)) | (rom_bank_number << rom_pins);
             PhysicalAddr::Ok(physical_addr)
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&virtual_loc) {
             match self.ram_gate_reg {
@@ -131,7 +137,15 @@ impl Cartridge {
 
         let ctrl: Box<dyn CartridgeController + Send> = match data[0x0147] {
             0x00 => Box::new(RomOnly),
-            0x01 => Box::new(MBC1::new()),
+            0x01 => {
+                let rom_bank_size_bit = data[0x0148];
+                let rom_bank_size = if rom_bank_size_bit <= 8 {
+                    2 << rom_bank_size_bit
+                } else {
+                    panic!("Large cartridges are not yet implemented");
+                };
+                Box::new(MBC1::new(rom_bank_size))
+            }
             code => unimplemented!("Unimplemented cartridge type: {}", code),
         };
 
@@ -158,7 +172,7 @@ impl Cartridge {
             self.ctrl.set_register(loc, byte);
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
             match self.ctrl.translate_addr(loc) {
-                PhysicalAddr::Ok(addr) => self.data[addr as usize] = byte,
+                PhysicalAddr::Ok(addr) => unimplemented!("Data save is not implemented"),
                 PhysicalAddr::NotAccessible => (),
             };
         } else {
