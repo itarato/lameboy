@@ -11,7 +11,6 @@ use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
-use crate::joypad;
 use crate::joypad::Joypad;
 use crate::mem::*;
 use crate::serial::Serial;
@@ -3223,7 +3222,8 @@ impl VM {
                 // RETI 1 16 | - - - -
                 let addr = self.pop_u16()?;
                 self.cpu.pc = addr;
-                self.interrupt_master_enable_flag = true;
+                self.delayed_cmds
+                    .push(DelayedCommand::new(2, DelayedOp::MasterInterruptEnable));
             }
             0xDA => {
                 // JP C,a16 3 16/12 | - - - -
@@ -3440,6 +3440,10 @@ impl VM {
     }
 
     fn push_u16(&mut self, word: u16) -> Result<(), Error> {
+        if word == 0x6dab {
+            self.debugger.request_one_time_break();
+        }
+
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
         self.mem_write_u16(self.cpu.sp, word)
     }

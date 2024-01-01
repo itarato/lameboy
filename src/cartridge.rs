@@ -137,7 +137,7 @@ impl Cartridge {
 
         let ctrl: Box<dyn CartridgeController + Send> = match data[0x0147] {
             0x00 => Box::new(RomOnly),
-            0x01 => {
+            0x01 | 0x02 | 0x03 => {
                 let rom_bank_size_bit = data[0x0148];
                 let rom_bank_size = if rom_bank_size_bit <= 8 {
                     2 << rom_bank_size_bit
