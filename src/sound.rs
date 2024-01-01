@@ -8,7 +8,7 @@ use sdl2::audio::AudioSpecDesired;
 use crate::conf::*;
 use crate::util::*;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct SoundPacket {
     is_on: bool,
     pitch: f32,                   // 1.0 .. ~k
@@ -19,26 +19,34 @@ struct SoundPacket {
     restart: bool,
     length_enable: bool,
     length: u8,
+    length_counter: Counter,
 }
 
 impl SoundPacket {
-    fn new(
-        pitch: f32,
-        volume: f32,
-        envelope_sweep_length: usize,
-        envelope_direction_down: bool,
-        waveform: f32,
-    ) -> SoundPacket {
+    fn new() -> SoundPacket {
         SoundPacket {
             is_on: false,
-            pitch,
-            volume,
-            envelope_sweep_length,
-            envelope_direction_down,
-            waveform,
-            restart: true,
+            pitch: 0.0,
+            volume: 0.0,
+            envelope_sweep_length: 0,
+            envelope_direction_down: true,
+            waveform: 0.0,
+            restart: false,
             length_enable: false,
             length: 0,
+            length_counter: Counter::new(CPU_HZ as u64 / 256),
+        }
+    }
+
+    fn tick(&mut self, cycles: u64) {
+        if self.length_enable && self.length > 0 {
+            if self.length_counter.tick_and_check_overflow(cycles) {
+                self.length -= 1;
+
+                if self.length == 0 {
+                    self.is_on = false;
+                }
+            }
         }
     }
 }
@@ -138,7 +146,7 @@ impl Sound {
             samples: None,
         };
 
-        let channel_1_out = Arc::new(Mutex::new(SoundPacket::default()));
+        let channel_1_out = Arc::new(Mutex::new(SoundPacket::new()));
         let _channel_1_device = sdl_context
             .audio()
             .unwrap()
@@ -151,7 +159,7 @@ impl Sound {
             .unwrap();
         _channel_1_device.resume();
 
-        let channel_2_out = Arc::new(Mutex::new(SoundPacket::default()));
+        let channel_2_out = Arc::new(Mutex::new(SoundPacket::new()));
         let _channel_2_device = sdl_context
             .audio()
             .unwrap()
@@ -193,6 +201,11 @@ impl Sound {
         }
     }
 
+    pub fn update(&mut self, cycles: u64) {
+        self.channel_1_out.lock().unwrap().tick(cycles);
+        self.channel_2_out.lock().unwrap().tick(cycles);
+    }
+
     pub fn write(&mut self, loc: u16, byte: u8) {
         match loc {
             MEM_LOC_NR10 => self.nr10 = byte,
@@ -207,6 +220,7 @@ impl Sound {
                 self.nr14 = byte;
                 self.channel1_update();
             }
+
             MEM_LOC_NR21 => self.nr21 = byte,
             MEM_LOC_NR22 => self.nr22 = byte,
             MEM_LOC_NR23 => self.nr23 = byte,
@@ -214,15 +228,18 @@ impl Sound {
                 self.nr24 = byte;
                 self.channel2_update();
             }
+
             MEM_LOC_NR30 => self.nr30 = byte,
             MEM_LOC_NR31 => self.nr31 = byte,
             MEM_LOC_NR32 => self.nr32 = byte,
             MEM_LOC_NR33 => self.nr33 = byte,
             MEM_LOC_NR34 => self.nr34 = byte,
+
             MEM_LOC_NR41 => self.nr41 = byte,
             MEM_LOC_NR42 => self.nr42 = byte,
             MEM_LOC_NR43 => self.nr43 = byte,
             MEM_LOC_NR44 => self.nr44 = byte,
+
             // FF24 — NR50: Master volume & VIN panning
             MEM_LOC_NR50 => self.nr50 = byte,
             // FF25 — NR51: Sound panning

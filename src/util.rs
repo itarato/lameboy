@@ -116,6 +116,28 @@ impl<T> SizedQueue<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct Counter {
+    counter: u64,
+    modulo: u64,
+}
+
+impl Counter {
+    pub fn new(modulo: u64) -> Counter {
+        Counter { counter: 0, modulo }
+    }
+
+    pub fn tick_and_check_overflow(&mut self, len: u64) -> bool {
+        self.counter += len;
+        if self.counter >= self.modulo {
+            self.counter -= self.modulo;
+            true
+        } else {
+            false
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::util::*;

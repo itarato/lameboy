@@ -215,6 +215,8 @@ impl VM {
 
             let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
 
+            self.sound.update(diff_mcycle * CYCLE_PER_MCYCLE as u64);
+
             let should_call_times_interrupt = self.timer.handle_ticks(pre_exec_tma)?;
             if should_call_times_interrupt {
                 self.interrupt_flag = self.interrupt_flag | 0b0100;
