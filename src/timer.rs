@@ -40,7 +40,7 @@ impl Timer {
         let (tima_enabled, tima_freq) = self.tac_expand();
         if tima_enabled {
             if self.tima_ticker >= tima_freq {
-                self.tima_ticker -= tima_freq;
+                self.tima_ticker = self.tima_ticker % tima_freq;
 
                 if self.tima == 0xFF {
                     self.tima = pre_exec_tma;
