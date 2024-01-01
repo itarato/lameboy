@@ -10,12 +10,15 @@ use crate::util::*;
 
 #[derive(Debug, Default)]
 struct SoundPacket {
+    is_on: bool,
     pitch: f32,                   // 1.0 .. ~k
     volume: f32,                  // 0.0 .. 1.0
     envelope_sweep_length: usize, // 22050 = 1s
     envelope_direction_down: bool,
     waveform: f32, // 0.0 .. 1.0
     restart: bool,
+    length_enable: bool,
+    length: u8,
 }
 
 impl SoundPacket {
@@ -27,12 +30,15 @@ impl SoundPacket {
         waveform: f32,
     ) -> SoundPacket {
         SoundPacket {
+            is_on: false,
             pitch,
             volume,
             envelope_sweep_length,
             envelope_direction_down,
             waveform,
             restart: true,
+            length_enable: false,
+            length: 0,
         }
     }
 }
@@ -40,7 +46,7 @@ impl SoundPacket {
 struct SquareWave {
     freq: f32,
     phase: f32,
-    pocket: Arc<Mutex<Option<SoundPacket>>>,
+    pocket: Arc<Mutex<SoundPacket>>,
     envelope_sweep_counter: usize,
 }
 
@@ -48,47 +54,46 @@ impl AudioCallback for SquareWave {
     type Channel = f32;
 
     fn callback(&mut self, out: &mut [f32]) {
+        let mut pocket = self.pocket.lock().expect("Cannot lock pocket");
+
         for x in out.iter_mut() {
-            let mut pocket = self.pocket.lock().unwrap();
+            if !pocket.is_on {
+                *x = 0.0;
+                continue;
+            }
 
-            *x = if pocket.is_some() {
-                if (*pocket).as_ref().unwrap().restart {
-                    (*pocket).as_mut().unwrap().restart = false;
-                    self.envelope_sweep_counter = (*pocket).as_mut().unwrap().envelope_sweep_length;
-                }
+            if (*pocket).restart {
+                (*pocket).restart = false;
+                self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
+            }
 
-                let pitch = pocket.as_ref().unwrap().pitch;
-                self.phase = (self.phase + (pitch / self.freq)) % 1.0;
+            let pitch = pocket.pitch;
+            self.phase = (self.phase + (pitch / self.freq)) % 1.0;
 
-                if (*pocket).as_ref().unwrap().envelope_sweep_length > 0 {
-                    if self.envelope_sweep_counter > 0 {
-                        self.envelope_sweep_counter -= 1;
-                    } else {
-                        (*pocket).as_mut().unwrap().volume +=
-                            if (*pocket).as_mut().unwrap().envelope_direction_down {
-                                -1f32 / 15f32
-                            } else {
-                                1f32 / 15f32
-                            };
-                        self.envelope_sweep_counter =
-                            (*pocket).as_mut().unwrap().envelope_sweep_length;
-                    }
-                }
-
-                if (*pocket).as_ref().unwrap().volume < 0f32 {
-                    (*pocket).as_mut().unwrap().volume = 0.0;
-                } else if (*pocket).as_ref().unwrap().volume > 1f32 {
-                    (*pocket).as_mut().unwrap().volume = 1.0;
-                }
-
-                if self.phase <= pocket.as_ref().unwrap().waveform {
-                    pocket.as_ref().unwrap().volume
+            if (*pocket).envelope_sweep_length > 0 {
+                if self.envelope_sweep_counter > 0 {
+                    self.envelope_sweep_counter -= 1;
                 } else {
-                    -pocket.as_ref().unwrap().volume
+                    (*pocket).volume += if (*pocket).envelope_direction_down {
+                        -1f32 / 15f32
+                    } else {
+                        1f32 / 15f32
+                    };
+                    self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
                 }
+            }
+
+            if (*pocket).volume < 0f32 {
+                (*pocket).volume = 0.0;
+            } else if (*pocket).volume > 1f32 {
+                (*pocket).volume = 1.0;
+            }
+
+            *x = if self.phase <= pocket.waveform {
+                pocket.volume
             } else {
-                0.0
-            };
+                -pocket.volume
+            }
         }
     }
 }
@@ -117,10 +122,10 @@ pub struct Sound {
     nr52: u8,
 
     _channel_1_device: AudioDevice<SquareWave>,
-    channel_1_out: Arc<Mutex<Option<SoundPacket>>>,
+    channel_1_out: Arc<Mutex<SoundPacket>>,
 
     _channel_2_device: AudioDevice<SquareWave>,
-    channel_2_out: Arc<Mutex<Option<SoundPacket>>>,
+    channel_2_out: Arc<Mutex<SoundPacket>>,
 }
 
 impl Sound {
@@ -133,7 +138,7 @@ impl Sound {
             samples: None,
         };
 
-        let channel_1_out = Arc::new(Mutex::new(None));
+        let channel_1_out = Arc::new(Mutex::new(SoundPacket::default()));
         let _channel_1_device = sdl_context
             .audio()
             .unwrap()
@@ -146,7 +151,7 @@ impl Sound {
             .unwrap();
         _channel_1_device.resume();
 
-        let channel_2_out = Arc::new(Mutex::new(None));
+        let channel_2_out = Arc::new(Mutex::new(SoundPacket::default()));
         let _channel_2_device = sdl_context
             .audio()
             .unwrap()
@@ -293,13 +298,14 @@ impl Sound {
 
         {
             let mut pocket = self.channel_1_out.lock().unwrap();
-            *pocket = Some(SoundPacket::new(
-                out_freq,
-                out_volume,
-                out_envelop_sweep_length,
-                !is_envelope_direction_increase,
-                out_waveform,
-            ))
+            pocket.is_on = true;
+            pocket.pitch = out_freq;
+            pocket.volume = out_volume;
+            pocket.envelope_sweep_length = out_envelop_sweep_length;
+            pocket.envelope_direction_down = !is_envelope_direction_increase;
+            pocket.waveform = out_waveform;
+            pocket.length_enable = length_enable;
+            pocket.length = init_length_timer;
         }
     }
 
@@ -340,13 +346,14 @@ impl Sound {
 
         {
             let mut pocket = self.channel_2_out.lock().unwrap();
-            *pocket = Some(SoundPacket::new(
-                out_freq,
-                out_volume,
-                out_envelop_sweep_length,
-                !is_envelope_direction_increase,
-                out_waveform,
-            ))
+            pocket.is_on = true;
+            pocket.pitch = out_freq;
+            pocket.volume = out_volume;
+            pocket.envelope_sweep_length = out_envelop_sweep_length;
+            pocket.envelope_direction_down = !is_envelope_direction_increase;
+            pocket.waveform = out_waveform;
+            pocket.length_enable = length_enable;
+            pocket.length = init_length_timer;
         }
     }
 }
