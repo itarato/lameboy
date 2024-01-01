@@ -193,7 +193,7 @@ impl Video {
 
     pub fn draw_line_to_screen(&mut self, ly: u8) {
         if self.is_background_window_display_priority() {
-            self.draw_background_map_to_screen(ly);
+            self.draw_background_to_screen(ly);
         }
 
         if self.is_obj_sprite_display_enabled() {
@@ -203,10 +203,6 @@ impl Video {
         if self.is_window_display_enabled() {
             self.draw_window_to_screen(ly);
         }
-    }
-
-    fn draw_window_to_screen(&mut self, ly: u8) {
-        self.draw_background_or_window_to_screen(ly, self.window_tile_map_display_section_start());
     }
 
     fn draw_objects_to_screen(&mut self, ly: u8) {
@@ -274,15 +270,9 @@ impl Video {
         }
     }
 
-    fn draw_background_map_to_screen(&mut self, ly: u8) {
-        self.draw_background_or_window_to_screen(
-            ly,
-            self.background_tile_map_display_section_start(),
-        );
-    }
-
-    fn draw_background_or_window_to_screen(&mut self, ly: u8, tile_map_start: u16) {
+    fn draw_background_to_screen(&mut self, ly: u8) {
         let tile_data_section_start = self.backround_window_tile_data_section_start();
+        let tile_map_start = self.background_tile_map_display_section_start();
 
         // There are 32x32 tiles on the map: 256x256 pixels.
         let actual_ly = ly.wrapping_add(self.scy);
@@ -292,6 +282,54 @@ impl Video {
 
         for i in 0..DISPLAY_WIDTH {
             let actual_x = self.scx.wrapping_add(i as u8);
+            let tile_col = actual_x / 8;
+            let tile_x = (actual_x % 8) as u8;
+            let tile_data_i = (tile_row as u16 * 32) + tile_col as u16;
+            let tile_i = self
+                .read(tile_map_start + tile_data_i as u16)
+                .expect("Failed getting tile data");
+
+            // FIXTHIS - READJUSTMENT
+            let tile_i = if tile_data_section_start == 0x8800 {
+                if tile_i <= 127 {
+                    tile_i + 128
+                } else {
+                    tile_i - 128
+                }
+            } else {
+                tile_i
+            };
+
+            let tile_lo = self
+                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2)
+                .expect("Cannot load bg tile");
+            let tile_hi = self
+                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2 + 1)
+                .expect("Cannot load bg tile");
+            let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
+
+            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
+        }
+    }
+
+    fn draw_window_to_screen(&mut self, ly: u8) {
+        let tile_data_section_start = self.backround_window_tile_data_section_start();
+        let tile_map_start = self.window_tile_map_display_section_start();
+
+        let actual_ly = ly as i16 - self.wy as i16;
+        if actual_ly < 0 || actual_ly >= 0x100 {
+            return;
+        }
+
+        let tile_row = actual_ly / 8;
+        let tile_y = actual_ly % 8;
+
+        for i in 0..DISPLAY_WIDTH {
+            let actual_x = i as i16 - (self.wx as i16 - 7);
+            if actual_x < 0 || actual_x >= 0x100 {
+                continue;
+            }
+
             let tile_col = actual_x / 8;
             let tile_x = (actual_x % 8) as u8;
             let tile_data_i = (tile_row as u16 * 32) + tile_col as u16;
