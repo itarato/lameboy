@@ -107,6 +107,8 @@ impl AudioCallback for SquareWave {
 }
 
 pub struct Apu {
+    disable_sound: bool,
+
     nr10: u8,
     nr11: u8,
     nr12: u8,
@@ -137,7 +139,7 @@ pub struct Apu {
 }
 
 impl Apu {
-    pub fn new() -> Self {
+    pub fn new(disable_sound: bool) -> Self {
         let sdl_context = sdl2::init().unwrap();
 
         let desired_spec = AudioSpecDesired {
@@ -198,6 +200,7 @@ impl Apu {
             channel_1_out,
             _channel_2_device,
             channel_2_out,
+            disable_sound,
         }
     }
 
@@ -263,7 +266,7 @@ impl Apu {
     }
 
     fn channel1_update(&self) {
-        if !self.audio_on() || !is_bit(self.nr14, 7) {
+        if self.disable_sound || !self.audio_on() || !is_bit(self.nr14, 7) {
             return;
         }
 
@@ -311,7 +314,7 @@ impl Apu {
     }
 
     fn channel2_update(&self) {
-        if !self.audio_on() || !is_bit(self.nr24, 7) {
+        if self.disable_sound || !self.audio_on() || !is_bit(self.nr24, 7) {
             return;
         }
 

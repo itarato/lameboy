@@ -51,6 +51,14 @@ struct Args {
     /// VRam debug window.
     #[arg(long)]
     debug_vram: bool,
+
+    /// Skip intro logo scrolling phase.
+    #[arg(long)]
+    skip_intro: bool,
+
+    /// Turn all sounds off.
+    #[arg(long)]
+    disable_sound: bool,
 }
 
 impl Args {
@@ -99,8 +107,9 @@ fn main() -> Result<(), Error> {
                 video,
                 args.opcode_dump,
                 joypad,
+                args.disable_sound,
             ) {
-                if let Err(err) = vm.setup() {
+                if let Err(err) = vm.setup(args.skip_intro) {
                     log::error!("Failed VM setup: {}", err);
                     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
                     return;

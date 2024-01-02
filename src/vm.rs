@@ -112,6 +112,7 @@ impl VM {
         video: Arc<RwLock<PPU>>,
         is_opcode_file_dump: bool,
         joypad: Joypad,
+        disable_sound: bool,
     ) -> Result<Self, Error> {
         let opcode_dump_file = if is_opcode_file_dump {
             Some(File::create("/tmp/lameboy_dump.txt").unwrap())
@@ -128,7 +129,7 @@ impl VM {
             counter: 0,
             state: State::Running,
             timer: Timer::new(),
-            sound: Apu::new(),
+            sound: Apu::new(disable_sound),
             joypad,
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,
@@ -142,12 +143,77 @@ impl VM {
         })
     }
 
-    pub fn setup(&mut self) -> Result<(), Error> {
-        let bios = &mut self.mem.bios;
-        let mut bios_file = File::open("assets/dmg_boot.bin")?;
+    pub fn setup(&mut self, skip_intro: bool) -> Result<(), Error> {
+        if skip_intro {
+            self.cpu.af = 0x01b0;
+            self.cpu.bc = 0x0013;
+            self.cpu.de = 0x00d8;
+            self.cpu.hl = 0x01d4;
+            self.cpu.sp = 0xfffe;
+            self.cpu.pc = 0x0100;
 
-        let bios_read_len = bios_file.read(bios)?;
-        assert_eq!(BIOS_SIZE, bios_read_len, "BIOS read size not match");
+            self.mem_write(0xff00, 0xcf)?; // P1
+            self.mem_write(0xff01, 0x00)?; // SB
+            self.mem_write(0xff02, 0x7e)?; // SC
+            self.mem_write(0xff04, 0xab)?; // DIV
+            self.mem_write(0xff05, 0x00)?; // TIMA
+            self.mem_write(0xff06, 0x00)?; // TMA
+            self.mem_write(0xff07, 0xf8)?; // TAC
+            self.mem_write(0xff0f, 0xe1)?; // IF
+            self.mem_write(0xff10, 0x80)?; // NR10
+            self.mem_write(0xff11, 0xbf)?; // NR11
+            self.mem_write(0xff12, 0xf3)?; // NR12
+            self.mem_write(0xff13, 0xff)?; // NR13
+            self.mem_write(0xff14, 0xbf)?; // NR14
+            self.mem_write(0xff16, 0x3f)?; // NR21
+            self.mem_write(0xff17, 0x00)?; // NR22
+            self.mem_write(0xff18, 0xff)?; // NR23
+            self.mem_write(0xff19, 0xbf)?; // NR24
+            self.mem_write(0xff1a, 0x7f)?; // NR30
+            self.mem_write(0xff1b, 0xff)?; // NR31
+            self.mem_write(0xff1c, 0x9f)?; // NR32
+            self.mem_write(0xff1d, 0xff)?; // NR33
+            self.mem_write(0xff1e, 0xbf)?; // NR34
+            self.mem_write(0xff20, 0xff)?; // NR41
+            self.mem_write(0xff21, 0x00)?; // NR42
+            self.mem_write(0xff22, 0x00)?; // NR43
+            self.mem_write(0xff23, 0xbf)?; // NR44
+            self.mem_write(0xff24, 0x77)?; // NR50
+            self.mem_write(0xff25, 0xf3)?; // NR51
+            self.mem_write(0xff26, 0xf1)?; // NR52
+            self.mem_write(0xff40, 0x91)?; // LCDC
+            self.mem_write(0xff41, 0x85)?; // STAT
+            self.mem_write(0xff42, 0x00)?; // SCY
+            self.mem_write(0xff43, 0x00)?; // SCX
+            self.mem_write(0xff44, 0x00)?; // LY
+            self.mem_write(0xff45, 0x00)?; // LYC
+            self.mem_write(0xff46, 0xff)?; // DMA
+            self.mem_write(0xff47, 0xfc)?; // BGP
+            self.mem_write(0xff4a, 0x00)?; // WY
+            self.mem_write(0xff4b, 0x00)?; // WX
+            self.mem_write(0xff4d, 0xff)?; // KEY1
+            self.mem_write(0xff4f, 0xff)?; // VBK
+            self.mem_write(0xff51, 0xff)?; // HDMA1
+            self.mem_write(0xff52, 0xff)?; // HDMA2
+            self.mem_write(0xff53, 0xff)?; // HDMA3
+            self.mem_write(0xff54, 0xff)?; // HDMA4
+            self.mem_write(0xff55, 0xff)?; // HDMA5
+            self.mem_write(0xff56, 0xff)?; // RP
+            self.mem_write(0xff68, 0xff)?; // BCPS
+            self.mem_write(0xff69, 0xff)?; // BCPD
+            self.mem_write(0xff6a, 0xff)?; // OCPS
+            self.mem_write(0xff6b, 0xff)?; // OCPD
+            self.mem_write(0xff70, 0xff)?; // SVBK
+            self.mem_write(0xffff, 0x00)?; // IE
+
+            self.mem.boot_lock_reg = 0x1;
+        } else {
+            let bios = &mut self.mem.bios;
+            let mut bios_file = File::open("assets/dmg_boot.bin")?;
+
+            let bios_read_len = bios_file.read(bios)?;
+            assert_eq!(BIOS_SIZE, bios_read_len, "BIOS read size not match");
+        }
 
         log::info!("VM setup");
 
