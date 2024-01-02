@@ -148,55 +148,55 @@ impl Gfx {
                 }
 
                 if input.key_pressed(VirtualKeyCode::Z) {
-                    buttons.write().expect("Cannot lock buttons").Start = true;
+                    buttons.write().expect("Cannot lock buttons").start = true;
                 }
                 if input.key_pressed(VirtualKeyCode::X) {
-                    buttons.write().expect("Cannot lock buttons").Select = true;
+                    buttons.write().expect("Cannot lock buttons").select = true;
                 }
                 if input.key_pressed(VirtualKeyCode::N) {
-                    buttons.write().expect("Cannot lock buttons").A = true;
+                    buttons.write().expect("Cannot lock buttons").a = true;
                 }
                 if input.key_pressed(VirtualKeyCode::M) {
-                    buttons.write().expect("Cannot lock buttons").B = true;
+                    buttons.write().expect("Cannot lock buttons").b = true;
                 }
 
                 if input.key_pressed(VirtualKeyCode::W) {
-                    buttons.write().expect("Cannot lock buttons").Up = true;
+                    buttons.write().expect("Cannot lock buttons").up = true;
                 }
                 if input.key_pressed(VirtualKeyCode::S) {
-                    buttons.write().expect("Cannot lock buttons").Down = true;
+                    buttons.write().expect("Cannot lock buttons").down = true;
                 }
                 if input.key_pressed(VirtualKeyCode::A) {
-                    buttons.write().expect("Cannot lock buttons").Left = true;
+                    buttons.write().expect("Cannot lock buttons").left = true;
                 }
                 if input.key_pressed(VirtualKeyCode::D) {
-                    buttons.write().expect("Cannot lock buttons").Right = true;
+                    buttons.write().expect("Cannot lock buttons").right = true;
                 }
 
                 if input.key_released(VirtualKeyCode::Z) {
-                    buttons.write().expect("Cannot lock buttons").Start = false;
+                    buttons.write().expect("Cannot lock buttons").start = false;
                 }
                 if input.key_released(VirtualKeyCode::X) {
-                    buttons.write().expect("Cannot lock buttons").Select = false;
+                    buttons.write().expect("Cannot lock buttons").select = false;
                 }
                 if input.key_released(VirtualKeyCode::N) {
-                    buttons.write().expect("Cannot lock buttons").A = false;
+                    buttons.write().expect("Cannot lock buttons").a = false;
                 }
                 if input.key_released(VirtualKeyCode::M) {
-                    buttons.write().expect("Cannot lock buttons").B = false;
+                    buttons.write().expect("Cannot lock buttons").b = false;
                 }
 
                 if input.key_released(VirtualKeyCode::W) {
-                    buttons.write().expect("Cannot lock buttons").Up = false;
+                    buttons.write().expect("Cannot lock buttons").up = false;
                 }
                 if input.key_released(VirtualKeyCode::S) {
-                    buttons.write().expect("Cannot lock buttons").Down = false;
+                    buttons.write().expect("Cannot lock buttons").down = false;
                 }
                 if input.key_released(VirtualKeyCode::A) {
-                    buttons.write().expect("Cannot lock buttons").Left = false;
+                    buttons.write().expect("Cannot lock buttons").left = false;
                 }
                 if input.key_released(VirtualKeyCode::D) {
-                    buttons.write().expect("Cannot lock buttons").Right = false;
+                    buttons.write().expect("Cannot lock buttons").right = false;
                 }
 
                 // Update internal state and request a redraw

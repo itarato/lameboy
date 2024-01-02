@@ -68,7 +68,6 @@ macro_rules! make_fn_set_flag {
 #[derive(Clone, Copy)]
 pub enum Reg {
     A,
-    F,
     B,
     C,
     D,
@@ -267,7 +266,6 @@ impl Cpu {
     fn get_reg(&self, reg: Reg) -> u8 {
         match reg {
             Reg::A => self.get_a(),
-            Reg::F => self.get_f(),
             Reg::B => self.get_b(),
             Reg::C => self.get_c(),
             Reg::D => self.get_d(),
@@ -280,7 +278,6 @@ impl Cpu {
     fn set_reg(&mut self, reg: Reg, value: u8) {
         match reg {
             Reg::A => self.set_a(value),
-            Reg::F => unimplemented!("Cannot set register F directly"),
             Reg::B => self.set_b(value),
             Reg::C => self.set_c(value),
             Reg::D => self.set_d(value),

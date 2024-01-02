@@ -33,10 +33,6 @@ struct Args {
     /// Cartridge.
     cartridge: String,
 
-    /// Enable debug mode.
-    #[arg(short, long)]
-    debug: bool,
-
     /// Breakpoints.
     #[arg(short = 'b', long)]
     breakpoint: Option<String>,
@@ -79,13 +75,12 @@ fn main() -> Result<(), Error> {
 
     let breakpoint_flag = Arc::new(AtomicBool::new(false));
     let mut debugger = Debugger::new(breakpoint_flag.clone());
-    if args.debug {
-        args.breakpoint_parsed()
-            .map(|breakpoint| debugger.add_breakpoint(breakpoint));
-        if args.step_by_step {
-            debugger.set_break_on_start();
-            debugger.set_step_by_step();
-        }
+
+    args.breakpoint_parsed()
+        .map(|breakpoint| debugger.add_breakpoint(breakpoint));
+    if args.step_by_step {
+        debugger.set_break_on_start();
+        debugger.set_step_by_step();
     }
 
     let cartridge = Cartridge::new(args.cartridge)?;

@@ -123,6 +123,7 @@ impl Debugger {
         self.pc_breakpoints.push(breakpoint);
     }
 
+    #[allow(dead_code)]
     pub fn request_one_time_break(&mut self) {
         self.one_time_break = true;
     }

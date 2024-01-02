@@ -172,7 +172,7 @@ impl Cartridge {
             self.ctrl.set_register(loc, byte);
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
             match self.ctrl.translate_addr(loc) {
-                PhysicalAddr::Ok(addr) => unimplemented!("Data save is not implemented"),
+                PhysicalAddr::Ok(_addr) => unimplemented!("Data save is not implemented"),
                 PhysicalAddr::NotAccessible => (),
             };
         } else {

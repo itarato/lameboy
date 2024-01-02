@@ -23,9 +23,9 @@ impl Timer {
         }
     }
 
-    pub fn tick(&mut self, cpu_cycles: u8) {
-        self.div_ticker.tick(cpu_cycles as u64);
-        self.tima_ticker.tick(cpu_cycles as u64);
+    pub fn tick(&mut self, cpu_clocks: u8) {
+        self.div_ticker.tick(cpu_clocks as u64);
+        self.tima_ticker.tick(cpu_clocks as u64);
     }
 
     #[must_use]
@@ -36,9 +36,11 @@ impl Timer {
             self.div = self.div.wrapping_add(1);
         }
 
-        let (tima_enabled, tima_freq) = self.tac_expand();
-        self.tima_ticker.update_modulo(tima_freq as u64);
+        let tima_enabled = is_bit(self.tac, 2);
         if tima_enabled {
+            let tima_freq = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
+            self.tima_ticker.update_modulo(tima_freq as u64);
+
             if self.tima_ticker.check_overflow() {
                 if self.tima == 0xFF {
                     self.tima = pre_exec_tma;
@@ -71,6 +73,7 @@ impl Timer {
         self.tima = self.tma;
     }
     pub fn set_tac(&mut self, byte: u8) {
+        // Keep useless bytes to 1.
         self.tac = byte | 0b1111_1000;
     }
     pub fn set_tma(&mut self, byte: u8) {
@@ -78,12 +81,5 @@ impl Timer {
     }
     pub fn set_tima(&mut self, byte: u8) {
         self.tima = byte;
-    }
-
-    fn tac_expand(&self) -> (bool, u32) {
-        let tima_enabled = is_bit(self.tac, 2);
-        let tima_freq = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
-
-        (tima_enabled, tima_freq)
     }
 }

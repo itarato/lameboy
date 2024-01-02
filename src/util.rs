@@ -120,20 +120,15 @@ impl<T> SizedQueue<T> {
 pub struct Counter {
     counter: u64,
     modulo: u64,
-    did_overflow: bool,
 }
 
 impl Counter {
     pub fn new(modulo: u64) -> Counter {
-        Counter {
-            counter: 0,
-            modulo,
-            did_overflow: false,
-        }
+        Counter { counter: 0, modulo }
     }
 
     pub fn tick_and_check_overflow(&mut self, len: u64) -> bool {
-        self.counter += len;
+        self.tick(len);
         self.check_overflow()
     }
 

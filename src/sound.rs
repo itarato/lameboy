@@ -254,28 +254,12 @@ impl Sound {
         };
     }
 
-    pub fn read(&self, loc: u16) -> Result<u8, Error> {
+    pub fn read(&self, _loc: u16) -> Result<u8, Error> {
         unimplemented!("Sound chip read not implemented")
     }
 
     fn audio_on(&self) -> bool {
         is_bit(self.nr52, 7)
-    }
-
-    fn ch4_on(&self) -> bool {
-        is_bit(self.nr52, 3)
-    }
-
-    fn ch3_on(&self) -> bool {
-        is_bit(self.nr52, 2)
-    }
-
-    fn ch2_on(&self) -> bool {
-        is_bit(self.nr52, 1)
-    }
-
-    fn ch1_on(&self) -> bool {
-        is_bit(self.nr52, 0)
     }
 
     fn channel1_update(&self) {

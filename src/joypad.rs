@@ -2,14 +2,14 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Default)]
 pub struct JoypadInputRequest {
-    pub Start: bool,
-    pub Select: bool,
-    pub B: bool,
-    pub A: bool,
-    pub Down: bool,
-    pub Up: bool,
-    pub Left: bool,
-    pub Right: bool,
+    pub start: bool,
+    pub select: bool,
+    pub b: bool,
+    pub a: bool,
+    pub down: bool,
+    pub up: bool,
+    pub left: bool,
+    pub right: bool,
 }
 
 impl JoypadInputRequest {
@@ -55,16 +55,16 @@ impl Joypad {
             ButtonSelector::DownUpLeftRight => {
                 let mut out = !0b0001_0000;
                 let buttons = self.buttons.read().expect("Failed read lock of buttons");
-                if buttons.Down {
+                if buttons.down {
                     out &= !0b1000;
                 }
-                if buttons.Up {
+                if buttons.up {
                     out &= !0b0100;
                 }
-                if buttons.Left {
+                if buttons.left {
                     out &= !0b0010;
                 }
-                if buttons.Right {
+                if buttons.right {
                     out &= !0b0001;
                 }
                 out
@@ -72,21 +72,20 @@ impl Joypad {
             ButtonSelector::StartSelectBA => {
                 let mut out = !0b0010_0000;
                 let buttons = self.buttons.read().expect("Failed read lock of buttons");
-                if buttons.Start {
+                if buttons.start {
                     out &= !0b1000;
                 }
-                if buttons.Select {
+                if buttons.select {
                     out &= !0b0100;
                 }
-                if buttons.B {
+                if buttons.b {
                     out &= !0b0010;
                 }
-                if buttons.A {
+                if buttons.a {
                     out &= !0b0001;
                 }
                 out
             }
-            _ => panic!("Illegal button selector"),
         }
     }
 
