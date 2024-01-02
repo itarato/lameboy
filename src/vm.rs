@@ -160,12 +160,6 @@ impl VM {
         log::info!("VM eval loop start");
 
         loop {
-            if self.mem_read(self.cpu.pc).unwrap() == 0xF4
-                || self.mem_read(self.cpu.pc).unwrap() == 0xFD
-            {
-                self.debugger.request_one_time_break();
-            }
-
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
                 loop {
@@ -224,7 +218,7 @@ impl VM {
 
             let should_call_times_interrupt = self.timer.handle_ticks(pre_exec_tma)?;
             if should_call_times_interrupt {
-                self.interrupt_flag = self.interrupt_flag | 0b0100;
+                self.interrupt_flag |= 0b0100;
             }
 
             if self.state != State::Stop {
@@ -300,18 +294,6 @@ impl VM {
                 ))
                 .unwrap();
         }
-
-        log::debug!(
-            "AF={:#06X} BC={:#06X} DE={:#06X} HL={:#06X} SP={:#06X} PC={:#06X} | {:#4X?}: {}",
-            self.cpu.af,
-            self.cpu.bc,
-            self.cpu.de,
-            self.cpu.hl,
-            self.cpu.sp,
-            self.cpu.pc - 1,
-            op,
-            OPCODE_NAME[op as usize]
-        );
 
         match op {
             0x00 => {
@@ -3440,10 +3422,6 @@ impl VM {
     }
 
     fn push_u16(&mut self, word: u16) -> Result<(), Error> {
-        if word == 0x6dab {
-            self.debugger.request_one_time_break();
-        }
-
         self.cpu.sp = self.cpu.sp.wrapping_sub(2);
         self.mem_write_u16(self.cpu.sp, word)
     }
@@ -3460,12 +3438,12 @@ impl VM {
             let next_prefix_op = self.mem_read(self.cpu.pc + 1)?;
 
             print!(
-                "{:>8} | NXT {:#04X} | {} > ",
+                "{:>8} | NEXT {:#04X} | {} > ",
                 self.counter, self.cpu.pc, OPCODE_CB_NAME[next_prefix_op as usize]
             );
         } else {
             print!(
-                "{:>8} | NXT {:#04X} | {} > ",
+                "{:>8} | NEXT {:#04X} | {} > ",
                 self.counter, self.cpu.pc, OPCODE_NAME[next_op as usize]
             );
         }

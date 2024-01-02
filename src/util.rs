@@ -130,7 +130,7 @@ impl Counter {
     pub fn tick_and_check_overflow(&mut self, len: u64) -> bool {
         self.counter += len;
         if self.counter >= self.modulo {
-            self.counter -= self.modulo;
+            self.counter = self.counter % self.modulo;
             true
         } else {
             false
