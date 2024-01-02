@@ -225,7 +225,7 @@ impl Video {
 
         for i in 0..40 {
             let byte_y_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 0).unwrap() as i16;
-            let tile_y = ly as i16 - (byte_y_pos - 16);
+            let mut tile_y = ly as i16 - (byte_y_pos - 16);
             if tile_y < 0 || tile_y >= tile_height {
                 // Tile surface does not cover LY.
                 continue;
@@ -246,10 +246,12 @@ impl Video {
             // DMG palette [Non CGB Mode only]: 0 = OBP0, 1 = OBP1
             let palette = bit(byte_attr_and_flags, 4);
 
+            if y_flip {
+                tile_y = tile_height - 1 - tile_y;
+            }
+
             let tile_start_addr =
                 MEM_AREA_VRAM_START + (byte_tile_index as u16 * tile_height as u16 * 2);
-
-            assert!(tile_y < tile_height);
 
             let row_lo = self
                 .read(tile_start_addr + (tile_y as u16 * 2) + 0)
