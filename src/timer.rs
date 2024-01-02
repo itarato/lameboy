@@ -6,8 +6,8 @@ pub struct Timer {
     tac: u8,
     tma: u8,
     tima: u8,
-    div_ticker: u32,
-    tima_ticker: u32,
+    div_ticker: Counter,
+    tima_ticker: Counter,
 }
 
 impl Timer {
@@ -18,30 +18,28 @@ impl Timer {
             tac: 0b1111_1000,
             tma: 0,
             tima: 0,
-            div_ticker: 0,
-            tima_ticker: 0,
+            div_ticker: Counter::new(DIV_REG_UPDATE_PER_MCYCLE as u64),
+            tima_ticker: Counter::new(TIMA_UPDATE_PER_MCYCLE[0] as u64),
         }
     }
 
     pub fn tick(&mut self, cpu_cycles: u8) {
-        self.div_ticker += cpu_cycles as u32;
-        self.tima_ticker += cpu_cycles as u32;
+        self.div_ticker.tick(cpu_cycles as u64);
+        self.tima_ticker.tick(cpu_cycles as u64);
     }
 
     #[must_use]
     pub fn handle_ticks(&mut self, pre_exec_tma: u8) -> Result<bool, Error> {
         let mut needs_tima_interrupt = false;
 
-        if self.div_ticker >= DIV_REG_UPDATE_PER_MCYCLE {
-            self.div_ticker -= DIV_REG_UPDATE_PER_MCYCLE;
+        if self.div_ticker.check_overflow() {
             self.div = self.div.wrapping_add(1);
         }
 
         let (tima_enabled, tima_freq) = self.tac_expand();
+        self.tima_ticker.update_modulo(tima_freq as u64);
         if tima_enabled {
-            if self.tima_ticker >= tima_freq {
-                self.tima_ticker = self.tima_ticker % tima_freq;
-
+            if self.tima_ticker.check_overflow() {
                 if self.tima == 0xFF {
                     self.tima = pre_exec_tma;
 
