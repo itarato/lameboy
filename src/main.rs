@@ -47,7 +47,7 @@ struct Args {
 
     /// Dump opcode list to file.
     #[arg(long)]
-    dump: bool,
+    opcode_dump: bool,
 
     /// VRam debug window.
     #[arg(long)]
@@ -83,10 +83,8 @@ fn main() -> Result<(), Error> {
         debugger.set_step_by_step();
     }
 
-    let cartridge = Cartridge::new(args.cartridge)?;
     let global_exit_flag = Arc::new(AtomicBool::new(false));
     let video = Arc::new(RwLock::new(Video::new(args.nofps)));
-    let is_opcode_dump = args.dump;
     let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
 
@@ -97,10 +95,10 @@ fn main() -> Result<(), Error> {
         move || {
             if let Ok(mut vm) = VM::new(
                 global_exit_flag.clone(),
-                cartridge,
+                Cartridge::new(args.cartridge).expect("Cannot open cartridge"),
                 debugger,
                 video,
-                is_opcode_dump,
+                args.opcode_dump,
                 joypad,
             ) {
                 if let Err(err) = vm.setup() {
@@ -121,8 +119,8 @@ fn main() -> Result<(), Error> {
         }
     });
 
-    let gfx = Gfx::new(global_exit_flag.clone());
-    gfx.run(
+    gfx::run(
+        global_exit_flag.clone(),
         video.clone(),
         breakpoint_flag,
         joypad_button_input_requester,
