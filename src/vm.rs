@@ -144,6 +144,8 @@ impl VM {
     }
 
     pub fn setup(&mut self, skip_intro: bool) -> Result<(), Error> {
+        self.reset()?;
+
         if skip_intro {
             self.cpu.af = 0x01b0;
             self.cpu.bc = 0x0013;
@@ -152,7 +154,7 @@ impl VM {
             self.cpu.sp = 0xfffe;
             self.cpu.pc = 0x0100;
 
-            self.mem_write(0xff00, 0xcf)?; // P1
+            self.mem_write(0xff00, 0x3f)?; // P1
             self.mem_write(0xff01, 0x00)?; // SB
             self.mem_write(0xff02, 0x7e)?; // SC
             self.mem_write(0xff04, 0xab)?; // DIV
@@ -180,30 +182,36 @@ impl VM {
             self.mem_write(0xff23, 0xbf)?; // NR44
             self.mem_write(0xff24, 0x77)?; // NR50
             self.mem_write(0xff25, 0xf3)?; // NR51
-            self.mem_write(0xff26, 0xf1)?; // NR52
+            self.mem_write(0xff26, 0xf0)?; // NR52
             self.mem_write(0xff40, 0x91)?; // LCDC
             self.mem_write(0xff41, 0x85)?; // STAT
             self.mem_write(0xff42, 0x00)?; // SCY
             self.mem_write(0xff43, 0x00)?; // SCX
-            self.mem_write(0xff44, 0x00)?; // LY
+
+            // self.mem_write(0xff44, 0x00)?; // LY
+
             self.mem_write(0xff45, 0x00)?; // LYC
-            self.mem_write(0xff46, 0xff)?; // DMA
+
+            // self.mem_write(0xff46, 0xff)?; // DMA
+
             self.mem_write(0xff47, 0xfc)?; // BGP
             self.mem_write(0xff4a, 0x00)?; // WY
             self.mem_write(0xff4b, 0x00)?; // WX
-            self.mem_write(0xff4d, 0xff)?; // KEY1
-            self.mem_write(0xff4f, 0xff)?; // VBK
-            self.mem_write(0xff51, 0xff)?; // HDMA1
-            self.mem_write(0xff52, 0xff)?; // HDMA2
-            self.mem_write(0xff53, 0xff)?; // HDMA3
-            self.mem_write(0xff54, 0xff)?; // HDMA4
-            self.mem_write(0xff55, 0xff)?; // HDMA5
-            self.mem_write(0xff56, 0xff)?; // RP
-            self.mem_write(0xff68, 0xff)?; // BCPS
-            self.mem_write(0xff69, 0xff)?; // BCPD
-            self.mem_write(0xff6a, 0xff)?; // OCPS
-            self.mem_write(0xff6b, 0xff)?; // OCPD
-            self.mem_write(0xff70, 0xff)?; // SVBK
+
+            // self.mem_write(0xff4d, 0xff)?; // KEY1
+            // self.mem_write(0xff4f, 0xff)?; // VBK
+            // self.mem_write(0xff51, 0xff)?; // HDMA1
+            // self.mem_write(0xff52, 0xff)?; // HDMA2
+            // self.mem_write(0xff53, 0xff)?; // HDMA3
+            // self.mem_write(0xff54, 0xff)?; // HDMA4
+            // self.mem_write(0xff55, 0xff)?; // HDMA5
+            // self.mem_write(0xff56, 0xff)?; // RP
+            // self.mem_write(0xff68, 0xff)?; // BCPS
+            // self.mem_write(0xff69, 0xff)?; // BCPD
+            // self.mem_write(0xff6a, 0xff)?; // OCPS
+            // self.mem_write(0xff6b, 0xff)?; // OCPD
+            // self.mem_write(0xff70, 0xff)?; // SVBK
+
             self.mem_write(0xffff, 0x00)?; // IE
 
             self.mem.boot_lock_reg = 0x1;
@@ -221,8 +229,6 @@ impl VM {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.reset()?;
-
         log::info!("VM eval loop start");
 
         loop {
