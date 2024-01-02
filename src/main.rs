@@ -45,13 +45,17 @@ struct Args {
     #[arg(short = 's', long)]
     step_by_step: bool,
 
-    // Skip FPS limiter.
+    /// Skip FPS limiter.
     #[arg(short, long)]
     nofps: bool,
 
-    // Dump opcode list to file.
+    /// Dump opcode list to file.
     #[arg(long)]
     dump: bool,
+
+    /// VRam debug window.
+    #[arg(long)]
+    debug_vram: bool,
 }
 
 impl Args {
@@ -122,8 +126,13 @@ fn main() -> Result<(), Error> {
         }
     });
 
-    let gfx = Gfx::new(global_exit_flag.clone(), video.clone());
-    gfx.run(breakpoint_flag, joypad_button_input_requester);
+    let gfx = Gfx::new(global_exit_flag.clone());
+    gfx.run(
+        video.clone(),
+        breakpoint_flag,
+        joypad_button_input_requester,
+        args.debug_vram,
+    );
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
 

@@ -7,9 +7,12 @@
  * Object: 1 (8x8) or 2 (8x16) tiles
  * VRAM: (0x8000-0x97FF) 16 bytes sections x 384
  */
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, RwLock,
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, RwLock,
+    },
 };
 
 use crate::{conf::*, joypad::JoypadInputRequest, video::Video};
@@ -26,15 +29,11 @@ use winit_input_helper::WinitInputHelper;
 
 pub struct Gfx {
     global_exit_flag: Arc<AtomicBool>,
-    video: Arc<RwLock<Video>>,
 }
 
 impl Gfx {
-    pub fn new(global_exit_flag: Arc<AtomicBool>, video: Arc<RwLock<Video>>) -> Self {
-        Gfx {
-            global_exit_flag,
-            video,
-        }
+    pub fn new(global_exit_flag: Arc<AtomicBool>) -> Self {
+        Gfx { global_exit_flag }
     }
 
     fn make_main_window(&self, event_loop: &EventLoop<()>) -> (Window, Pixels) {
@@ -74,32 +73,40 @@ impl Gfx {
         (window, pixels)
     }
 
-    pub fn run(&self, breakpoint_flag: Arc<AtomicBool>, buttons: Arc<RwLock<JoypadInputRequest>>) {
+    pub fn run(
+        &self,
+        video: Arc<RwLock<Video>>,
+        breakpoint_flag: Arc<AtomicBool>,
+        buttons: Arc<RwLock<JoypadInputRequest>>,
+        with_vram_debug_window: bool,
+    ) {
         let event_loop = EventLoop::new();
         let mut input = WinitInputHelper::new();
-        let (tile_debug_window, mut pixels_for_tile_debug_window) =
-            self.make_tile_debug_window(&event_loop);
-        let (main_window, mut pixels) = self.make_main_window(&event_loop);
+
+        let mut windows = HashMap::new();
+
+        if with_vram_debug_window {
+            let (tile_debug_window, pixels_for_tile_debug_window) =
+                self.make_tile_debug_window(&event_loop);
+            video.write().unwrap().vram_debug_window_id = Some(tile_debug_window.id());
+            windows.insert(
+                tile_debug_window.id(),
+                (tile_debug_window, pixels_for_tile_debug_window),
+            );
+        }
+
+        let (main_window, pixels) = self.make_main_window(&event_loop);
+        video.write().unwrap().main_window_id = Some(main_window.id());
+        windows.insert(main_window.id(), (main_window, pixels));
 
         let global_exit_flag = self.global_exit_flag.clone();
-        let video = self.video.clone();
 
         event_loop.run(move |event, _, control_flow| {
             match &event {
                 Event::WindowEvent { window_id, event } => match event {
                     WindowEvent::Resized(size) => {
-                        if window_id == &main_window.id() {
+                        if let Some((_window, pixels)) = windows.get_mut(window_id) {
                             if let Err(err) = pixels.resize_surface(size.width, size.height) {
-                                error!("pixels.resize_surface error: {}", err);
-                                control_flow.set_exit();
-                                return;
-                            }
-                        }
-
-                        if window_id == &tile_debug_window.id() {
-                            if let Err(err) =
-                                pixels_for_tile_debug_window.resize_surface(size.width, size.height)
-                            {
                                 error!("pixels.resize_surface error: {}", err);
                                 control_flow.set_exit();
                                 return;
@@ -109,21 +116,12 @@ impl Gfx {
                     _ => {}
                 },
                 Event::RedrawRequested(window_id) => {
-                    if window_id == &main_window.id() {
-                        video.read().unwrap().draw_display(pixels.frame_mut());
-                        if let Err(_) = pixels.render() {
-                            global_exit_flag.store(false, Ordering::Release);
-                            control_flow.set_exit();
-                            return;
-                        }
-                    }
-
-                    if window_id == &tile_debug_window.id() {
+                    if let Some((_window, pixels)) = windows.get_mut(window_id) {
                         video
                             .read()
                             .unwrap()
-                            .draw_debug_tiles(pixels_for_tile_debug_window.frame_mut());
-                        if let Err(_) = pixels_for_tile_debug_window.render() {
+                            .fill_frame_buffer(*window_id, pixels.frame_mut());
+                        if let Err(_) = pixels.render() {
                             global_exit_flag.store(false, Ordering::Release);
                             control_flow.set_exit();
                             return;
@@ -202,8 +200,9 @@ impl Gfx {
                 }
 
                 // Update internal state and request a redraw
-                main_window.request_redraw();
-                tile_debug_window.request_redraw();
+                for (_id, (window, _pixels)) in &windows {
+                    window.request_redraw();
+                }
             }
 
             if global_exit_flag.load(Ordering::Acquire) {

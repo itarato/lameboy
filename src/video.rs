@@ -1,3 +1,5 @@
+use winit::window::WindowId;
+
 use crate::conf::*;
 use crate::util::*;
 use std::thread;
@@ -49,6 +51,8 @@ pub struct Video {
     oam_ram: [u8; OAM_RAM_SIZE],
     display_buffer: [u8; DISPLAY_PIXELS_COUNT],
     ignore_fps_limiter: bool,
+    pub main_window_id: Option<WindowId>,
+    pub vram_debug_window_id: Option<WindowId>,
 }
 
 impl Video {
@@ -72,6 +76,8 @@ impl Video {
             oam_ram: [0; OAM_RAM_SIZE],
             display_buffer: [0; DISPLAY_PIXELS_COUNT],
             ignore_fps_limiter,
+            main_window_id: None,
+            vram_debug_window_id: None,
         }
     }
 
@@ -540,6 +546,14 @@ impl Video {
         }
 
         self.fps_ctrl_time = Instant::now();
+    }
+
+    pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {
+        if Some(window_id) == self.main_window_id {
+            self.draw_display(frame);
+        } else if Some(window_id) == self.vram_debug_window_id {
+            self.draw_debug_tiles(frame);
+        }
     }
 
     /**

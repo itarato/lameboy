@@ -1,8 +1,45 @@
 GameBoy DMG emulator
 --------------------
 
-Materials:
-- reference emulator:
+## Usage
+
+```bash
+Usage: lameboy [OPTIONS] <CARTRIDGE>
+
+Arguments:
+  <CARTRIDGE>  Cartridge
+
+Options:
+  -d, --debug                    Enable debug mode
+  -b, --breakpoint <BREAKPOINT>  Breakpoints
+  -s, --step-by-step             Step by step
+  -n, --nofps                    Skip FPS limiter
+      --dump                     Dump opcode list to file
+      --debug-vram               VRam debug window
+  -h, --help                     Print help
+  -V, --version                  Print version
+```
+
+- Dependencies: SDL2
+- Tested OS: Linux, Windows
+- Keyboard:
+  - Up / Left / Down / Right: `W`, `A`, `S`, `D`
+  - Start / Select: `Z`, `X`
+  - A / B: `N`, `M`
+  - Break execution: `B`
+  - Quit: `Esc`
+
+## Screenshots
+
+![Logo](./misc/logo.png)
+![CPU tests](./misc/cpu_test.png)
+![Tetris](./misc/tetris.png)
+![Mario](./misc/mario.png)
+![VRAM debug](./misc/vram.png)
+
+## Materials
+
+- Reference emulator:
   - https://bgb.bircd.org
 - PDF:
   - https://gekkio.fi/files/gb-docs/gbctr.pdf
