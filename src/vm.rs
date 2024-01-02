@@ -7,17 +7,17 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+use crate::apu::*;
 use crate::cartridge::*;
 use crate::conf::*;
 use crate::cpu::*;
 use crate::debugger::*;
 use crate::joypad::Joypad;
-use crate::mem::*;
+use crate::mmu::*;
+use crate::ppu::*;
 use crate::serial::Serial;
-use crate::sound::*;
 use crate::timer::*;
 use crate::util::*;
-use crate::video::*;
 
 enum DelayedOp {
     MasterInterruptEnable,
@@ -85,19 +85,19 @@ impl Interrupt {
 
 pub struct VM {
     global_exit_flag: Arc<AtomicBool>,
-    mem: Mem,
+    mem: Mmu,
     cpu: Cpu,
     serial: Serial,
     debugger: Debugger,
     counter: u64,
     state: State,
     timer: Timer,
-    sound: Sound,
+    sound: Apu,
     joypad: Joypad,
     interrupt_master_enable_flag: bool,
     interrupt_enable: u8,
     interrupt_flag: u8,
-    video: Arc<RwLock<Video>>,
+    video: Arc<RwLock<PPU>>,
     op_history: SizedQueue<(u16, u8)>,           // pc + op
     deep_op_history: SizedQueue<(u64, u16, u8)>, // counter + pc + op
     delayed_cmds: Vec<DelayedCommand>,
@@ -109,7 +109,7 @@ impl VM {
         global_exit_flag: Arc<AtomicBool>,
         cartridge: Cartridge,
         debugger: Debugger,
-        video: Arc<RwLock<Video>>,
+        video: Arc<RwLock<PPU>>,
         is_opcode_file_dump: bool,
         joypad: Joypad,
     ) -> Result<Self, Error> {
@@ -121,14 +121,14 @@ impl VM {
 
         Ok(VM {
             global_exit_flag,
-            mem: Mem::new(cartridge)?,
+            mem: Mmu::new(cartridge)?,
             cpu: Cpu::new(),
             serial: Serial::new(),
             debugger,
             counter: 0,
             state: State::Running,
             timer: Timer::new(),
-            sound: Sound::new(),
+            sound: Apu::new(),
             joypad,
             interrupt_master_enable_flag: false,
             interrupt_enable: 0,

@@ -31,7 +31,7 @@ pub const MEM_AREA_ROM_BANK_0_END: u16 = 0x3FFF;
 pub const MEM_AREA_ROM_BANK_N_START: u16 = 0x4000;
 pub const MEM_AREA_ROM_BANK_N_END: u16 = 0x7FFF;
 
-/// 8 KiB Video RAM (VRAM)	In CGB mode, switchable bank 0/1.
+/// 8 KiB PPU RAM (VRAM)	In CGB mode, switchable bank 0/1.
 pub const MEM_AREA_VRAM_START: u16 = 0x8000;
 pub const MEM_AREA_VRAM_END: u16 = 0x9FFF;
 

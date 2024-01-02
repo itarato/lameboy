@@ -1,15 +1,15 @@
+mod apu;
 mod cartridge;
 mod conf;
 mod cpu;
 mod debugger;
 mod gfx;
 mod joypad;
-mod mem;
+mod mmu;
+mod ppu;
 mod serial;
-mod sound;
 mod timer;
 mod util;
-mod video;
 mod vm;
 
 use std::sync::atomic::AtomicBool;
@@ -19,8 +19,7 @@ use std::sync::RwLock;
 use crate::cartridge::*;
 use crate::conf::*;
 use crate::debugger::*;
-use crate::gfx::*;
-use crate::video::Video;
+use crate::ppu::PPU;
 use crate::vm::*;
 
 use std::thread::spawn;
@@ -84,7 +83,7 @@ fn main() -> Result<(), Error> {
     }
 
     let global_exit_flag = Arc::new(AtomicBool::new(false));
-    let video = Arc::new(RwLock::new(Video::new(args.nofps)));
+    let video = Arc::new(RwLock::new(PPU::new(args.nofps)));
     let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
 

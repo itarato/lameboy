@@ -15,7 +15,7 @@ use std::{
     },
 };
 
-use crate::{conf::*, joypad::JoypadInputRequest, video::Video};
+use crate::{conf::*, joypad::JoypadInputRequest, ppu::PPU};
 
 use log::error;
 use pixels::{Pixels, SurfaceTexture};
@@ -65,7 +65,7 @@ fn make_tile_debug_window(event_loop: &EventLoop<()>) -> (Window, Pixels) {
 
 pub fn run(
     global_exit_flag: Arc<AtomicBool>,
-    video: Arc<RwLock<Video>>,
+    video: Arc<RwLock<PPU>>,
     breakpoint_flag: Arc<AtomicBool>,
     buttons: Arc<RwLock<JoypadInputRequest>>,
     with_vram_debug_window: bool,
