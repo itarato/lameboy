@@ -258,7 +258,10 @@ impl Apu {
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
-        Err(format!("Apu chip read not implemented: {:#06X}", loc).into())
+        match loc {
+            MEM_LOC_NR50 => Ok(self.nr50),
+            _ => Err(format!("Apu chip read not implemented: {:#06X}", loc).into()),
+        }
     }
 
     fn audio_on(&self) -> bool {
