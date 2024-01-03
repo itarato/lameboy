@@ -92,23 +92,29 @@ impl CartridgeController for MBC1 {
                 Bank2Mode::Mode0
             };
         } else {
-            unimplemented!("MBC1 reg update not implemented: {:#06X}", loc);
+            unimplemented!("MBC1 reg update not implemented for addr {:#06X}", loc);
         }
     }
 
     fn translate_addr(&self, virtual_loc: u16) -> PhysicalAddr {
-        let rom_pins = 14;
         if (MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_0_END).contains(&virtual_loc) {
             match self.bank2_mode_reg {
                 Bank2Mode::Mode0 => PhysicalAddr::Ok(virtual_loc as u32),
                 Bank2Mode::Mode1 => PhysicalAddr::Ok(
-                    ((self.bank_2_reg as u32) << (rom_pins + 5)) as u32 | virtual_loc as u32,
+                    ((self.bank_2_reg as u32) << 19) as u32
+                        | (virtual_loc as u32 & 0b11_1111_1111_1111),
                 ),
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
-            let rom_bank_number = ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32;
+            // To specify the upper two bits (bits 5-6) of the ROM Bank number (1 MiB ROM or larger carts only)
+            let rom_bank_selector = if self.rom_bank_size >= 64 {
+                ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32
+            } else {
+                self.bank_1_reg as u32
+            };
+
             let physical_addr =
-                ((virtual_loc as u32) & ((1 << rom_pins) - 1)) | (rom_bank_number << rom_pins);
+                (virtual_loc & 0b11_1111_1111_1111) as u32 | (rom_bank_selector << 14);
             PhysicalAddr::Ok(physical_addr)
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&virtual_loc) {
             match self.ram_gate_reg {
@@ -116,10 +122,19 @@ impl CartridgeController for MBC1 {
                     Bank2Mode::Mode0 => {
                         PhysicalAddr::Ok((virtual_loc - MEM_AREA_EXTERNAL_START) as u32)
                     }
-                    Bank2Mode::Mode1 => PhysicalAddr::Ok(
-                        ((virtual_loc - MEM_AREA_EXTERNAL_START) as u32 & 0b1_1111_1111_1111)
-                            | ((self.bank_2_reg as u32) << 13),
-                    ),
+                    Bank2Mode::Mode1 => {
+                        if self.ram_bank_size >= 4 {
+                            PhysicalAddr::Ok(
+                                ((virtual_loc - MEM_AREA_EXTERNAL_START) as u32
+                                    & 0b1_1111_1111_1111)
+                                    | ((self.bank_2_reg as u32) << 13),
+                            )
+                        } else {
+                            PhysicalAddr::Ok(
+                                (virtual_loc - MEM_AREA_EXTERNAL_START) as u32 & 0b1_1111_1111_1111,
+                            )
+                        }
+                    }
                 },
                 RamGate::DisableRamAccess => PhysicalAddr::NotAccessible,
             }
