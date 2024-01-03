@@ -50,17 +50,21 @@ struct MBC1 {
     bank_1_reg: u8,
     bank_2_reg: u8,
     bank2_mode_reg: Bank2Mode,
+    // Number of 16k (0x3fff) banks.
     rom_bank_size: usize,
+    // Number of 8k (0x1fff) banks.
+    ram_bank_size: usize,
 }
 
 impl MBC1 {
-    fn new(rom_bank_size: usize) -> MBC1 {
+    fn new(rom_bank_size: usize, ram_bank_size: usize) -> MBC1 {
         MBC1 {
             ram_gate_reg: RamGate::DisableRamAccess,
             bank_1_reg: 1,
             bank_2_reg: 0,
             bank2_mode_reg: Bank2Mode::Mode0,
             rom_bank_size,
+            ram_bank_size,
         }
     }
 }
@@ -80,9 +84,7 @@ impl CartridgeController for MBC1 {
             }
             self.bank_1_reg = byte;
         } else if (0x4000..=0x5FFF).contains(&loc) {
-            if self.rom_bank_size > 0x20 {
-                self.bank_2_reg = (byte & 0b0011) % (self.rom_bank_size >> 5) as u8;
-            }
+            self.bank_2_reg = byte & 0b0011;
         } else if (0x6000..=0x7FFF).contains(&loc) {
             self.bank2_mode_reg = if byte & 1 == 1 {
                 Bank2Mode::Mode1
@@ -104,8 +106,7 @@ impl CartridgeController for MBC1 {
                 ),
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
-            let rom_bank_number = (((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32)
-                % self.rom_bank_size as u32;
+            let rom_bank_number = ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32;
             let physical_addr =
                 ((virtual_loc as u32) & ((1 << rom_pins) - 1)) | (rom_bank_number << rom_pins);
             PhysicalAddr::Ok(physical_addr)
@@ -151,7 +152,18 @@ impl Cartridge {
                 } else {
                     panic!("Large cartridges are not yet implemented");
                 };
-                Box::new(MBC1::new(rom_bank_size))
+
+                let ram_bank_size_bit = data[0x0149];
+                let ram_bank_size = match ram_bank_size_bit {
+                    0x00 => 0,
+                    0x02 => 1,
+                    0x03 => 4,
+                    0x04 => 16,
+                    0x05 => 8,
+                    _ => panic!("RAM bank size bit not implemented"),
+                };
+
+                Box::new(MBC1::new(rom_bank_size, ram_bank_size))
             }
             code => unimplemented!("Unimplemented cartridge type: {}", code),
         };
