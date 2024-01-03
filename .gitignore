@@ -1,5 +1,6 @@
 /target
 assets/*.gb
 assets/*.sav
+assets/*.gbsave
 docs
 .vscode
