@@ -257,8 +257,8 @@ impl Apu {
         };
     }
 
-    pub fn read(&self, _loc: u16) -> Result<u8, Error> {
-        unimplemented!("Apu chip read not implemented")
+    pub fn read(&self, loc: u16) -> Result<u8, Error> {
+        Err(format!("Apu chip read not implemented: {:#06X}", loc).into())
     }
 
     fn audio_on(&self) -> bool {

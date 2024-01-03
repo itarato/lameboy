@@ -113,9 +113,11 @@ impl CartridgeController for MBC1 {
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&virtual_loc) {
             match self.ram_gate_reg {
                 RamGate::EnableRamAccess => match self.bank2_mode_reg {
-                    Bank2Mode::Mode0 => PhysicalAddr::Ok(virtual_loc as u32),
+                    Bank2Mode::Mode0 => {
+                        PhysicalAddr::Ok((virtual_loc - MEM_AREA_EXTERNAL_START) as u32)
+                    }
                     Bank2Mode::Mode1 => PhysicalAddr::Ok(
-                        (virtual_loc as u32 & 0b1_1111_1111_1111)
+                        ((virtual_loc - MEM_AREA_EXTERNAL_START) as u32 & 0b1_1111_1111_1111)
                             | ((self.bank_2_reg as u32) << 13),
                     ),
                 },
@@ -132,7 +134,7 @@ impl CartridgeController for MBC1 {
 
 pub struct Cartridge {
     data: Vec<u8>,
-    ram: [u8; 1 << 15],
+    ram: Vec<u8>,
     ctrl: Box<dyn CartridgeController + Send>,
 }
 
@@ -142,6 +144,8 @@ impl Cartridge {
 
         let mut file = File::open(filename)?;
         file.read_to_end(&mut data)?;
+
+        let mut ram_size = 0usize;
 
         let ctrl: Box<dyn CartridgeController + Send> = match data[0x0147] {
             0x00 => Box::new(RomOnly),
@@ -162,6 +166,7 @@ impl Cartridge {
                     0x05 => 8,
                     _ => panic!("RAM bank size bit not implemented"),
                 };
+                ram_size = ram_bank_size * 0x2000;
 
                 Box::new(MBC1::new(rom_bank_size, ram_bank_size))
             }
@@ -171,7 +176,7 @@ impl Cartridge {
         Ok(Cartridge {
             data,
             ctrl,
-            ram: [0; 1 << 15],
+            ram: vec![0; ram_size],
         })
     }
 
