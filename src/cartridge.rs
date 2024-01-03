@@ -111,7 +111,13 @@ impl CartridgeController for MBC1 {
             PhysicalAddr::Ok(physical_addr)
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&virtual_loc) {
             match self.ram_gate_reg {
-                RamGate::EnableRamAccess => PhysicalAddr::Ok(virtual_loc as u32),
+                RamGate::EnableRamAccess => match self.bank2_mode_reg {
+                    Bank2Mode::Mode0 => PhysicalAddr::Ok(virtual_loc as u32),
+                    Bank2Mode::Mode1 => PhysicalAddr::Ok(
+                        (virtual_loc as u32 & 0b1_1111_1111_1111)
+                            | ((self.bank_2_reg as u32) << 13),
+                    ),
+                },
                 RamGate::DisableRamAccess => PhysicalAddr::NotAccessible,
             }
         } else {
@@ -125,6 +131,7 @@ impl CartridgeController for MBC1 {
 
 pub struct Cartridge {
     data: Vec<u8>,
+    ram: [u8; 1 << 15],
     ctrl: Box<dyn CartridgeController + Send>,
 }
 
@@ -149,7 +156,11 @@ impl Cartridge {
             code => unimplemented!("Unimplemented cartridge type: {}", code),
         };
 
-        Ok(Cartridge { data, ctrl })
+        Ok(Cartridge {
+            data,
+            ctrl,
+            ram: [0; 1 << 15],
+        })
     }
 
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
@@ -159,6 +170,11 @@ impl Cartridge {
             match self.ctrl.translate_addr(loc) {
                 PhysicalAddr::Ok(addr) => self.data[addr as usize],
                 _ => return Err("Error when loading data from BANK N".into()),
+            }
+        } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
+            match self.ctrl.translate_addr(loc) {
+                PhysicalAddr::Ok(addr) => self.ram[addr as usize],
+                PhysicalAddr::NotAccessible => return Err("Error when reading from RAM".into()),
             }
         } else {
             return Err(format!("Unexpected catridge addr: {:#06X}", loc).into());
@@ -172,7 +188,9 @@ impl Cartridge {
             self.ctrl.set_register(loc, byte);
         } else if (MEM_AREA_EXTERNAL_START..=MEM_AREA_EXTERNAL_END).contains(&loc) {
             match self.ctrl.translate_addr(loc) {
-                PhysicalAddr::Ok(_addr) => unimplemented!("Data save is not implemented"),
+                PhysicalAddr::Ok(addr) => {
+                    self.ram[addr as usize] = byte;
+                }
                 PhysicalAddr::NotAccessible => (),
             };
         } else {
