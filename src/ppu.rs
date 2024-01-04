@@ -202,12 +202,12 @@ impl PPU {
             self.draw_background_to_screen(ly);
         }
 
-        if self.is_obj_sprite_display_enabled() {
-            self.draw_objects_to_screen(ly);
-        }
-
         if self.is_window_display_enabled() {
             self.draw_window_to_screen(ly);
+        }
+
+        if self.is_obj_sprite_display_enabled() {
+            self.draw_objects_to_screen(ly);
         }
     }
 
