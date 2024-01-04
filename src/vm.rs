@@ -3596,9 +3596,9 @@ impl VM {
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
-        // if loc == 0x9c00 {
-        //     self.debugger.request_one_time_break();
-        // }
+        if loc == 0x8000 {
+            // self.debugger.request_one_time_break();
+        }
 
         if loc <= MEM_AREA_ROM_BANK_0_END {
             // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).

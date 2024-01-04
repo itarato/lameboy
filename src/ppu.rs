@@ -271,8 +271,20 @@ impl PPU {
                     continue;
                 }
 
-                self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
-                    self.apply_obj_palette(color, palette);
+                if priority {
+                    let bg_win_color = self.display_buffer
+                        [ly as usize * DISPLAY_WIDTH as usize + physical_x as usize];
+
+                    if bg_win_color == 0 {
+                        self.display_buffer
+                            [ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
+                            self.apply_obj_palette(color, palette);
+                    }
+                } else {
+                    self.display_buffer
+                        [ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
+                        self.apply_obj_palette(color, palette);
+                }
             }
         }
     }
@@ -553,9 +565,7 @@ impl PPU {
 
     pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {
         if Some(window_id) == self.main_window_id {
-            if self.is_lcd_display_enabled() {
-                self.draw_display(frame);
-            }
+            self.draw_display(frame);
         } else if Some(window_id) == self.vram_debug_window_id {
             self.draw_debug_tiles(frame);
         }
@@ -604,11 +614,18 @@ impl PPU {
     }
 
     pub fn draw_display(&self, frame: &mut [u8]) {
+        let lcd_on = self.is_lcd_display_enabled();
+
         for y in 0..DISPLAY_HEIGHT {
             for x in 0..DISPLAY_WIDTH {
                 let pixel_pos: usize = ((y * DISPLAY_WIDTH) + x) as usize;
                 let frame_pos: usize = pixel_pos * 4;
-                let pixel_color = self.pixel_color(self.display_buffer[pixel_pos]);
+
+                let pixel_color = if lcd_on {
+                    self.pixel_color(self.display_buffer[pixel_pos])
+                } else {
+                    [0; 4]
+                };
 
                 frame[frame_pos + 0] = pixel_color[0];
                 frame[frame_pos + 1] = pixel_color[1];
@@ -642,9 +659,5 @@ impl PPU {
         } else {
             (self.obp1 >> (color * 2)) & 0b11
         }
-    }
-
-    fn clear_display(&mut self) {
-        self.display_buffer.iter_mut().for_each(|b| *b = 0);
     }
 }
