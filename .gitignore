@@ -4,3 +4,4 @@ assets/*.sav
 assets/*.gbsave
 docs
 .vscode
+.DS_Store
