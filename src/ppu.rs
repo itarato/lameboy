@@ -272,7 +272,7 @@ impl PPU {
                 }
 
                 self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
-                    color;
+                    self.apply_obj_palette(color, palette);
             }
         }
     }
@@ -310,7 +310,8 @@ impl PPU {
                 .expect("Cannot load bg tile");
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
-            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
+            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] =
+                self.apply_bg_win_palette(color);
         }
     }
 
@@ -354,7 +355,8 @@ impl PPU {
                 .expect("Cannot load bg tile");
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
-            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] = color;
+            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] =
+                self.apply_bg_win_palette(color);
         }
     }
 
@@ -624,5 +626,19 @@ impl PPU {
         }
     }
 
-    fn apply_bg_win_palette(&self, color: u8) -> u8 {}
+    fn apply_bg_win_palette(&self, color: u8) -> u8 {
+        assert!(color <= 0b11);
+        (self.bgp >> (color * 2)) & 0b11
+    }
+
+    fn apply_obj_palette(&self, color: u8, palette: u8) -> u8 {
+        assert!(palette <= 1);
+        assert!(color <= 0b11);
+
+        if palette == 0 {
+            (self.obp0 >> (color * 2)) & 0b11
+        } else {
+            (self.obp1 >> (color * 2)) & 0b11
+        }
+    }
 }
