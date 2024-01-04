@@ -34,6 +34,8 @@ Options:
 ![Logo](./misc/logo.png)
 ![CPU tests](./misc/cpu_test.png)
 ![Tetris](./misc/tetris.png)
+![Zelda](./misc/zelda.png)
+![Donkey Kong](./misc/donkey.png)
 ![Mario](./misc/mario.png)
 ![VRAM debug](./misc/vram.png)
 

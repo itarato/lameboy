@@ -3596,6 +3596,10 @@ impl VM {
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
+        // if loc == 0x9c00 {
+        //     self.debugger.request_one_time_break();
+        // }
+
         if loc <= MEM_AREA_ROM_BANK_0_END {
             // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).
             // return Err("Cannot write to ROM (0)".into());
@@ -3617,7 +3621,7 @@ impl VM {
             // return Err("Write to MEM_AREA_PROHIBITED is not implemented".into());
         } else if loc <= MEM_AREA_IO_END {
             match loc {
-                MEM_LOC_P1 => self.joypad.set_p1_button_selector(byte),
+                MEM_LOC_P1 => self.joypad.set_p1_button_selector(byte)?,
                 MEM_LOC_SB => self.serial.set_sb(byte),
                 MEM_LOC_SC => self.serial.set_sc(byte),
                 // TODO: Additionally, this register is reset when executing the stop instruction,
@@ -3830,7 +3834,7 @@ impl VM {
         for (i, (pc, op)) in self.op_history.inner().iter().enumerate() {
             println!(
                 "\t\x1B[37m#{}\x1B[0m: PC=\x1B[93m{:#06X}\x1B[0m OP=\x1B[95m{:#04X}\x1B[0m -> \x1B[96m{}\x1B[0m",
-                self.counter as usize - (op_count - i + 1),
+                self.counter as i64 - (op_count as i64 + 1 - i as i64),
                 *pc,
                 *op,
                 OPCODE_NAME[*op as usize]
@@ -3843,7 +3847,7 @@ impl VM {
             let addr = 0xfe00 + i * 4;
 
             print!(
-                "\x1B[37m#{:04X}\x1B[0m \x1B[94m{:02X}\x1B[0m\x1B[94m{:02X}\x1B[0m\x1B[93m{:02X}\x1B[0m\x1B[96m{:02X}\x1B[0m  ", 
+                "\x1B[37m#{:04X}\x1B[0m \x1B[94m{:02X}\x1B[0m\x1B[94m{:02X}\x1B[0m\x1B[93m{:02X}\x1B[0m\x1B[96m{:02X}\x1B[0m  ",
                 addr, self.mem_read(addr + 0).unwrap(), self.mem_read(addr + 1).unwrap(), self.mem_read(addr + 2).unwrap(), self.mem_read(addr + 3).unwrap()
             );
 

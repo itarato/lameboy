@@ -397,7 +397,13 @@ impl PPU {
             MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
                 self.oam_ram[(loc - MEM_AREA_OAM_START) as usize] = byte;
             }
-            MEM_LOC_LCDC => self.lcdc = byte,
+            MEM_LOC_LCDC => {
+                self.lcdc = byte;
+
+                if !self.is_lcd_display_enabled() {
+                    self.clear_display();
+                }
+            }
             MEM_LOC_STAT => {
                 self.stat = byte | 0x80;
                 // These 3 bytes are the stat interrupt enable bytes. We do not handle them on PPU  mode change.
@@ -640,5 +646,9 @@ impl PPU {
         } else {
             (self.obp1 >> (color * 2)) & 0b11
         }
+    }
+
+    fn clear_display(&mut self) {
+        self.display_buffer.iter_mut().for_each(|b| *b = 0);
     }
 }

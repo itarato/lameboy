@@ -1,3 +1,4 @@
+use crate::conf::Error;
 use std::sync::{Arc, RwLock};
 
 #[derive(Default)]
@@ -39,14 +40,22 @@ impl Joypad {
         }
     }
 
-    pub fn set_p1_button_selector(&mut self, value: u8) {
+    pub fn set_p1_button_selector(&mut self, value: u8) -> Result<(), Error> {
         let button_selector = (value >> 4) & 0b11;
         match button_selector {
-            0b11 => self.button_selector = ButtonSelector::None,
+            0b11 | 0b00 => self.button_selector = ButtonSelector::None,
             0b01 => self.button_selector = ButtonSelector::StartSelectBA,
             0b10 => self.button_selector = ButtonSelector::DownUpLeftRight,
-            _ => panic!("Button selector should never be both on"),
+            _ => {
+                return Err(format!(
+                    "Invalid P1, button selector should never be both on: 0b{:08b}",
+                    value
+                )
+                .into())
+            }
         };
+
+        Ok(())
     }
 
     pub fn get_p1(&self) -> u8 {
