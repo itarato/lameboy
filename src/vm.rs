@@ -250,6 +250,7 @@ impl VM {
                             break;
                         }
                         Some(DebugCmd::PrintOpHistory) => self.dump_op_history(),
+                        Some(DebugCmd::PrintOam) => self.debug_oam(),
                         None => (),
                     };
                 }
@@ -3835,6 +3836,23 @@ impl VM {
                 OPCODE_NAME[*op as usize]
             );
         }
+    }
+
+    fn debug_oam(&self) {
+        for i in 0..40u16 {
+            let addr = 0xfe00 + i * 4;
+
+            print!(
+                "\x1B[37m#{:04X}\x1B[0m \x1B[94m{:02X}\x1B[0m\x1B[94m{:02X}\x1B[0m\x1B[93m{:02X}\x1B[0m\x1B[96m{:02X}\x1B[0m  ", 
+                addr, self.mem_read(addr + 0).unwrap(), self.mem_read(addr + 1).unwrap(), self.mem_read(addr + 2).unwrap(), self.mem_read(addr + 3).unwrap()
+            );
+
+            if i % 8 == 7 {
+                println!("");
+            }
+        }
+
+        println!("");
     }
 
     fn interrupt(&mut self, interrupt: Interrupt) {

@@ -250,8 +250,7 @@ impl PPU {
                 tile_y = tile_height - 1 - tile_y;
             }
 
-            let tile_start_addr =
-                MEM_AREA_VRAM_START + (byte_tile_index as u16 * tile_height as u16 * 2);
+            let tile_start_addr = MEM_AREA_VRAM_START + (byte_tile_index as u16 * 8 * 2);
 
             let row_lo = self
                 .read(tile_start_addr + (tile_y as u16 * 2) + 0)

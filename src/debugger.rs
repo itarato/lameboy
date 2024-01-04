@@ -12,6 +12,7 @@ pub enum DebugCmd {
     PrintCpu,
     PrintMemory(u16, usize),
     PrintOpHistory,
+    PrintOam,
 }
 
 pub struct Debugger {
@@ -95,6 +96,8 @@ impl Debugger {
                     }
                 })
                 .ok()
+        } else if raw == "oam" {
+            Some(DebugCmd::PrintOam)
         } else {
             println!("Invalid debug command: {}", raw);
             None
