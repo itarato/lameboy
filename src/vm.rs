@@ -3672,9 +3672,7 @@ impl VM {
                 MEM_LOC_OCPD => unimplemented!("Write to register OCPD is not implemented"),
                 MEM_LOC_SVBK => unimplemented!("Write to register SVBK is not implemented"),
                 _ => {
-                    return Err(
-                        format!("Write to MEM_AREA_IO is not implemented: {:#06X}", loc).into(),
-                    );
+                    log::error!("Suspicious IO write to{:#06X}", loc);
                 }
             };
         } else if loc <= MEM_AREA_HRAM_END {

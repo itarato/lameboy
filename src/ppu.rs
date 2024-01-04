@@ -6,6 +6,7 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
+#[derive(PartialEq)]
 enum LcdPpuMode {
     M0,
     M1,
@@ -224,21 +225,21 @@ impl PPU {
         } as i16;
 
         for i in 0..40 {
-            let byte_y_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 0).unwrap() as i16;
+            let byte_y_pos = self.oam_ram[(i * 4) + 0] as i16;
             let mut tile_y = ly as i16 - (byte_y_pos - 16);
             if tile_y < 0 || tile_y >= tile_height {
                 // Tile surface does not cover LY.
                 continue;
             }
 
-            let byte_x_pos = self.read(MEM_AREA_OAM_START + (i * 4) + 1).unwrap() as i16;
+            let byte_x_pos = self.oam_ram[(i * 4) + 1] as i16;
             if byte_x_pos == 0 || byte_x_pos - 8 >= DISPLAY_WIDTH as i16 {
                 // Horizontally out of screen.
                 continue;
             }
 
-            let byte_tile_index = self.read(MEM_AREA_OAM_START + (i * 4) + 2).unwrap();
-            let byte_attr_and_flags = self.read(MEM_AREA_OAM_START + (i * 4) + 3).unwrap();
+            let byte_tile_index = self.oam_ram[(i * 4) + 2] as usize;
+            let byte_attr_and_flags = self.oam_ram[(i * 4) + 3];
 
             let priority = is_bit(byte_attr_and_flags, 7);
             let y_flip = is_bit(byte_attr_and_flags, 6);
@@ -250,14 +251,10 @@ impl PPU {
                 tile_y = tile_height - 1 - tile_y;
             }
 
-            let tile_start_addr = MEM_AREA_VRAM_START + (byte_tile_index as u16 * 8 * 2);
+            let tile_start_addr = (byte_tile_index * 8 * 2) as usize;
 
-            let row_lo = self
-                .read(tile_start_addr + (tile_y as u16 * 2) + 0)
-                .unwrap();
-            let row_hi = self
-                .read(tile_start_addr + (tile_y as u16 * 2) + 1)
-                .unwrap();
+            let row_lo = self.vram[tile_start_addr + (tile_y as usize * 2) + 0];
+            let row_hi = self.vram[tile_start_addr + (tile_y as usize * 2) + 1];
             for x in 0..8 {
                 let row_bit = if x_flip { x } else { 7 - x };
                 let color = (bit(row_hi, row_bit) << 1) | bit(row_lo, row_bit);
@@ -290,8 +287,10 @@ impl PPU {
     }
 
     fn draw_background_to_screen(&mut self, ly: u8) {
-        let tile_data_section_start = self.backround_window_tile_data_section_start();
-        let tile_map_start = self.background_tile_map_display_section_start();
+        let tile_data_section_start =
+            (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
+        let tile_map_start =
+            (self.background_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize;
 
         // There are 32x32 tiles on the map: 256x256 pixels.
         let actual_ly = ly.wrapping_add(self.scy);
@@ -303,23 +302,19 @@ impl PPU {
             let actual_x = self.scx.wrapping_add(i as u8);
             let tile_col = actual_x / 8;
             let tile_x = (actual_x % 8) as u8;
-            let tile_data_i = (tile_row as u16 * 32) + tile_col as u16;
-            let tile_i = self
-                .read(tile_map_start + tile_data_i as u16)
-                .expect("Failed getting tile data");
+            let tile_data_i = (tile_row as usize * 32) + tile_col as usize;
+            let tile_i = self.vram[tile_map_start + tile_data_i];
 
-            let tile_i = if tile_data_section_start == 0x8800 {
+            let tile_i = if tile_data_section_start == 0x0800 {
                 tile_i.wrapping_add(128)
             } else {
                 tile_i
             };
 
-            let tile_lo = self
-                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2)
-                .expect("Cannot load bg tile");
-            let tile_hi = self
-                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2 + 1)
-                .expect("Cannot load bg tile");
+            let tile_lo =
+                self.vram[tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2];
+            let tile_hi =
+                self.vram[tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2 + 1];
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
             self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] =
@@ -328,8 +323,10 @@ impl PPU {
     }
 
     fn draw_window_to_screen(&mut self, ly: u8) {
-        let tile_data_section_start = self.backround_window_tile_data_section_start();
-        let tile_map_start = self.window_tile_map_display_section_start();
+        let tile_data_section_start =
+            (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
+        let tile_map_start =
+            (self.window_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize;
 
         let actual_ly = ly as i16 - self.wy as i16;
         if actual_ly < 0 || actual_ly >= 0x100 {
@@ -347,24 +344,19 @@ impl PPU {
 
             let tile_col = actual_x / 8;
             let tile_x = (actual_x % 8) as u8;
-            let tile_data_i = (tile_row as u16 * 32) + tile_col as u16;
-            let tile_i = self
-                .read(tile_map_start + tile_data_i as u16)
-                .expect("Failed getting tile data");
+            let tile_data_i = (tile_row as usize * 32) + tile_col as usize;
+            let tile_i = self.vram[tile_map_start + tile_data_i];
 
-            // FIXTHIS - READJUSTMENT
-            let tile_i = if tile_data_section_start == 0x8800 {
+            let tile_i = if tile_data_section_start == 0x0800 {
                 tile_i.wrapping_add(128)
             } else {
                 tile_i
             };
 
-            let tile_lo = self
-                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2)
-                .expect("Cannot load bg tile");
-            let tile_hi = self
-                .read(tile_data_section_start + tile_i as u16 * 16 + tile_y as u16 * 2 + 1)
-                .expect("Cannot load bg tile");
+            let tile_lo =
+                self.vram[tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2];
+            let tile_hi =
+                self.vram[tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2 + 1];
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
             self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] =
@@ -375,10 +367,18 @@ impl PPU {
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         let byte = match loc {
             MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
-                self.vram[(loc - MEM_AREA_VRAM_START) as usize]
+                if self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                    self.vram[(loc - MEM_AREA_VRAM_START) as usize]
+                } else {
+                    0xFF
+                }
             }
             MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
-                self.oam_ram[(loc - MEM_AREA_OAM_START) as usize]
+                if self.lcd_ppu_mode() != LcdPpuMode::M2 && self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                    self.oam_ram[(loc - MEM_AREA_OAM_START) as usize]
+                } else {
+                    0xFF
+                }
             }
             MEM_LOC_LCDC => self.lcdc,
             MEM_LOC_STAT => self.stat,
@@ -404,10 +404,14 @@ impl PPU {
 
         match loc {
             MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
-                self.vram[(loc - MEM_AREA_VRAM_START) as usize] = byte;
+                if self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                    self.vram[(loc - MEM_AREA_VRAM_START) as usize] = byte;
+                }
             }
             MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
-                self.oam_ram[(loc - MEM_AREA_OAM_START) as usize] = byte;
+                if self.lcd_ppu_mode() != LcdPpuMode::M2 && self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                    self.oam_ram[(loc - MEM_AREA_OAM_START) as usize] = byte;
+                }
             }
             MEM_LOC_LCDC => self.lcdc = byte,
             MEM_LOC_STAT => {
@@ -435,7 +439,7 @@ impl PPU {
         assert!(block.len() == 0xA0);
 
         for (i, byte) in block.iter().enumerate() {
-            self.write(MEM_AREA_OAM_START + i as u16, *byte);
+            self.oam_ram[i] = *byte;
         }
     }
 
