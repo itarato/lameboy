@@ -3553,10 +3553,9 @@ impl VM {
             self.video.read().unwrap().ly
         );
         println!(
-            "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m |             | \x1B[93mSTAT CTR\x1B[0m {:04X}",
+            "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m",
             self.cpu.get_h(),
             self.cpu.get_l(),
-            self.video.read().unwrap().stat_counter
         );
         println!("\x1B[93mSP\x1B[0m {:04X}", self.cpu.sp);
         println!("\x1B[93mPC\x1B[0m {:04X}", self.cpu.pc);
@@ -3564,7 +3563,11 @@ impl VM {
             "\x1B[93mIME\x1B[0m {} | \x1B[93mIE\x1B[0m {:02X} | \x1B[93mIF\x1B[0m {:02X}",
             self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
         );
-        println!("\x1B[93mBIOS\x1B[0m {}", self.mem.boot_lock_reg == 0);
+        println!(
+            "\x1B[93mBIOS\x1B[0m {} | \x1B[93mROM\x1B[0m {:02X}",
+            self.mem.boot_lock_reg == 0,
+            self.mem.rom_bank_selector()
+        );
         println!();
     }
 
@@ -3596,9 +3599,9 @@ impl VM {
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
         log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
 
-        if loc == 0x8000 {
-            // self.debugger.request_one_time_break();
-        }
+        // if loc == 0x8800 {
+        //     self.debugger.request_one_time_break();
+        // }
 
         if loc <= MEM_AREA_ROM_BANK_0_END {
             // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).

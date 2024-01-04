@@ -68,4 +68,8 @@ impl Mmu {
     fn is_bios_mounted(&self) -> bool {
         self.boot_lock_reg == 0b0
     }
+
+    pub fn rom_bank_selector(&self) -> u8 {
+        self.cartridge.rom_bank_selector()
+    }
 }

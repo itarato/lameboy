@@ -5,6 +5,7 @@ use crate::conf::*;
 trait CartridgeController {
     fn set_register(&mut self, loc: u16, byte: u8);
     fn translate_addr(&self, virtual_loc: u16) -> PhysicalAddr;
+    fn rom_bank_selector(&self) -> u8;
 }
 
 enum RamGate {
@@ -43,6 +44,10 @@ impl CartridgeController for RomOnly {
             );
         }
     }
+
+    fn rom_bank_selector(&self) -> u8 {
+        0
+    }
 }
 
 struct MBC1 {
@@ -71,6 +76,8 @@ impl MBC1 {
 
 impl CartridgeController for MBC1 {
     fn set_register(&mut self, loc: u16, byte: u8) {
+        // println!("Cartridge set: {:#06X} = {:#04X}", loc, byte);
+
         if (0x0000..=0x1FFF).contains(&loc) {
             if byte & 0xF == 0b1010 {
                 self.ram_gate_reg = RamGate::EnableRamAccess;
@@ -107,11 +114,7 @@ impl CartridgeController for MBC1 {
             }
         } else if (MEM_AREA_ROM_BANK_N_START..=MEM_AREA_ROM_BANK_N_END).contains(&virtual_loc) {
             // To specify the upper two bits (bits 5-6) of the ROM Bank number (1 MiB ROM or larger carts only)
-            let rom_bank_selector = if self.rom_bank_size >= 64 {
-                ((self.bank_2_reg as u32) << 5) | self.bank_1_reg as u32
-            } else {
-                self.bank_1_reg as u32
-            };
+            let rom_bank_selector = self.rom_bank_selector() as u32;
 
             let physical_addr =
                 (virtual_loc & 0b11_1111_1111_1111) as u32 | (rom_bank_selector << 14);
@@ -143,6 +146,14 @@ impl CartridgeController for MBC1 {
                 "MBC1 addr translation not implemented: {:#06X}",
                 virtual_loc
             );
+        }
+    }
+
+    fn rom_bank_selector(&self) -> u8 {
+        if self.rom_bank_size >= 64 {
+            (self.bank_2_reg << 5) | self.bank_1_reg
+        } else {
+            self.bank_1_reg
         }
     }
 }
@@ -228,5 +239,9 @@ impl Cartridge {
         } else {
             unimplemented!("Unimplemented write to cartridge: {:#06X}", loc);
         }
+    }
+
+    pub fn rom_bank_selector(&self) -> u8 {
+        self.ctrl.rom_bank_selector()
     }
 }
