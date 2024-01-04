@@ -623,4 +623,6 @@ impl PPU {
             _ => unimplemented!("Unknown gb pixel color"),
         }
     }
+
+    fn apply_bg_win_palette(&self, color: u8) -> u8 {}
 }
