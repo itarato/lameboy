@@ -10,12 +10,13 @@ Arguments:
   <CARTRIDGE>  Cartridge
 
 Options:
-  -d, --debug                    Enable debug mode
   -b, --breakpoint <BREAKPOINT>  Breakpoints
   -s, --step-by-step             Step by step
   -n, --nofps                    Skip FPS limiter
-      --dump                     Dump opcode list to file
+      --opcode-dump              Dump opcode list to file
       --debug-vram               VRam debug window
+      --skip-intro               Skip intro logo scrolling phase
+      --disable-sound            Turn all sounds off
   -h, --help                     Print help
   -V, --version                  Print version
 ```
