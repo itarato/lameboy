@@ -60,9 +60,9 @@ impl PPU {
     pub fn new(ignore_fps_limiter: bool) -> Self {
         PPU {
             stat_counter: 0,
-            prev_m3_len: 204,
+            prev_m3_len: 252,
             lcdc: 0,
-            stat: 0x80,
+            stat: 0x82,
             scy: 0,
             scx: 0,
             ly: 0,
@@ -103,6 +103,8 @@ impl PPU {
             return interrupt_mask;
         }
 
+        // println!("Ticks: {}", cpu_cycles);
+
         self.stat_counter += cpu_cycles;
 
         // Mode 2  2_____2_____2_____2_____2_____2___________________2____
@@ -123,7 +125,7 @@ impl PPU {
             // Sending pixels to the LCD.
             LcdPpuMode::M3 => {
                 // Todo: 172 to 289 dots, depending on object count
-                let m3_len = 204u64;
+                let m3_len = 252;
                 if self.stat_counter >= m3_len {
                     self.stat_counter -= m3_len;
 
@@ -364,17 +366,26 @@ impl PPU {
         }
     }
 
+    fn is_vram_accessible(&self) -> bool {
+        !self.is_lcd_display_enabled() || self.lcd_ppu_mode() != LcdPpuMode::M3
+    }
+
+    fn is_oam_accessible(&self) -> bool {
+        !self.is_lcd_display_enabled()
+            || (self.lcd_ppu_mode() != LcdPpuMode::M2 && self.lcd_ppu_mode() != LcdPpuMode::M3)
+    }
+
     pub fn read(&self, loc: u16) -> Result<u8, Error> {
         let byte = match loc {
             MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
-                if self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                if self.is_vram_accessible() {
                     self.vram[(loc - MEM_AREA_VRAM_START) as usize]
                 } else {
                     0xFF
                 }
             }
             MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
-                if self.lcd_ppu_mode() != LcdPpuMode::M2 && self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                if self.is_oam_accessible() {
                     self.oam_ram[(loc - MEM_AREA_OAM_START) as usize]
                 } else {
                     0xFF
@@ -404,16 +415,30 @@ impl PPU {
 
         match loc {
             MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
-                if self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                if self.is_vram_accessible() {
                     self.vram[(loc - MEM_AREA_VRAM_START) as usize] = byte;
                 }
             }
             MEM_AREA_OAM_START..=MEM_AREA_OAM_END => {
-                if self.lcd_ppu_mode() != LcdPpuMode::M2 && self.lcd_ppu_mode() != LcdPpuMode::M3 {
+                if self.is_oam_accessible() {
                     self.oam_ram[(loc - MEM_AREA_OAM_START) as usize] = byte;
                 }
             }
-            MEM_LOC_LCDC => self.lcdc = byte,
+            MEM_LOC_LCDC => {
+                let lcdc_on_prev = self.is_lcd_display_enabled();
+                self.lcdc = byte;
+                let lcdc_on_curr = self.is_lcd_display_enabled();
+
+                if lcdc_on_prev && !lcdc_on_curr {
+                    self.stat_counter = 0;
+                    self.ly = 0;
+                    let _ = self.set_lcd_stat_ppu_mode(0);
+                }
+                if !lcdc_on_prev && lcdc_on_curr {
+                    let _ = self.set_lcd_stat_ppu_mode(2);
+                    self.stat_counter = 4;
+                }
+            }
             MEM_LOC_STAT => {
                 self.stat = byte | 0x80;
                 // These 3 bytes are the stat interrupt enable bytes. We do not handle them on PPU  mode change.

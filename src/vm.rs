@@ -184,7 +184,7 @@ impl VM {
             self.mem_write(0xff25, 0xf3)?; // NR51
             self.mem_write(0xff26, 0xf0)?; // NR52
             self.mem_write(0xff40, 0x91)?; // LCDC
-            self.mem_write(0xff41, 0x85)?; // STAT
+            self.mem_write(0xff41, 0x86)?; // STAT
             self.mem_write(0xff42, 0x00)?; // SCY
             self.mem_write(0xff43, 0x00)?; // SCX
 
@@ -353,12 +353,14 @@ impl VM {
                 .push((self.counter, self.cpu.pc - 1, op));
         }
 
+        let ly = self.mem_read(MEM_LOC_LY)?;
         if let Some(ref mut opcode_dump_file) = self.opcode_dump_file {
             opcode_dump_file
                 .write_fmt(format_args!(
-                    "PC={:04X} OP={:02X} AF={:04X} BC={:04X} DE=={:04X} HL={:04X} SP={:04X}\n",
+                    "PC={:04X} OP={:02X} LY={:02X} AF={:04X} BC={:04X} DE=={:04X} HL={:04X} SP={:04X}\n",
                     self.cpu.pc - 1,
                     op,
+                    ly,
                     self.cpu.af,
                     self.cpu.bc,
                     self.cpu.de,
