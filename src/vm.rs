@@ -3631,7 +3631,7 @@ impl VM {
                 MEM_LOC_TMA => self.timer.set_tma(byte),
                 MEM_LOC_TAC => self.timer.set_tac(byte),
                 MEM_LOC_IF => self.interrupt_flag = byte | 0xE0,
-                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.write(loc, byte),
+                MEM_LOC_NR10..=MEM_LOC_WAVE_PATTERN_END => self.sound.write(loc, byte),
                 MEM_LOC_LCDC..=MEM_LOC_WX => {
                     if loc == MEM_LOC_DMA {
                         assert!(byte <= 0xDF);
@@ -3672,10 +3672,9 @@ impl VM {
                 MEM_LOC_OCPD => unimplemented!("Write to register OCPD is not implemented"),
                 MEM_LOC_SVBK => unimplemented!("Write to register SVBK is not implemented"),
                 _ => {
-                    // Ignore for now - BGB seems to ignore this.
-                    // return Err(
-                    //     format!("Write to MEM_AREA_IO is not implemented: {:#06X}", loc).into(),
-                    // );
+                    return Err(
+                        format!("Write to MEM_AREA_IO is not implemented: {:#06X}", loc).into(),
+                    );
                 }
             };
         } else if loc <= MEM_AREA_HRAM_END {
@@ -3720,7 +3719,7 @@ impl VM {
                 MEM_LOC_TMA => Ok(self.timer.tma()),
                 MEM_LOC_TAC => Ok(self.timer.tac()),
                 MEM_LOC_IF => Ok(self.interrupt_flag),
-                MEM_LOC_NR10..=MEM_LOC_NR52 => self.sound.read(loc),
+                MEM_LOC_NR10..=MEM_LOC_WAVE_PATTERN_END => self.sound.read(loc),
                 MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read().unwrap().read(loc),
                 MEM_LOC_KEY1 => {
                     // FF4D — KEY1 (CGB Mode only): Prepare speed switch --> ignore.

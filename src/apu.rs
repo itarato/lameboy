@@ -131,6 +131,8 @@ pub struct Apu {
     nr51: u8,
     nr52: u8,
 
+    wave_pattern_ram: [u8; 16],
+
     _channel_1_device: AudioDevice<SquareWave>,
     channel_1_out: Arc<Mutex<SoundPacket>>,
 
@@ -196,6 +198,7 @@ impl Apu {
             nr50: 0,
             nr51: 0,
             nr52: 0,
+            wave_pattern_ram: [0; 16],
             _channel_1_device,
             channel_1_out,
             _channel_2_device,
@@ -252,6 +255,9 @@ impl Apu {
                 // Cannot manually set CHx enable/disable flags.
                 assert!(byte & 0b1111 == 0);
                 self.nr52 = byte;
+            }
+            MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
+                self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize] = byte;
             }
             _ => unimplemented!("Apu chip loc write: {:#06X} not implemented", loc),
         };

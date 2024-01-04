@@ -75,6 +75,7 @@ pub const MEM_LOC_TIMA: u16 = 0xFF05;
 pub const MEM_LOC_TMA: u16 = 0xFF06;
 pub const MEM_LOC_TAC: u16 = 0xFF07;
 pub const MEM_LOC_IF: u16 = 0xFF0F;
+
 pub const MEM_LOC_NR10: u16 = 0xFF10;
 pub const MEM_LOC_NR11: u16 = 0xFF11;
 pub const MEM_LOC_NR12: u16 = 0xFF12;
@@ -96,6 +97,9 @@ pub const MEM_LOC_NR44: u16 = 0xFF23;
 pub const MEM_LOC_NR50: u16 = 0xFF24;
 pub const MEM_LOC_NR51: u16 = 0xFF25;
 pub const MEM_LOC_NR52: u16 = 0xFF26;
+pub const MEM_LOC_WAVE_PATTERN_START: u16 = 0xFF30;
+pub const MEM_LOC_WAVE_PATTERN_END: u16 = 0xFF3F;
+
 pub const MEM_LOC_LCDC: u16 = 0xFF40;
 pub const MEM_LOC_STAT: u16 = 0xFF41;
 pub const MEM_LOC_SCY: u16 = 0xFF42;
