@@ -3466,8 +3466,10 @@ impl VM {
 
         if is_alternative_mcycle {
             iteration_mcycle += OPCODE_MCYCLE_ALT[op as usize];
+            assert!(OPCODE_MCYCLE_ALT[op as usize] != 0);
         } else {
             iteration_mcycle += OPCODE_MCYCLE[op as usize];
+            assert!(OPCODE_MCYCLE[op as usize] != 0);
         }
         self.tick(iteration_mcycle);
 
@@ -3634,7 +3636,12 @@ impl VM {
                 MEM_LOC_DIV => self.timer.set_div(),
                 MEM_LOC_TIMA => self.timer.set_tima(byte),
                 MEM_LOC_TMA => self.timer.set_tma(byte),
-                MEM_LOC_TAC => self.timer.set_tac(byte),
+                MEM_LOC_TAC => {
+                    self.timer.set_tac(byte);
+                    // if is_bit(byte, 2) {
+                    //     self.debugger.request_one_time_break();
+                    // }
+                }
                 MEM_LOC_IF => self.interrupt_flag = byte | 0xE0,
                 MEM_LOC_NR10..=MEM_LOC_WAVE_PATTERN_END => self.sound.write(loc, byte),
                 MEM_LOC_LCDC..=MEM_LOC_WX => {
@@ -3867,6 +3874,6 @@ impl VM {
         self.interrupt_flag &= !(1u8 << interrupt.bit());
         self.push_u16(self.cpu.pc).expect("Failed stacking PC");
         self.cpu.pc = interrupt.addr();
-        self.tick(4);
+        self.tick(5);
     }
 }

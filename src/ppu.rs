@@ -440,8 +440,8 @@ impl PPU {
                 }
             }
             MEM_LOC_STAT => {
-                self.stat = byte | 0x80;
-                // These 3 bytes are the stat interrupt enable bytes. We do not handle them on PPU  mode change.
+                self.stat = (byte | 0x80) & !0b11u8 /* Ignore mode bits */;
+                // We do support stat interrupt - however check when this is triggered.
                 assert!((byte & 0b0011_1000) == 0);
             }
             MEM_LOC_SCY => self.scy = byte,

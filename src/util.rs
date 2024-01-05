@@ -145,8 +145,23 @@ impl Counter {
         }
     }
 
+    pub fn check_overflow_count(&mut self) -> u8 {
+        let mut count = 0;
+
+        while self.counter >= self.modulo {
+            self.counter -= self.modulo;
+            count += 1;
+        }
+
+        count
+    }
+
     pub fn update_modulo(&mut self, modulo: u64) {
         self.modulo = modulo;
+    }
+
+    pub fn reset(&mut self) {
+        self.counter = 0;
     }
 }
 
