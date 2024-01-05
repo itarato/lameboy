@@ -38,6 +38,7 @@ Options:
 ![Tetris](./misc/tetris.png)
 ![Zelda](./misc/zelda.png)
 ![Donkey Kong](./misc/donkey.png)
+![Spiderman](./misc/spider.png)
 ![Mario](./misc/mario.png)
 ![VRAM debug](./misc/vram.png)
 
