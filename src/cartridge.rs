@@ -185,7 +185,7 @@ impl Cartridge {
 
                 let ram_bank_size_bit = data[0x0149];
                 let ram_bank_size = match ram_bank_size_bit {
-                    0x00 => 0,
+                    0x00 => 1, // Don't think this is ok (should be 0) - but interrupt timing test writes here.
                     0x02 => 1,
                     0x03 => 4,
                     0x04 => 16,

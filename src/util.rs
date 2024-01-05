@@ -138,7 +138,8 @@ impl Counter {
 
     pub fn check_overflow(&mut self) -> bool {
         if self.counter >= self.modulo {
-            self.counter = self.counter % self.modulo;
+            self.counter -= self.modulo;
+            assert!(self.counter < self.modulo);
             true
         } else {
             false

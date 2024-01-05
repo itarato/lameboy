@@ -256,6 +256,8 @@ impl VM {
                 }
             }
 
+            self.check_interrupt();
+
             let old_cpu_mcycle: u64 = self.cpu.mcycle;
             let pre_exec_tma = self.mem_read(MEM_LOC_TMA)?;
 
@@ -311,8 +313,6 @@ impl VM {
             if self.joypad.consume_interrupt() {
                 self.interrupt_flag |= 0b1_0000;
             }
-
-            self.check_interrupt();
 
             self.counter += 1;
 
@@ -3874,6 +3874,6 @@ impl VM {
         self.interrupt_flag &= !(1u8 << interrupt.bit());
         self.push_u16(self.cpu.pc).expect("Failed stacking PC");
         self.cpu.pc = interrupt.addr();
-        self.tick(5);
+        self.tick(4);
     }
 }

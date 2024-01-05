@@ -79,8 +79,13 @@ impl Timer {
 
     pub fn set_div(&mut self) {
         self.div = 0;
+        self.div_ticker.reset();
     }
     pub fn set_tac(&mut self, byte: u8) {
+        if byte & 0b11 != self.tac & 0b11 {
+            self.tima_ticker.reset();
+        }
+
         self.tac = byte | 0b1111_1000; // Keep useless bytes to 1.
     }
     pub fn set_tma(&mut self, byte: u8) {
