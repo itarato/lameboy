@@ -14,11 +14,14 @@ Options:
   -s, --step-by-step             Step by step
   -n, --nofps                    Skip FPS limiter
       --opcode-dump              Dump opcode list to file
-      --debug-vram               VRam debug window
+      --tiles                    Tile map debug window
+      --background               Background map debug window
+      --window                   Window map debug window
       --skip-intro               Skip intro logo scrolling phase
       --disable-sound            Turn all sounds off
   -h, --help                     Print help
   -V, --version                  Print version
+
 ```
 
 - Dependencies: SDL2
