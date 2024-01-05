@@ -118,7 +118,7 @@ impl<T> SizedQueue<T> {
 
 #[derive(Debug)]
 pub struct Counter {
-    counter: u64,
+    pub counter: u64,
     modulo: u64,
 }
 

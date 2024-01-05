@@ -256,16 +256,15 @@ impl VM {
                 }
             }
 
-            self.check_interrupt();
+            let interrupt_mcycles = if self.check_interrupt() { 4 } else { 0 };
 
-            let old_cpu_mcycle: u64 = self.cpu.mcycle;
             let pre_exec_tma = self.mem_read(MEM_LOC_TMA)?;
 
-            if self.state == State::Running {
-                self.exec_op()?;
+            let cpu_mcycles = if self.state == State::Running {
+                self.exec_op()?
             } else {
-                self.tick(1);
-            }
+                1
+            };
 
             let mut delayed_cmds_to_delete = vec![];
             for (i, delayed_cmd) in self.delayed_cmds.iter_mut().enumerate() {
@@ -287,21 +286,19 @@ impl VM {
                 self.delayed_cmds.remove(*i);
             }
 
-            let diff_mcycle: u64 = self.cpu.mcycle - old_cpu_mcycle;
+            let diff_cpu_clocks: u64 =
+                (interrupt_mcycles as u64 + cpu_mcycles as u64) * CYCLE_PER_MCYCLE;
 
-            self.sound.update(diff_mcycle * CYCLE_PER_MCYCLE as u64);
+            self.sound.update(diff_cpu_clocks);
 
-            let should_call_times_interrupt = self.timer.handle_ticks(pre_exec_tma)?;
+            let should_call_times_interrupt =
+                self.timer.handle_ticks(diff_cpu_clocks, pre_exec_tma)?;
             if should_call_times_interrupt {
                 self.interrupt_flag |= 0b0100;
             }
 
             if self.state != State::Stop {
-                let video_interrupt_mask = self
-                    .video
-                    .write()
-                    .unwrap()
-                    .update(diff_mcycle * CYCLE_PER_MCYCLE as u64);
+                let video_interrupt_mask = self.video.write().unwrap().update(diff_cpu_clocks);
                 if video_interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT > 0 {
                     self.interrupt_flag |= 0b10;
                 }
@@ -342,7 +339,7 @@ impl VM {
         Ok(())
     }
 
-    fn exec_op(&mut self) -> Result<(), Error> {
+    fn exec_op(&mut self) -> Result<u8, Error> {
         let mut is_alternative_mcycle = false;
         let op = self.read_op()?;
         let mut iteration_mcycle = 0u8;
@@ -1592,7 +1589,7 @@ impl VM {
 
                 match op_cb {
                     0x00 => {
-                        // RLC B 2 8F | Z 0 0 C
+                        // RLC B 2 8 | Z 0 0 C
                         let is_carry = is_carry_rot_left_u8(self.cpu.get_b());
                         let new_b = self.cpu.get_b().rotate_left(1);
 
@@ -3403,8 +3400,7 @@ impl VM {
             }
             0xF3 => {
                 // DI 1 4 | - - - -
-                self.delayed_cmds
-                    .push(DelayedCommand::new(2, DelayedOp::MasterInterruptDisable));
+                self.interrupt_master_enable_flag = false;
             }
             0xF4 => panic!("Opcode 0xF4 is invalid"),
             0xF5 => {
@@ -3469,11 +3465,10 @@ impl VM {
             assert!(OPCODE_MCYCLE_ALT[op as usize] != 0);
         } else {
             iteration_mcycle += OPCODE_MCYCLE[op as usize];
-            assert!(OPCODE_MCYCLE[op as usize] != 0);
+            assert!(op == 0xCB || OPCODE_MCYCLE[op as usize] != 0);
         }
-        self.tick(iteration_mcycle);
 
-        Ok(())
+        Ok(iteration_mcycle)
     }
 
     fn read_op(&mut self) -> Result<u8, Error> {
@@ -3572,6 +3567,9 @@ impl VM {
             self.mem.boot_lock_reg == 0,
             self.mem.rom_bank_selector()
         );
+
+        self.timer.dump_debug_panel();
+
         println!();
     }
 
@@ -3593,11 +3591,6 @@ impl VM {
         }
 
         println!("");
-    }
-
-    fn tick(&mut self, mcycles: u8) {
-        self.cpu.mcycle += mcycles as u64;
-        self.timer.tick(mcycles * CYCLE_PER_MCYCLE);
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
@@ -3786,21 +3779,21 @@ impl VM {
         (self.interrupt_enable & 0b1_0000) > 0
     }
 
-    fn check_interrupt(&mut self) {
+    fn check_interrupt(&mut self) -> bool /* Whether interrupt has happened. */ {
         if !self.interrupt_master_enable_flag && self.state != State::Halt {
-            return;
+            return false;
         }
 
         // If an interrupt is pending, halt immediately exits, as expected, however the “halt bug”, explained below,
         // is triggered.
         if self.interrupt_flag & self.interrupt_enable == 0 {
-            return;
+            return false;
         }
 
         self.state = State::Running;
 
         if !self.interrupt_master_enable_flag {
-            return;
+            return false;
         }
 
         // If IME and IE allow the servicing of more than one of the requested interrupts,
@@ -3811,22 +3804,29 @@ impl VM {
             && self.is_vblank_interrupt_enabled()
         {
             self.interrupt(Interrupt::VBlank);
+            true
         } else if is_bit(self.interrupt_flag, Interrupt::LCD.bit())
             && self.is_lcd_interrupt_enabled()
         {
             self.interrupt(Interrupt::LCD);
+            true
         } else if is_bit(self.interrupt_flag, Interrupt::Timer.bit())
             && self.is_timer_interrupt_enabled()
         {
             self.interrupt(Interrupt::Timer);
+            true
         } else if is_bit(self.interrupt_flag, Interrupt::Serial.bit())
             && self.is_serial_interrupt_enabled()
         {
             self.interrupt(Interrupt::Serial);
+            true
         } else if is_bit(self.interrupt_flag, Interrupt::Joypad.bit())
             && self.is_joypad_interrupt_enabled()
         {
             self.interrupt(Interrupt::Joypad);
+            true
+        } else {
+            false
         }
     }
 
@@ -3874,6 +3874,5 @@ impl VM {
         self.interrupt_flag &= !(1u8 << interrupt.bit());
         self.push_u16(self.cpu.pc).expect("Failed stacking PC");
         self.cpu.pc = interrupt.addr();
-        self.tick(4);
     }
 }

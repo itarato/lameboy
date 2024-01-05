@@ -34,6 +34,7 @@ Options:
 
 ![Logo](./misc/logo.png)
 ![CPU tests](./misc/cpu_test.png)
+![Timing tests](./misc/timing_test.png)
 ![Tetris](./misc/tetris.png)
 ![Zelda](./misc/zelda.png)
 ![Donkey Kong](./misc/donkey.png)
@@ -54,6 +55,7 @@ Options:
   - https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
   - https://ez80.readthedocs.io/en/latest/docs/bit-shifts/rlca.html
   - https://realboyemulator.wordpress.com/2013/01/03/a-look-at-the-game-boy-bootstrap-let-the-fun-begin/
+  - https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595
 - Test roms:
   - https://github.com/retrio/gb-test-roms/tree/master
   - https://github.com/c-sp/gameboy-test-roms

@@ -253,8 +253,7 @@ impl Apu {
             // FF26 — NR52: Audio master control
             MEM_LOC_NR52 => {
                 // Cannot manually set CHx enable/disable flags.
-                assert!(byte & 0b1111 == 0);
-                self.nr52 = byte;
+                self.nr52 = byte & 0xF0;
             }
             MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
                 self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize] = byte;

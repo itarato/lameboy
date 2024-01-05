@@ -23,29 +23,20 @@ impl Timer {
         }
     }
 
-    pub fn tick(&mut self, cpu_clocks: u8) {
-        self.div_ticker.tick(cpu_clocks as u64);
-
-        let tima_enabled = is_bit(self.tac, 2);
-        if tima_enabled {
-            self.tima_ticker.tick(cpu_clocks as u64);
-        }
-    }
-
     #[must_use]
-    pub fn handle_ticks(&mut self, pre_exec_tma: u8) -> Result<bool, Error> {
+    pub fn handle_ticks(&mut self, cpu_clocks: u64, pre_exec_tma: u8) -> Result<bool, Error> {
         // println!("DIV: {} TIMA: {}", self.div, self.tima);
 
         let mut needs_tima_interrupt = false;
 
+        self.div_ticker.tick(cpu_clocks);
         if self.div_ticker.check_overflow() {
             self.div = self.div.wrapping_add(1);
         }
 
         let tima_enabled = is_bit(self.tac, 2);
         if tima_enabled {
-            let tima_freq = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
-            self.tima_ticker.update_modulo(tima_freq as u64);
+            self.tima_ticker.tick(cpu_clocks);
 
             let mut overflow_count = self.tima_ticker.check_overflow_count();
             while overflow_count > 0 {
@@ -87,11 +78,18 @@ impl Timer {
         }
 
         self.tac = byte | 0b1111_1000; // Keep useless bytes to 1.
+
+        let tima_freq = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
+        self.tima_ticker.update_modulo(tima_freq as u64);
     }
     pub fn set_tma(&mut self, byte: u8) {
         self.tma = byte;
     }
     pub fn set_tima(&mut self, byte: u8) {
         self.tima = byte;
+    }
+
+    pub fn dump_debug_panel(&self) {
+        println!("\x1B[93mDIV\x1B[0m {:02X} | \x1B[93mTIMA\x1B[0m {:02X} ({:X}) | \x1B[93mTMA\x1B[0m {:02X} | \x1B[93mTAC\x1B[0m {:02X}", self.div, self.tima, self.tima_ticker.counter, self.tma, self.tac);
     }
 }
