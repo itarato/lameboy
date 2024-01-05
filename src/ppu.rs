@@ -53,7 +53,9 @@ pub struct PPU {
     display_buffer: [u8; DISPLAY_PIXELS_COUNT],
     ignore_fps_limiter: bool,
     pub main_window_id: Option<WindowId>,
-    pub vram_debug_window_id: Option<WindowId>,
+    pub tile_debug_window_id: Option<WindowId>,
+    pub background_debug_window_id: Option<WindowId>,
+    pub window_debug_window_id: Option<WindowId>,
 }
 
 impl PPU {
@@ -78,7 +80,9 @@ impl PPU {
             display_buffer: [0; DISPLAY_PIXELS_COUNT],
             ignore_fps_limiter,
             main_window_id: None,
-            vram_debug_window_id: None,
+            tile_debug_window_id: None,
+            background_debug_window_id: None,
+            window_debug_window_id: None,
         }
     }
 
@@ -595,8 +599,12 @@ impl PPU {
     pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {
         if Some(window_id) == self.main_window_id {
             self.draw_display(frame);
-        } else if Some(window_id) == self.vram_debug_window_id {
+        } else if Some(window_id) == self.tile_debug_window_id {
             self.draw_debug_tiles(frame);
+        } else if Some(window_id) == self.background_debug_window_id {
+            self.draw_debug_background(frame);
+        } else if Some(window_id) == self.window_debug_window_id {
+            self.draw_debug_window(frame);
         }
     }
 
@@ -618,8 +626,10 @@ impl PPU {
                     let byte1 = self.vram[vram_pos + sprite_y * 2];
                     let byte2 = self.vram[vram_pos + sprite_y * 2 + 1];
                     for sprite_x in 0..8 {
-                        let gb_pixel_color = (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
-                            | ((byte1 >> (7 - sprite_x)) & 0b1);
+                        let gb_pixel_color = self.apply_bg_win_palette(
+                            (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
+                                | ((byte1 >> (7 - sprite_x)) & 0b1),
+                        );
 
                         let pixel_color = self.pixel_color(gb_pixel_color);
 
@@ -636,6 +646,59 @@ impl PPU {
                         frame
                             [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 3] =
                             pixel_color[3];
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn draw_debug_background(&self, frame: &mut [u8]) {
+        self.draw_debug_window_or_background(
+            frame,
+            (self.background_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize,
+        );
+    }
+
+    pub fn draw_debug_window(&self, frame: &mut [u8]) {
+        self.draw_debug_window_or_background(
+            frame,
+            (self.window_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize,
+        );
+    }
+
+    pub fn draw_debug_window_or_background(&self, frame: &mut [u8], tile_map_start: usize) {
+        let tile_data_section_start =
+            (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
+
+        for y in 0..32usize {
+            for x in 0..32usize {
+                let tile_data_i = (y * 32) + x;
+                let tile_i = if tile_data_section_start == 0x0800 {
+                    self.vram[tile_map_start + tile_data_i].wrapping_add(128)
+                } else {
+                    self.vram[tile_map_start + tile_data_i]
+                };
+
+                for tile_y in 0..8u8 {
+                    //                          32 tiles up      tile lines up              left     frame pixels
+                    let tile_line_pos = (y * 32 * 8 * 8 + tile_y as usize * 32 * 8 + x * 8) * 4;
+
+                    let tile_lo = self.vram
+                        [tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2];
+                    let tile_hi = self.vram
+                        [tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2 + 1];
+
+                    for tile_x in 0..8u8 {
+                        let tile_pixel_addr = tile_line_pos + tile_x as usize * 4;
+                        let color = self.apply_bg_win_palette(
+                            (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x),
+                        );
+                        let pixel_color = self.pixel_color(color);
+
+                        frame[tile_pixel_addr + 0] = pixel_color[0];
+                        frame[tile_pixel_addr + 1] = pixel_color[1];
+                        frame[tile_pixel_addr + 2] = pixel_color[2];
+                        frame[tile_pixel_addr + 3] = pixel_color[3];
                     }
                 }
             }

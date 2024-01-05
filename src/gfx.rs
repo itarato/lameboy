@@ -27,10 +27,15 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-fn make_main_window(event_loop: &EventLoop<()>) -> (Window, Pixels) {
-    let size = LogicalSize::new(DISPLAY_WIDTH as f64, DISPLAY_HEIGHT as f64);
+fn make_window(
+    event_loop: &EventLoop<()>,
+    title: &str,
+    width: u32,
+    height: u32,
+) -> (Window, Pixels) {
+    let size = LogicalSize::new(width as f64, height as f64);
     let window = WindowBuilder::new()
-        .with_title("Lameboy")
+        .with_title(title)
         .with_inner_size(size.to_physical::<f64>(2.0))
         .with_min_inner_size(size)
         .build(&event_loop)
@@ -38,27 +43,7 @@ fn make_main_window(event_loop: &EventLoop<()>) -> (Window, Pixels) {
 
     let window_size = window.inner_size();
     let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-    let pixels = Pixels::new(DISPLAY_WIDTH, DISPLAY_HEIGHT, surface_texture)
-        .expect("Failed instantiating Pixels");
-
-    (window, pixels)
-}
-
-// 8x8 tiles
-// 16 tiles wide
-// 24 tiles tall
-fn make_tile_debug_window(event_loop: &EventLoop<()>) -> (Window, Pixels) {
-    let size = LogicalSize::new((8 * 16) as f64, (8 * 24) as f64);
-    let window = WindowBuilder::new()
-        .with_title("Tile debug")
-        .with_inner_size(size.to_physical::<f64>(2.0))
-        .with_min_inner_size(size)
-        .build(&event_loop)
-        .unwrap();
-
-    let window_size = window.inner_size();
-    let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-    let pixels = Pixels::new(8 * 16, 8 * 24, surface_texture).expect("Failed instantiating Pixels");
+    let pixels = Pixels::new(width, height, surface_texture).expect("Failed instantiating Pixels");
 
     (window, pixels)
 }
@@ -68,23 +53,40 @@ pub fn run(
     video: Arc<RwLock<PPU>>,
     breakpoint_flag: Arc<AtomicBool>,
     buttons: Arc<RwLock<JoypadInputRequest>>,
-    with_vram_debug_window: bool,
+    with_tile_debug_window: bool,
+    with_background_debug_window: bool,
+    with_window_debug_window: bool,
 ) {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
 
     let mut windows = HashMap::new();
 
-    if with_vram_debug_window {
-        let (tile_debug_window, pixels_for_tile_debug_window) = make_tile_debug_window(&event_loop);
-        video.write().unwrap().vram_debug_window_id = Some(tile_debug_window.id());
-        windows.insert(
-            tile_debug_window.id(),
-            (tile_debug_window, pixels_for_tile_debug_window),
-        );
+    if with_tile_debug_window {
+        let (window, pixels) = make_window(&event_loop, "VRAM Tile Map", 8 * 16, 8 * 24);
+        video.write().unwrap().tile_debug_window_id = Some(window.id());
+        windows.insert(window.id(), (window, pixels));
     }
 
-    let (main_window, pixels) = make_main_window(&event_loop);
+    if with_background_debug_window {
+        // 32 * 32 tiles (32 tile * 8 pixel = 256)
+        let (window, pixels) = make_window(&event_loop, "Background map (32 x 32)", 256, 256);
+        video.write().unwrap().background_debug_window_id = Some(window.id());
+        windows.insert(window.id(), (window, pixels));
+    }
+
+    if with_window_debug_window {
+        // 32 * 32 tiles (32 tile * 8 pixel = 256)
+        let (window, pixels) = make_window(&event_loop, "Window map (32 x 32)", 256, 256);
+        video.write().unwrap().window_debug_window_id = Some(window.id());
+        windows.insert(window.id(), (window, pixels));
+    }
+
+    // 8x8 tiles
+    // 16 tiles wide
+    // 24 tiles tall
+    let (main_window, pixels) =
+        make_window(&event_loop, "Lameboy 0.0", DISPLAY_WIDTH, DISPLAY_HEIGHT);
     video.write().unwrap().main_window_id = Some(main_window.id());
     windows.insert(main_window.id(), (main_window, pixels));
 

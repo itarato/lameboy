@@ -48,9 +48,17 @@ struct Args {
     #[arg(long)]
     opcode_dump: bool,
 
-    /// VRam debug window.
+    /// Tile map debug window.
     #[arg(long)]
-    debug_vram: bool,
+    tiles: bool,
+
+    /// Background map debug window.
+    #[arg(long)]
+    background: bool,
+
+    /// Window map debug window.
+    #[arg(long)]
+    window: bool,
 
     /// Skip intro logo scrolling phase.
     #[arg(long)]
@@ -132,7 +140,9 @@ fn main() -> Result<(), Error> {
         video.clone(),
         breakpoint_flag,
         joypad_button_input_requester,
-        args.debug_vram,
+        args.tiles,
+        args.background,
+        args.window,
     );
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
