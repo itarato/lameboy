@@ -237,6 +237,9 @@ impl VM {
                 loop {
                     match self.read_repl()? {
                         Some(DebugCmd::Quit) => return Ok(()),
+                        Some(DebugCmd::Step) => {
+                            break;
+                        }
                         Some(DebugCmd::PrintCpu) => self.print_debug_panel(),
                         Some(DebugCmd::PrintMemory(from, len)) => {
                             self.print_debug_memory(from, len);
@@ -3590,8 +3593,6 @@ impl VM {
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
-        log::debug!("Write: {:#06X} = #{:#04X}", loc, byte);
-
         // if loc == 0x8800 {
         //     self.debugger.request_one_time_break();
         // }
@@ -3646,8 +3647,14 @@ impl VM {
                             .dma_oam_transfer(block);
                         // Not sure if we should spend 160 mcycle here.
                     } else {
-                        // if loc == 0xff47 || loc == 0xff48 || loc == 0xff49 {
-                        //     println!("PC={:04X} LOC={:04X} V={:02X}", self.cpu.pc, loc, byte);
+                        // if loc == 0xff47 {
+                        //     println!(
+                        //         "PC={:04X} LOC={:04X} V={:02X} LY={:02}",
+                        //         self.cpu.pc,
+                        //         loc,
+                        //         byte,
+                        //         self.video.read().unwrap().ly
+                        //     );
                         // }
 
                         self.video.write().unwrap().write(loc, byte);

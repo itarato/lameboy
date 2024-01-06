@@ -8,6 +8,7 @@ use log::info;
 pub enum DebugCmd {
     Quit,
     Continue,
+    Step,
     PrintCpu,
     PrintMemory(u16, usize),
     PrintOpHistory,
@@ -43,7 +44,7 @@ impl Debugger {
             Some(DebugCmd::Quit)
         } else if raw == "" {
             self.set_auto_step_count(0);
-            None
+            Some(DebugCmd::Step)
         } else if parts[0] == "n" {
             let auto_step = if parts.len() > 1 {
                 usize::from_str_radix(parts[1], 10).unwrap_or(1)
@@ -52,7 +53,7 @@ impl Debugger {
             };
 
             self.set_auto_step_count(auto_step - 1);
-            None
+            Some(DebugCmd::Step)
         } else if raw == "p" {
             Some(DebugCmd::PrintCpu)
         } else if raw == "c" {

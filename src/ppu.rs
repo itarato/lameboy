@@ -409,14 +409,10 @@ impl PPU {
             _ => panic!("Illegal video address read: {:#06X}", loc),
         };
 
-        log::debug!("Read video: {:#06X} = #{:#04X}", loc, byte);
-
         Ok(byte)
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
-        log::debug!("Write video: {:#06X} = #{:#04X}", loc, byte);
-
         match loc {
             MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => {
                 if self.is_vram_accessible() {
