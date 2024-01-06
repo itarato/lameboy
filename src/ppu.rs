@@ -456,6 +456,7 @@ impl PPU {
             MEM_LOC_LY => panic!("Cannot write LY"),
             MEM_LOC_LYC => {
                 self.lyc = byte;
+
                 if self.lyc == self.ly {
                     self.lyc_change_interrupt = true;
                 }
