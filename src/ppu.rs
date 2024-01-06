@@ -56,6 +56,7 @@ pub struct PPU {
     pub tile_debug_window_id: Option<WindowId>,
     pub background_debug_window_id: Option<WindowId>,
     pub window_debug_window_id: Option<WindowId>,
+    lyc_change_interrupt: bool,
 }
 
 impl PPU {
@@ -83,6 +84,7 @@ impl PPU {
             tile_debug_window_id: None,
             background_debug_window_id: None,
             window_debug_window_id: None,
+            lyc_change_interrupt: false,
         }
     }
 
@@ -186,6 +188,11 @@ impl PPU {
                 }
             }
         };
+
+        if self.lyc_change_interrupt {
+            self.lyc_change_interrupt = false;
+            interrupt_mask = interrupt_mask | VIDEO_RESULT_MASK_STAT_INTERRUPT;
+        }
 
         interrupt_mask
     }
@@ -449,7 +456,9 @@ impl PPU {
             MEM_LOC_LY => panic!("Cannot write LY"),
             MEM_LOC_LYC => {
                 self.lyc = byte;
-                // TODO: This probably needs an LY==LYC interrupt check.
+                if self.lyc == self.ly {
+                    self.lyc_change_interrupt = true;
+                }
             }
             MEM_LOC_BGP => self.bgp = byte,
             MEM_LOC_OBP0 => self.obp0 = byte,
