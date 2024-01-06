@@ -3646,6 +3646,10 @@ impl VM {
                             .dma_oam_transfer(block);
                         // Not sure if we should spend 160 mcycle here.
                     } else {
+                        // if loc == 0xff47 || loc == 0xff48 || loc == 0xff49 {
+                        //     println!("PC={:04X} LOC={:04X} V={:02X}", self.cpu.pc, loc, byte);
+                        // }
+
                         self.video.write().unwrap().write(loc, byte);
                     }
                 }
