@@ -752,4 +752,21 @@ impl PPU {
             (self.obp1 >> (color * 2)) & 0b11
         }
     }
+
+    pub fn debug_oam(&self) {
+        for i in 0..40usize {
+            let addr = i * 4;
+
+            print!(
+                "\x1B[37m#{:04X}\x1B[0m \x1B[94m{:02X}\x1B[0m\x1B[94m{:02X}\x1B[0m\x1B[93m{:02X}\x1B[0m\x1B[96m{:02X}\x1B[0m  ",
+                addr, self.oam_ram[addr + 0], self.oam_ram[addr + 1], self.oam_ram[addr + 2], self.oam_ram[addr + 3]
+            );
+
+            if i % 8 == 7 {
+                println!("");
+            }
+        }
+
+        println!("");
+    }
 }

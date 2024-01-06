@@ -237,10 +237,6 @@ impl VM {
                 loop {
                     match self.read_repl()? {
                         Some(DebugCmd::Quit) => return Ok(()),
-                        Some(DebugCmd::Next(auto_step)) => {
-                            self.debugger.set_auto_step_count(auto_step - 1);
-                            break;
-                        }
                         Some(DebugCmd::PrintCpu) => self.print_debug_panel(),
                         Some(DebugCmd::PrintMemory(from, len)) => {
                             self.print_debug_memory(from, len);
@@ -3852,20 +3848,7 @@ impl VM {
     }
 
     fn debug_oam(&self) {
-        for i in 0..40u16 {
-            let addr = 0xfe00 + i * 4;
-
-            print!(
-                "\x1B[37m#{:04X}\x1B[0m \x1B[94m{:02X}\x1B[0m\x1B[94m{:02X}\x1B[0m\x1B[93m{:02X}\x1B[0m\x1B[96m{:02X}\x1B[0m  ",
-                addr, self.mem_read(addr + 0).unwrap(), self.mem_read(addr + 1).unwrap(), self.mem_read(addr + 2).unwrap(), self.mem_read(addr + 3).unwrap()
-            );
-
-            if i % 8 == 7 {
-                println!("");
-            }
-        }
-
-        println!("");
+        self.video.read().unwrap().debug_oam();
     }
 
     fn interrupt(&mut self, interrupt: Interrupt) {
