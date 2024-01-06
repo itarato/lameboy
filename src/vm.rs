@@ -21,7 +21,6 @@ use crate::util::*;
 
 enum DelayedOp {
     MasterInterruptEnable,
-    MasterInterruptDisable,
 }
 
 struct DelayedCommand {
@@ -274,9 +273,6 @@ impl VM {
                     match delayed_cmd.op {
                         DelayedOp::MasterInterruptEnable => {
                             self.interrupt_master_enable_flag = true;
-                        }
-                        DelayedOp::MasterInterruptDisable => {
-                            self.interrupt_master_enable_flag = false;
                         }
                     };
                 }
