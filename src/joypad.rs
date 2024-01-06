@@ -60,7 +60,7 @@ impl Joypad {
 
     pub fn get_p1(&self) -> u8 {
         match self.button_selector {
-            ButtonSelector::None => 0x3F,
+            ButtonSelector::None => 0xFF,
             ButtonSelector::DownUpLeftRight => {
                 let mut out = !0b0001_0000;
                 let buttons = self.buttons.read().expect("Failed read lock of buttons");

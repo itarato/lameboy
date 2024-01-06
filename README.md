@@ -21,7 +21,6 @@ Options:
       --disable-sound            Turn all sounds off
   -h, --help                     Print help
   -V, --version                  Print version
-
 ```
 
 - Dependencies: SDL2
