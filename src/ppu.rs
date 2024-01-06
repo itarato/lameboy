@@ -57,6 +57,7 @@ pub struct PPU {
     pub background_debug_window_id: Option<WindowId>,
     pub window_debug_window_id: Option<WindowId>,
     lyc_change_interrupt: bool,
+    wy_offset: u8,
 }
 
 impl PPU {
@@ -85,6 +86,7 @@ impl PPU {
             background_debug_window_id: None,
             window_debug_window_id: None,
             lyc_change_interrupt: false,
+            wy_offset: 0,
         }
     }
 
@@ -336,12 +338,17 @@ impl PPU {
     }
 
     fn draw_window_to_screen(&mut self, ly: u8) {
+        if self.wx >= DISPLAY_WIDTH as u8 + 7 {
+            self.wy_offset += 1;
+            return;
+        }
+
         let tile_data_section_start =
             (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
         let tile_map_start =
             (self.window_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize;
 
-        let actual_ly = ly as i16 - self.wy as i16;
+        let actual_ly = ly as i16 - self.wy as i16 - self.wy_offset as i16;
         if actual_ly < 0 || actual_ly >= 0x100 {
             return;
         }
@@ -581,7 +588,10 @@ impl PPU {
 
         match self.lcd_ppu_mode() {
             LcdPpuMode::M0 => self.is_mode0_hblank_interrupt_enabled(),
-            LcdPpuMode::M1 => self.is_mode1_vblank_interrupt_enabled(),
+            LcdPpuMode::M1 => {
+                self.wy_offset = 0;
+                self.is_mode1_vblank_interrupt_enabled()
+            }
             LcdPpuMode::M2 => self.is_mode2_oam_interrupt_enabled(),
             _ => false,
         }
