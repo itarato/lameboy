@@ -128,6 +128,7 @@ impl PPU {
                     if self.set_lcd_stat_ppu_mode(3) {
                         interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
                     }
+                    self.draw_line_to_screen(self.ly);
                 }
             }
             // Sending pixels to the LCD.
@@ -138,8 +139,6 @@ impl PPU {
                     self.stat_counter -= m3_len;
 
                     self.prev_m3_len = m3_len;
-
-                    self.draw_line_to_screen(self.ly);
 
                     // Mode to 0.
                     if self.set_lcd_stat_ppu_mode(0) {
@@ -216,10 +215,7 @@ impl PPU {
     pub fn draw_line_to_screen(&mut self, ly: u8) {
         if self.is_background_window_display_priority() {
             self.draw_background_to_screen(ly);
-
-            if self.is_window_display_enabled() {
-                self.draw_window_to_screen(ly);
-            }
+            self.draw_window_to_screen(ly);
         }
 
         if self.is_obj_sprite_display_enabled() {
@@ -338,7 +334,20 @@ impl PPU {
     }
 
     fn draw_window_to_screen(&mut self, ly: u8) {
-        if self.wx >= DISPLAY_WIDTH as u8 + 7 {
+        if ly < self.wy {
+            return;
+        }
+
+        if self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled() {
+            // If the window is used and a scan line interrupt
+            // disables it (either by writing to LCDC or by setting
+            // WX > 166) and a scan line interrupt a little later on
+            // enables it then the window will resume appearing on
+            // the screen at the exact position of the window where
+            // it left off earlier. This way, even if there are only
+            // 16 lines of useful graphics in the window, you could
+            // display the first 8 lines at the top of the screen and
+            // the next 8 lines at the bottom if you wanted to do so.
             self.wy_offset += 1;
             return;
         }
