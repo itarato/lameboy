@@ -101,6 +101,8 @@ fn main() -> Result<(), Error> {
     let vm_debug_log: Arc<RwLock<Vec<String>>> = Arc::new(RwLock::new(vec![]));
 
     let global_exit_flag = Arc::new(AtomicBool::new(false));
+    let should_generate_vm_debug_log = Arc::new(AtomicBool::new(false));
+
     let video = Arc::new(RwLock::new(PPU::new(args.nofps)));
     let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
@@ -109,6 +111,7 @@ fn main() -> Result<(), Error> {
         let global_exit_flag = global_exit_flag.clone();
         let video = video.clone();
         let vm_debug_log = vm_debug_log.clone();
+        let should_generate_vm_debug_log = should_generate_vm_debug_log.clone();
 
         move || {
             if let Ok(mut vm) = VM::new(
@@ -127,7 +130,7 @@ fn main() -> Result<(), Error> {
                     return;
                 }
 
-                if let Err(err) = vm.run() {
+                if let Err(err) = vm.run(should_generate_vm_debug_log) {
                     log::error!("Failed VM run: {}", err);
                     vm.dump_op_history();
                     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
@@ -148,6 +151,7 @@ fn main() -> Result<(), Error> {
         args.background,
         args.window,
         vm_debug_log,
+        should_generate_vm_debug_log,
     );
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);

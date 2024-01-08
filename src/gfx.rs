@@ -42,6 +42,7 @@ struct ImguiService {
     last_cursor: Option<imgui::MouseCursor>,
     show_ui: bool,
     vm_debug_log: Arc<RwLock<Vec<String>>>,
+    global_should_generate_vm_debug_log: Arc<AtomicBool>,
 }
 
 impl ImguiService {
@@ -50,6 +51,7 @@ impl ImguiService {
         pixels: &Pixels,
         show_ui: bool,
         vm_debug_log: Arc<RwLock<Vec<String>>>,
+        global_should_generate_vm_debug_log: Arc<AtomicBool>,
     ) -> ImguiService {
         let mut imgui = imgui::Context::create();
         imgui.set_ini_filename(None);
@@ -92,6 +94,7 @@ impl ImguiService {
             last_cursor: None,
             show_ui,
             vm_debug_log,
+            global_should_generate_vm_debug_log,
         }
     }
 
@@ -128,6 +131,11 @@ impl ImguiService {
                         .iter()
                         .for_each(|line| ui.text(line));
                 });
+
+            if !self.show_ui {
+                self.global_should_generate_vm_debug_log
+                    .store(false, Ordering::Relaxed);
+            }
         }
 
         let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
@@ -189,6 +197,7 @@ pub fn run(
     with_background_debug_window: bool,
     with_window_debug_window: bool,
     vm_debug_log: Arc<RwLock<Vec<String>>>,
+    global_should_generate_vm_debug_log: Arc<AtomicBool>,
 ) {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
@@ -223,7 +232,13 @@ pub fn run(
     video.write().unwrap().background_debug_window_id = Some(bg_window.id());
     video.write().unwrap().window_debug_window_id = Some(win_window.id());
 
-    let mut imgui_service = ImguiService::new(&main_window, &main_pixels, false, vm_debug_log);
+    let mut imgui_service = ImguiService::new(
+        &main_window,
+        &main_pixels,
+        false,
+        vm_debug_log,
+        global_should_generate_vm_debug_log.clone(),
+    );
 
     pixels_map.insert(tile_window.id(), tile_pixels);
     pixels_map.insert(bg_window.id(), bg_pixels);
@@ -291,6 +306,7 @@ pub fn run(
 
             if input.key_released(VirtualKeyCode::I) {
                 imgui_service.show_ui = !imgui_service.show_ui;
+                global_should_generate_vm_debug_log.store(imgui_service.show_ui, Ordering::Relaxed);
             }
 
             if input.key_released(VirtualKeyCode::Key1) {

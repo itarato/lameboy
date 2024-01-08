@@ -230,11 +230,13 @@ impl VM {
         Ok(())
     }
 
-    pub fn run(&mut self) -> Result<(), Error> {
+    pub fn run(&mut self, should_generate_vm_debug_log: Arc<AtomicBool>) -> Result<(), Error> {
         log::info!("VM eval loop start");
 
         loop {
-            self.update_vm_debug_log();
+            if should_generate_vm_debug_log.load(std::sync::atomic::Ordering::Relaxed) {
+                self.update_vm_debug_log();
+            }
 
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
