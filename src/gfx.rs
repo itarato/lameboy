@@ -162,12 +162,14 @@ fn make_window(
     title: &str,
     width: u32,
     height: u32,
+    visible: bool,
 ) -> (Window, Pixels) {
     let size = LogicalSize::new(width as f64, height as f64);
     let window = WindowBuilder::new()
         .with_title(title)
         .with_inner_size(size.to_physical::<f64>(2.0))
         .with_min_inner_size(size)
+        .with_visible(visible)
         .build(&event_loop)
         .unwrap();
 
@@ -191,39 +193,44 @@ pub fn run(
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
 
-    let mut windows = HashMap::new();
+    let mut show_tiles = with_tile_debug_window;
+    let mut show_bg = with_background_debug_window;
+    let mut show_win = with_window_debug_window;
 
-    if with_tile_debug_window {
-        let (window, pixels) = make_window(&event_loop, "VRAM Tile Map", 8 * 16, 8 * 24);
-        video.write().unwrap().tile_debug_window_id = Some(window.id());
-        windows.insert(window.id(), (window, pixels));
-    }
+    let mut pixels_map = HashMap::new();
 
-    if with_background_debug_window {
-        // 32 * 32 tiles (32 tile * 8 pixel = 256)
-        let (window, pixels) = make_window(&event_loop, "Background map (32 x 32)", 256, 256);
-        video.write().unwrap().background_debug_window_id = Some(window.id());
-        windows.insert(window.id(), (window, pixels));
-    }
+    let (tile_window, tile_pixels) =
+        make_window(&event_loop, "(1) VRAM Tile Map", 8 * 16, 8 * 24, show_tiles);
+    let (bg_window, bg_pixels) = make_window(
+        &event_loop,
+        "(2) Background map (32 x 32)",
+        256,
+        256,
+        show_bg,
+    );
+    let (win_window, win_pixels) =
+        make_window(&event_loop, "(3) Window map (32 x 32)", 256, 256, show_win);
+    let (main_window, main_pixels) = make_window(
+        &event_loop,
+        "Lameboy 0.0",
+        DISPLAY_WIDTH,
+        DISPLAY_HEIGHT,
+        true,
+    );
 
-    if with_window_debug_window {
-        // 32 * 32 tiles (32 tile * 8 pixel = 256)
-        let (window, pixels) = make_window(&event_loop, "Window map (32 x 32)", 256, 256);
-        video.write().unwrap().window_debug_window_id = Some(window.id());
-        windows.insert(window.id(), (window, pixels));
-    }
-
-    // 8x8 tiles
-    // 16 tiles wide
-    // 24 tiles tall
-    let (main_window, main_pixels) =
-        make_window(&event_loop, "Lameboy 0.0", DISPLAY_WIDTH, DISPLAY_HEIGHT);
     video.write().unwrap().main_window_id = Some(main_window.id());
-    let main_window_id = main_window.id();
+    video.write().unwrap().tile_debug_window_id = Some(tile_window.id());
+    video.write().unwrap().background_debug_window_id = Some(bg_window.id());
+    video.write().unwrap().window_debug_window_id = Some(win_window.id());
 
     let mut imgui_service = ImguiService::new(&main_window, &main_pixels, false, vm_debug_log);
 
-    windows.insert(main_window.id(), (main_window, main_pixels));
+    pixels_map.insert(tile_window.id(), tile_pixels);
+    pixels_map.insert(bg_window.id(), bg_pixels);
+    pixels_map.insert(win_window.id(), win_pixels);
+    pixels_map.insert(main_window.id(), main_pixels);
+
+    let main_window_id = main_window.id();
 
     let global_exit_flag = global_exit_flag.clone();
 
@@ -231,7 +238,7 @@ pub fn run(
         match &event {
             Event::WindowEvent { window_id, event } => match event {
                 WindowEvent::Resized(size) => {
-                    if let Some((_window, pixels)) = windows.get_mut(window_id) {
+                    if let Some(pixels) = pixels_map.get_mut(window_id) {
                         if let Err(err) = pixels.resize_surface(size.width, size.height) {
                             error!("pixels.resize_surface error: {}", err);
                             control_flow.set_exit();
@@ -242,7 +249,7 @@ pub fn run(
                 _ => {}
             },
             Event::RedrawRequested(window_id) => {
-                if let Some((window, pixels)) = windows.get_mut(window_id) {
+                if let Some(pixels) = pixels_map.get_mut(window_id) {
                     video
                         .read()
                         .unwrap()
@@ -250,13 +257,13 @@ pub fn run(
 
                     if *window_id == main_window_id {
                         imgui_service
-                            .prepare(&window)
+                            .prepare(&main_window)
                             .expect("Failed preparing ImGUI context");
 
                         let _render_result = pixels.render_with(|encoder, target, context| {
                             context.scaling_renderer.render(encoder, target);
                             imgui_service
-                                .render(&window, encoder, target, context)
+                                .render(&main_window, encoder, target, context)
                                 .expect("Failed rendering ImGUI");
                             Ok(())
                         });
@@ -273,7 +280,7 @@ pub fn run(
         };
 
         // Handle input events
-        imgui_service.handle_event(&windows[&main_window_id].0, &event);
+        imgui_service.handle_event(&main_window, &event);
         if input.update(&event) {
             // Close events
             if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
@@ -282,8 +289,21 @@ pub fn run(
                 return;
             }
 
-            if input.key_pressed(VirtualKeyCode::I) {
+            if input.key_released(VirtualKeyCode::I) {
                 imgui_service.show_ui = !imgui_service.show_ui;
+            }
+
+            if input.key_released(VirtualKeyCode::Key1) {
+                show_tiles = !show_tiles;
+                tile_window.set_visible(show_tiles);
+            }
+            if input.key_released(VirtualKeyCode::Key2) {
+                show_bg = !show_bg;
+                bg_window.set_visible(show_bg);
+            }
+            if input.key_released(VirtualKeyCode::Key3) {
+                show_win = !show_win;
+                win_window.set_visible(show_win);
             }
 
             if input.key_pressed(VirtualKeyCode::B) {
@@ -342,9 +362,16 @@ pub fn run(
                 buttons.write().expect("Cannot lock buttons").right = false;
             }
 
-            // Update internal state and request a redraw
-            for (_id, (window, _pixels)) in &windows {
-                window.request_redraw();
+            main_window.request_redraw();
+
+            if show_tiles {
+                tile_window.request_redraw();
+            }
+            if show_bg {
+                bg_window.request_redraw();
+            }
+            if show_win {
+                win_window.request_redraw();
             }
         }
 

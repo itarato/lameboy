@@ -30,7 +30,8 @@ Options:
   - Start / Select: `Z`, `X`
   - A / B: `N`, `M`
   - Break execution: `B`
-  - Debug menu: `I`
+  - VM debug panel (toggle): `I`
+  - VRAM tiles / bg map / win map (toggle): `1`, `2`, `3`
   - Quit: `Esc`
 
 ## Screenshots
