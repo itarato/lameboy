@@ -26,10 +26,11 @@ Options:
 - Dependencies: SDL2
 - Tested OS: Linux, Windows
 - Keyboard:
-  - Up / Left / Down / Right: `W`, `A`, `S`, `D`
+  - Up / Left / Down / Right: `↑`, `←`, `↓`, `→`
   - Start / Select: `Z`, `X`
   - A / B: `N`, `M`
   - Break execution: `B`
+  - Debug menu: `I`
   - Quit: `Esc`
 
 ## Screenshots
