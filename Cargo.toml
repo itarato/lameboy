@@ -9,11 +9,8 @@ edition = "2021"
 simple_logger = "4.0.0"
 log = "0.4"
 clap = { version = "4.1.10", features = ["derive"] }
-pixels = "0.12.0"
-winit = "0.28.6"
-winit_input_helper = "0.14.1"
 
 [dependencies.sdl2]
 version = "0.36"
-default-features = true
-features = ["mixer"]
+default-features = false
+features = ["mixer", "ttf"]

@@ -1,6 +1,7 @@
-use winit::window::WindowId;
+use sdl2::render::Texture;
 
 use crate::conf::*;
+use crate::gfx::Gfx;
 use crate::util::*;
 use std::thread;
 use std::time::Duration;
@@ -32,7 +33,7 @@ enum ObjSpriteSize {
 pub const VIDEO_RESULT_MASK_STAT_INTERRUPT: u8 = 0b1;
 pub const VIDEO_RESULT_MASK_VBLANK_INTERRUPT: u8 = 0b10;
 
-pub struct PPU {
+pub struct PPU<'a> {
     pub stat_counter: u64,
     // Used to know the variable len of an M3 phase, so M0 can be adjusted.
     prev_m3_len: u64,
@@ -52,16 +53,13 @@ pub struct PPU {
     oam_ram: [u8; OAM_RAM_SIZE],
     display_buffer: [u8; DISPLAY_PIXELS_COUNT],
     ignore_fps_limiter: bool,
-    pub main_window_id: Option<WindowId>,
-    pub tile_debug_window_id: Option<WindowId>,
-    pub background_debug_window_id: Option<WindowId>,
-    pub window_debug_window_id: Option<WindowId>,
     lyc_change_interrupt: bool,
     wy_offset: u8,
+    gfx: Gfx<'a>,
 }
 
-impl PPU {
-    pub fn new(ignore_fps_limiter: bool) -> Self {
+impl<'a> PPU<'a> {
+    pub fn new(ignore_fps_limiter: bool, gfx: Gfx<'a>) -> Self {
         PPU {
             stat_counter: 0,
             prev_m3_len: 252,
@@ -81,12 +79,9 @@ impl PPU {
             oam_ram: [0; OAM_RAM_SIZE],
             display_buffer: [0; DISPLAY_PIXELS_COUNT],
             ignore_fps_limiter,
-            main_window_id: None,
-            tile_debug_window_id: None,
-            background_debug_window_id: None,
-            window_debug_window_id: None,
             lyc_change_interrupt: false,
             wy_offset: 0,
+            gfx,
         }
     }
 
@@ -621,16 +616,14 @@ impl PPU {
         self.fps_ctrl_time = Instant::now();
     }
 
-    pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {
-        if Some(window_id) == self.main_window_id {
-            self.draw_display(frame);
-        } else if Some(window_id) == self.tile_debug_window_id {
-            self.draw_debug_tiles(frame);
-        } else if Some(window_id) == self.background_debug_window_id {
-            self.draw_debug_background(frame);
-        } else if Some(window_id) == self.window_debug_window_id {
-            self.draw_debug_window(frame);
-        }
+    pub fn fill_frame_buffer(&self, id: u8, texture: &mut Texture) {
+        match id {
+            // CANVAS_ID_MAIN => self.draw_display(&mut texture),
+            // CANVAS_ID_TILES => self.draw_debug_tiles(&mut texture),
+            // CANVAS_ID_BACKGROUND => self.draw_debug_background(&mut texture),
+            // CANVAS_ID_WINDOW => self.draw_debug_window(&mut texture),
+            _ => (),
+        };
     }
 
     /**
@@ -730,8 +723,9 @@ impl PPU {
         }
     }
 
-    pub fn draw_display(&self, frame: &mut [u8]) {
+    pub fn draw_display(&self, texture: &mut Texture) {
         let lcd_on = self.is_lcd_display_enabled();
+        let mut proxy_buffer = [0u8; 160 * 144 * 4];
 
         for y in 0..DISPLAY_HEIGHT {
             for x in 0..DISPLAY_WIDTH {
@@ -744,12 +738,22 @@ impl PPU {
                     [0; 4]
                 };
 
-                frame[frame_pos + 0] = pixel_color[0];
-                frame[frame_pos + 1] = pixel_color[1];
-                frame[frame_pos + 2] = pixel_color[2];
-                frame[frame_pos + 3] = pixel_color[3];
+                self.set_pixel_color_to_rgba8888_frame_buffer(
+                    x as usize,
+                    y as usize,
+                    DISPLAY_WIDTH as usize,
+                    self.display_buffer[pixel_pos],
+                    0,
+                    &mut proxy_buffer[..],
+                );
+                // frame[frame_pos + 0] = pixel_color[0];
+                // frame[frame_pos + 1] = pixel_color[1];
+                // frame[frame_pos + 2] = pixel_color[2];
+                // frame[frame_pos + 3] = pixel_color[3];
             }
         }
+
+        texture.update(None, &proxy_buffer, 4);
     }
 
     fn pixel_color(&self, code: u8) -> [u8; 4] {
@@ -763,19 +767,39 @@ impl PPU {
     }
 
     fn apply_bg_win_palette(&self, color: u8) -> u8 {
-        assert!(color <= 0b11);
-        (self.bgp >> (color * 2)) & 0b11
+        self.apply_palette(color, self.bgp)
     }
 
-    fn apply_obj_palette(&self, color: u8, palette: u8) -> u8 {
-        assert!(palette <= 1);
-        assert!(color <= 0b11);
-
-        if palette == 0 {
-            (self.obp0 >> (color * 2)) & 0b11
+    fn apply_obj_palette(&self, color: u8, palette_selector: u8) -> u8 {
+        assert!(palette_selector <= 1);
+        if palette_selector == 0 {
+            self.apply_palette(color, self.obp0)
         } else {
-            (self.obp1 >> (color * 2)) & 0b11
+            self.apply_palette(color, self.obp1)
         }
+    }
+
+    fn apply_palette(&self, color: u8, palette: u8) -> u8 {
+        assert!(color <= 0b11);
+        (palette >> (color * 2)) & 0b11
+    }
+
+    fn set_pixel_color_to_rgba8888_frame_buffer(
+        &self,
+        x: usize,
+        y: usize,
+        width: usize,
+        raw_dmg_color: u8,
+        palette: u8,
+        frame_buffer: &mut [u8],
+    ) {
+        let final_dmg_color = self.apply_palette(raw_dmg_color, palette);
+        let rgba8888_color = self.pixel_color(final_dmg_color);
+
+        frame_buffer[(y * width + x) * 4 + 0] = rgba8888_color[0];
+        frame_buffer[(y * width + x) * 4 + 1] = rgba8888_color[1];
+        frame_buffer[(y * width + x) * 4 + 2] = rgba8888_color[2];
+        frame_buffer[(y * width + x) * 4 + 3] = rgba8888_color[3];
     }
 
     pub fn debug_oam(&self) {

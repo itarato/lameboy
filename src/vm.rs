@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::stdin;
 use std::io::stdout;
 use std::io::Read;
 use std::io::Write;
+use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -82,8 +84,7 @@ impl Interrupt {
     }
 }
 
-pub struct VM {
-    global_exit_flag: Arc<AtomicBool>,
+pub struct VM<'a> {
     mem: Mmu,
     cpu: Cpu,
     serial: Serial,
@@ -96,22 +97,23 @@ pub struct VM {
     interrupt_master_enable_flag: bool,
     interrupt_enable: u8,
     interrupt_flag: u8,
-    video: Arc<RwLock<PPU>>,
+    video: PPU<'a>,
     op_history: SizedQueue<(u16, u8)>,           // pc + op
     deep_op_history: SizedQueue<(u64, u16, u8)>, // counter + pc + op
     delayed_cmds: Vec<DelayedCommand>,
     opcode_dump_file: Option<File>,
+    quit_requested: Rc<RefCell<bool>>,
 }
 
-impl VM {
+impl<'a> VM<'a> {
     pub fn new(
-        global_exit_flag: Arc<AtomicBool>,
         cartridge: Cartridge,
         debugger: Debugger,
-        video: Arc<RwLock<PPU>>,
+        video: PPU<'a>,
         is_opcode_file_dump: bool,
         joypad: Joypad,
         disable_sound: bool,
+        quit_requested: Rc<RefCell<bool>>,
     ) -> Result<Self, Error> {
         let opcode_dump_file = if is_opcode_file_dump {
             Some(File::create("/tmp/lameboy_dump.txt").unwrap())
@@ -120,7 +122,6 @@ impl VM {
         };
 
         Ok(VM {
-            global_exit_flag,
             mem: Mmu::new(cartridge)?,
             cpu: Cpu::new(),
             serial: Serial::new(),
@@ -139,6 +140,7 @@ impl VM {
             deep_op_history: SizedQueue::new(128),
             delayed_cmds: vec![],
             opcode_dump_file,
+            quit_requested,
         })
     }
 
@@ -293,7 +295,7 @@ impl VM {
             }
 
             if self.state != State::Stop {
-                let video_interrupt_mask = self.video.write().unwrap().update(diff_cpu_clocks);
+                let video_interrupt_mask = self.video.update(diff_cpu_clocks);
                 if video_interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT > 0 {
                     self.interrupt_flag |= 0b10;
                 }
@@ -308,10 +310,7 @@ impl VM {
 
             self.counter += 1;
 
-            if self
-                .global_exit_flag
-                .load(std::sync::atomic::Ordering::Acquire)
-            {
+            if *self.quit_requested.borrow() {
                 break;
             }
         }
@@ -323,7 +322,7 @@ impl VM {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.mem.reset()?;
-        self.video.write().unwrap().reset();
+        self.video.reset();
 
         // Byte 7/6/5: Unused.
         // Byte 0: VBlank interrupt.
@@ -3544,7 +3543,7 @@ impl VM {
             "\x1B[93mD\x1B[0m {:02X} {:02X} \x1B[93mE\x1B[0m |             | \x1B[93mLY\x1B[0m {:02X}",
             self.cpu.get_d(),
             self.cpu.get_e(),
-            self.video.read().unwrap().ly
+            self.video.ly
         );
         println!(
             "\x1B[93mH\x1B[0m {:02X} {:02X} \x1B[93mL\x1B[0m",
@@ -3600,7 +3599,7 @@ impl VM {
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
         } else if loc <= MEM_AREA_VRAM_END {
-            self.video.write().unwrap().write(loc, byte);
+            self.video.write(loc, byte);
         } else if loc <= MEM_AREA_EXTERNAL_END {
             self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_WRAM_END {
@@ -3608,7 +3607,7 @@ impl VM {
         } else if loc <= MEM_AREA_ECHO_END {
             return Err("Write to MEM_AREA_ECHO is not implemented".into());
         } else if loc <= MEM_AREA_OAM_END {
-            self.video.write().unwrap().write(loc, byte);
+            self.video.write(loc, byte);
         } else if loc <= MEM_AREA_PROHIBITED_END {
             // Ignore for now. BGB seems to do nothing with these (eg LD (0xFEFF) a).
             // return Err("Write to MEM_AREA_PROHIBITED is not implemented".into());
@@ -3637,13 +3636,10 @@ impl VM {
                         let block = (0..0xA0)
                             .map(|offs| self.mem_read(addr + offs).expect("Cannot read for DMA"))
                             .collect::<Vec<_>>();
-                        self.video
-                            .write()
-                            .expect("Failed locking for DMA write")
-                            .dma_oam_transfer(block);
+                        self.video.dma_oam_transfer(block);
                         // Not sure if we should spend 160 mcycle here.
                     } else {
-                        self.video.write().unwrap().write(loc, byte);
+                        self.video.write(loc, byte);
                     }
                 }
                 MEM_LOC_KEY1 => unimplemented!("Write to register KEY1 is not implemented"),
@@ -3700,9 +3696,9 @@ impl VM {
         match loc {
             // TODO: Add oam/vram read here proxy to video
             MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_N_END => self.mem.read(loc),
-            MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => self.video.read().unwrap().read(loc),
+            MEM_AREA_VRAM_START..=MEM_AREA_VRAM_END => self.video.read(loc),
             MEM_AREA_EXTERNAL_START..=MEM_AREA_ECHO_END => self.mem.read(loc),
-            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => self.video.read().unwrap().read(loc),
+            MEM_AREA_OAM_START..=MEM_AREA_OAM_END => self.video.read(loc),
             MEM_AREA_PROHIBITED_START..=MEM_AREA_PROHIBITED_END => {
                 Err(format!("Read from prohibited mem area: {:#06X}", loc).into())
             }
@@ -3716,7 +3712,7 @@ impl VM {
                 MEM_LOC_TAC => Ok(self.timer.tac()),
                 MEM_LOC_IF => Ok(self.interrupt_flag),
                 MEM_LOC_NR10..=MEM_LOC_WAVE_PATTERN_END => self.sound.read(loc),
-                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read().unwrap().read(loc),
+                MEM_LOC_LCDC..=MEM_LOC_WX => self.video.read(loc),
                 MEM_LOC_KEY1 => {
                     // FF4D — KEY1 (CGB Mode only): Prepare speed switch --> ignore.
                     Ok(0xFF)
@@ -3845,7 +3841,7 @@ impl VM {
     }
 
     fn debug_oam(&self) {
-        self.video.read().unwrap().debug_oam();
+        self.video.debug_oam();
     }
 
     fn interrupt(&mut self, interrupt: Interrupt) {

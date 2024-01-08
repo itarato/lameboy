@@ -1,6 +1,10 @@
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use log::info;
@@ -21,18 +25,18 @@ pub struct Debugger {
     pc_breakpoints: Vec<u16>,
     auto_step_count: usize,
     one_time_break: bool,
-    breakpoint_flag: Arc<AtomicBool>,
+    breakpoint_requested: Rc<RefCell<bool>>,
 }
 
 impl Debugger {
-    pub fn new(breakpoint_flag: Arc<AtomicBool>) -> Self {
+    pub fn new(breakpoint_requested: Rc<RefCell<bool>>) -> Self {
         Self {
             break_on_start: false,
             step_by_step: false,
             pc_breakpoints: vec![],
             auto_step_count: 0,
             one_time_break: false,
-            breakpoint_flag,
+            breakpoint_requested,
         }
     }
 
@@ -156,10 +160,8 @@ impl Debugger {
             return true;
         }
 
-        if let Ok(_) =
-            self.breakpoint_flag
-                .compare_exchange(true, false, Ordering::Relaxed, Ordering::Relaxed)
-        {
+        if *self.breakpoint_requested.borrow() {
+            *self.breakpoint_requested.borrow_mut() = false;
             return true;
         }
 

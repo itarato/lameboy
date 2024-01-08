@@ -7,198 +7,104 @@
  * Object: 1 (8x8) or 2 (8x16) tiles
  * VRAM: (0x8000-0x97FF) 16 bytes sections x 384
  */
-use std::{
-    collections::HashMap,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
-    },
+use std::{cell::RefCell, rc::Rc};
+
+use crate::{joypad::JoypadInputRequest, ppu::PPU};
+
+use sdl2::{
+    event::Event,
+    keyboard::Keycode,
+    render::{Canvas, Texture},
+    video::Window,
+    EventPump, Sdl, VideoSubsystem,
 };
 
-use crate::{conf::*, joypad::JoypadInputRequest, ppu::PPU};
-
-use log::error;
-use pixels::{Pixels, SurfaceTexture};
-use winit::{
-    dpi::LogicalSize,
-    event::{Event, VirtualKeyCode, WindowEvent},
-    event_loop::EventLoop,
-    window::{Window, WindowBuilder},
-};
-use winit_input_helper::WinitInputHelper;
-
-fn make_window(
-    event_loop: &EventLoop<()>,
-    title: &str,
-    width: u32,
-    height: u32,
-) -> (Window, Pixels) {
-    let size = LogicalSize::new(width as f64, height as f64);
-    let window = WindowBuilder::new()
-        .with_title(title)
-        .with_inner_size(size.to_physical::<f64>(2.0))
-        .with_min_inner_size(size)
-        .build(&event_loop)
-        .unwrap();
-
-    let window_size = window.inner_size();
-    let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-    let pixels = Pixels::new(width, height, surface_texture).expect("Failed instantiating Pixels");
-
-    (window, pixels)
+pub struct PixelWindowBundle<'t> {
+    canvas: Canvas<Window>,
+    texture: Texture<'t>,
 }
 
-pub fn run(
-    global_exit_flag: Arc<AtomicBool>,
-    video: Arc<RwLock<PPU>>,
-    breakpoint_flag: Arc<AtomicBool>,
-    buttons: Arc<RwLock<JoypadInputRequest>>,
-    with_tile_debug_window: bool,
-    with_background_debug_window: bool,
-    with_window_debug_window: bool,
-) {
-    let event_loop = EventLoop::new();
-    let mut input = WinitInputHelper::new();
+impl<'t> PixelWindowBundle<'t> {
+    pub fn new(canvas: Canvas<Window>, texture: Texture<'t>) -> PixelWindowBundle {
+        PixelWindowBundle { canvas, texture }
+    }
+}
 
-    let mut windows = HashMap::new();
+pub struct Gfx<'a> {
+    event_pump: EventPump,
+    breakpoint_requested: Rc<RefCell<bool>>,
+    quit_requested: Rc<RefCell<bool>>,
+    joypad_input: Rc<RefCell<JoypadInputRequest>>,
+    main_window: PixelWindowBundle<'a>,
+    tile_window: Option<PixelWindowBundle<'a>>,
+    background_window: Option<PixelWindowBundle<'a>>,
+    window_window: Option<PixelWindowBundle<'a>>,
+}
 
-    if with_tile_debug_window {
-        let (window, pixels) = make_window(&event_loop, "VRAM Tile Map", 8 * 16, 8 * 24);
-        video.write().unwrap().tile_debug_window_id = Some(window.id());
-        windows.insert(window.id(), (window, pixels));
+impl<'a> Gfx<'a> {
+    pub fn new(
+        sdl2_context: &Sdl,
+        sdl2_video: &VideoSubsystem,
+        breakpoint_requested: Rc<RefCell<bool>>,
+        quit_requested: Rc<RefCell<bool>>,
+        joypad_input: Rc<RefCell<JoypadInputRequest>>,
+        main_window: PixelWindowBundle<'a>,
+        tile_window: Option<PixelWindowBundle<'a>>,
+        background_window: Option<PixelWindowBundle<'a>>,
+        window_window: Option<PixelWindowBundle<'a>>,
+    ) -> Gfx<'a> {
+        let event_pump = sdl2_context.event_pump().unwrap();
+
+        Gfx {
+            event_pump,
+            breakpoint_requested,
+            quit_requested,
+            joypad_input,
+            main_window,
+            tile_window,
+            background_window,
+            window_window,
+        }
     }
 
-    if with_background_debug_window {
-        // 32 * 32 tiles (32 tile * 8 pixel = 256)
-        let (window, pixels) = make_window(&event_loop, "Background map (32 x 32)", 256, 256);
-        video.write().unwrap().background_debug_window_id = Some(window.id());
-        windows.insert(window.id(), (window, pixels));
-    }
-
-    if with_window_debug_window {
-        // 32 * 32 tiles (32 tile * 8 pixel = 256)
-        let (window, pixels) = make_window(&event_loop, "Window map (32 x 32)", 256, 256);
-        video.write().unwrap().window_debug_window_id = Some(window.id());
-        windows.insert(window.id(), (window, pixels));
-    }
-
-    // 8x8 tiles
-    // 16 tiles wide
-    // 24 tiles tall
-    let (main_window, pixels) =
-        make_window(&event_loop, "Lameboy 0.0", DISPLAY_WIDTH, DISPLAY_HEIGHT);
-    video.write().unwrap().main_window_id = Some(main_window.id());
-    windows.insert(main_window.id(), (main_window, pixels));
-
-    let global_exit_flag = global_exit_flag.clone();
-
-    event_loop.run(move |event, _, control_flow| {
-        match &event {
-            Event::WindowEvent { window_id, event } => match event {
-                WindowEvent::Resized(size) => {
-                    if let Some((_window, pixels)) = windows.get_mut(window_id) {
-                        if let Err(err) = pixels.resize_surface(size.width, size.height) {
-                            error!("pixels.resize_surface error: {}", err);
-                            control_flow.set_exit();
-                            return;
-                        }
-                    }
-                }
+    pub fn frame(&mut self, video: &mut PPU) {
+        let mut out = 0;
+        for event in self.event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. } => *self.quit_requested.borrow_mut() = true,
+                Event::KeyDown { keycode, .. } => match keycode {
+                    Some(Keycode::Escape) => *self.quit_requested.borrow_mut() = true,
+                    Some(Keycode::B) => *self.breakpoint_requested.borrow_mut() = true,
+                    Some(Keycode::Z) => (*self.joypad_input.borrow_mut()).start = true,
+                    Some(Keycode::X) => (*self.joypad_input.borrow_mut()).select = true,
+                    Some(Keycode::N) => (*self.joypad_input.borrow_mut()).a = true,
+                    Some(Keycode::M) => (*self.joypad_input.borrow_mut()).b = true,
+                    Some(Keycode::W) => (*self.joypad_input.borrow_mut()).up = true,
+                    Some(Keycode::S) => (*self.joypad_input.borrow_mut()).down = true,
+                    Some(Keycode::A) => (*self.joypad_input.borrow_mut()).left = true,
+                    Some(Keycode::D) => (*self.joypad_input.borrow_mut()).right = true,
+                    _ => {}
+                },
+                Event::KeyUp { keycode, .. } => match keycode {
+                    Some(Keycode::Z) => (*self.joypad_input.borrow_mut()).start = false,
+                    Some(Keycode::X) => (*self.joypad_input.borrow_mut()).select = false,
+                    Some(Keycode::N) => (*self.joypad_input.borrow_mut()).a = false,
+                    Some(Keycode::M) => (*self.joypad_input.borrow_mut()).b = false,
+                    Some(Keycode::W) => (*self.joypad_input.borrow_mut()).up = false,
+                    Some(Keycode::S) => (*self.joypad_input.borrow_mut()).down = false,
+                    Some(Keycode::A) => (*self.joypad_input.borrow_mut()).left = false,
+                    Some(Keycode::D) => (*self.joypad_input.borrow_mut()).right = false,
+                    _ => {}
+                },
                 _ => {}
-            },
-            Event::RedrawRequested(window_id) => {
-                if let Some((_window, pixels)) = windows.get_mut(window_id) {
-                    video
-                        .read()
-                        .unwrap()
-                        .fill_frame_buffer(*window_id, pixels.frame_mut());
-                    if let Err(_) = pixels.render() {
-                        global_exit_flag.store(false, Ordering::Release);
-                        control_flow.set_exit();
-                        return;
-                    }
-                }
-            }
-            _ => {}
-        };
-
-        // Handle input events
-        if input.update(&event) {
-            // Close events
-            if input.key_pressed(VirtualKeyCode::Escape)
-                || input.close_requested()
-                || input.destroyed()
-            {
-                global_exit_flag.store(false, Ordering::Release);
-                control_flow.set_exit();
-                return;
-            }
-
-            if input.key_pressed(VirtualKeyCode::B) {
-                breakpoint_flag.store(true, Ordering::Relaxed);
-            }
-
-            if input.key_pressed(VirtualKeyCode::Z) {
-                buttons.write().expect("Cannot lock buttons").start = true;
-            }
-            if input.key_pressed(VirtualKeyCode::X) {
-                buttons.write().expect("Cannot lock buttons").select = true;
-            }
-            if input.key_pressed(VirtualKeyCode::N) {
-                buttons.write().expect("Cannot lock buttons").a = true;
-            }
-            if input.key_pressed(VirtualKeyCode::M) {
-                buttons.write().expect("Cannot lock buttons").b = true;
-            }
-
-            if input.key_pressed(VirtualKeyCode::W) {
-                buttons.write().expect("Cannot lock buttons").up = true;
-            }
-            if input.key_pressed(VirtualKeyCode::S) {
-                buttons.write().expect("Cannot lock buttons").down = true;
-            }
-            if input.key_pressed(VirtualKeyCode::A) {
-                buttons.write().expect("Cannot lock buttons").left = true;
-            }
-            if input.key_pressed(VirtualKeyCode::D) {
-                buttons.write().expect("Cannot lock buttons").right = true;
-            }
-
-            if input.key_released(VirtualKeyCode::Z) {
-                buttons.write().expect("Cannot lock buttons").start = false;
-            }
-            if input.key_released(VirtualKeyCode::X) {
-                buttons.write().expect("Cannot lock buttons").select = false;
-            }
-            if input.key_released(VirtualKeyCode::N) {
-                buttons.write().expect("Cannot lock buttons").a = false;
-            }
-            if input.key_released(VirtualKeyCode::M) {
-                buttons.write().expect("Cannot lock buttons").b = false;
-            }
-
-            if input.key_released(VirtualKeyCode::W) {
-                buttons.write().expect("Cannot lock buttons").up = false;
-            }
-            if input.key_released(VirtualKeyCode::S) {
-                buttons.write().expect("Cannot lock buttons").down = false;
-            }
-            if input.key_released(VirtualKeyCode::A) {
-                buttons.write().expect("Cannot lock buttons").left = false;
-            }
-            if input.key_released(VirtualKeyCode::D) {
-                buttons.write().expect("Cannot lock buttons").right = false;
-            }
-
-            // Update internal state and request a redraw
-            for (_id, (window, _pixels)) in &windows {
-                window.request_redraw();
-            }
+            };
         }
 
-        if global_exit_flag.load(Ordering::Acquire) {
-            control_flow.set_exit();
-            return;
-        }
-    });
+        video.draw_display(&mut self.main_window.texture);
+
+        self.main_window
+            .canvas
+            .copy(&self.main_window.texture, None, None);
+        self.main_window.canvas.present();
+    }
 }

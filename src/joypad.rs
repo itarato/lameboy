@@ -1,5 +1,9 @@
 use crate::conf::Error;
-use std::sync::{Arc, RwLock};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Default)]
 pub struct JoypadInputRequest {
@@ -27,12 +31,12 @@ enum ButtonSelector {
 
 pub struct Joypad {
     need_interrupt: bool,
-    buttons: Arc<RwLock<JoypadInputRequest>>,
+    buttons: Rc<RefCell<JoypadInputRequest>>,
     button_selector: ButtonSelector,
 }
 
 impl Joypad {
-    pub fn new(buttons: Arc<RwLock<JoypadInputRequest>>) -> Joypad {
+    pub fn new(buttons: Rc<RefCell<JoypadInputRequest>>) -> Joypad {
         Joypad {
             need_interrupt: false,
             buttons,
@@ -63,7 +67,7 @@ impl Joypad {
             ButtonSelector::None => 0xFF,
             ButtonSelector::DownUpLeftRight => {
                 let mut out = !0b0001_0000;
-                let buttons = self.buttons.read().expect("Failed read lock of buttons");
+                let buttons = self.buttons.borrow();
                 if buttons.down {
                     out &= !0b1000;
                 }
@@ -80,7 +84,7 @@ impl Joypad {
             }
             ButtonSelector::StartSelectBA => {
                 let mut out = !0b0010_0000;
-                let buttons = self.buttons.read().expect("Failed read lock of buttons");
+                let buttons = self.buttons.borrow();
                 if buttons.start {
                     out &= !0b1000;
                 }

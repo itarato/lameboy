@@ -12,17 +12,16 @@ mod timer;
 mod util;
 mod vm;
 
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::cartridge::*;
 use crate::conf::*;
 use crate::debugger::*;
+use crate::gfx::Gfx;
+use crate::gfx::PixelWindowBundle;
 use crate::ppu::PPU;
 use crate::vm::*;
-
-use std::thread::spawn;
 
 use clap::Parser;
 
@@ -88,8 +87,9 @@ fn main() -> Result<(), Error> {
 
     let args = Args::parse();
 
-    let breakpoint_flag = Arc::new(AtomicBool::new(false));
-    let mut debugger = Debugger::new(breakpoint_flag.clone());
+    let breakpoint_requested = Rc::new(RefCell::new(false));
+    let quit_requested = Rc::new(RefCell::new(false));
+    let mut debugger = Debugger::new(breakpoint_requested.clone());
 
     args.breakpoint_parsed()
         .map(|breakpoint| debugger.add_breakpoint(breakpoint));
@@ -98,56 +98,127 @@ fn main() -> Result<(), Error> {
         debugger.set_step_by_step();
     }
 
-    let global_exit_flag = Arc::new(AtomicBool::new(false));
-    let video = Arc::new(RwLock::new(PPU::new(args.nofps)));
-    let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
+    let joypad_button_input_requester = Rc::new(RefCell::new(joypad::JoypadInputRequest::new()));
+
+    // GFX SETUP ///////////////////////////////////////////////////////////////
+    let sdl2_context = sdl2::init().expect("Failed creating SDL2 context");
+    let sdl2_video = sdl2_context.video().unwrap();
+
+    // Main window.
+    let (title, width, height) = ("Lameboy 0.0", 160, 144);
+    let window = sdl2_video
+        .window(title, width, height)
+        .vulkan()
+        .resizable()
+        .build()
+        .unwrap();
+    let canvas = window.into_canvas().build().unwrap();
+    let surface =
+        sdl2::surface::Surface::new(width, height, sdl2::pixels::PixelFormatEnum::RGB888).unwrap();
+    let texture_creator = canvas.texture_creator();
+    let texture = texture_creator
+        .create_texture_from_surface(surface)
+        .unwrap();
+    let main_window_bundle = PixelWindowBundle::new(canvas, texture);
+
+    let tile_window_bundle = if args.tiles {
+        // Tile debug window.
+        let (title, width, height) = ("VRAM Tile Map", 8 * 16, 8 * 24);
+        let window = sdl2_video
+            .window(title, width, height)
+            .vulkan()
+            .resizable()
+            .build()
+            .unwrap();
+        let canvas = window.into_canvas().build().unwrap();
+        let surface =
+            sdl2::surface::Surface::new(width, height, sdl2::pixels::PixelFormatEnum::RGB888)
+                .unwrap();
+        let texture_creator = canvas.texture_creator();
+        let texture = texture_creator
+            .create_texture_from_surface(surface)
+            .unwrap();
+        Some(PixelWindowBundle::new(canvas, texture))
+    } else {
+        None
+    };
+
+    // Tile debug window.
+    let (title, width, height) = ("Background map (32 x 32)", 256, 256);
+    let window = sdl2_video
+        .window(title, width, height)
+        .vulkan()
+        .resizable()
+        .build()
+        .unwrap();
+    let canvas = window.into_canvas().build().unwrap();
+    let surface =
+        sdl2::surface::Surface::new(width, height, sdl2::pixels::PixelFormatEnum::RGB888).unwrap();
+    let texture_creator = canvas.texture_creator();
+    let texture = texture_creator
+        .create_texture_from_surface(surface)
+        .unwrap();
+    let background_window_bundle = Some(PixelWindowBundle::new(canvas, texture));
+
+    // Tile debug window.
+    let (title, width, height) = ("Window map (32 x 32)", 256, 256);
+    let window = sdl2_video
+        .window(title, width, height)
+        .vulkan()
+        .resizable()
+        .build()
+        .unwrap();
+    let canvas = window.into_canvas().build().unwrap();
+    let surface =
+        sdl2::surface::Surface::new(width, height, sdl2::pixels::PixelFormatEnum::RGB888).unwrap();
+    let texture_creator = canvas.texture_creator();
+    let texture = texture_creator
+        .create_texture_from_surface(surface)
+        .unwrap();
+    let window_window_bundle = Some(PixelWindowBundle::new(canvas, texture));
+
+    let gfx = Gfx::new(
+        &sdl2_context,
+        &sdl2_video,
+        breakpoint_requested.clone(),
+        quit_requested.clone(),
+        joypad_button_input_requester.clone(),
+        main_window_bundle,
+        tile_window_bundle,
+        background_window_bundle,
+        window_window_bundle,
+    );
+    // GFX SETUP END ///////////////////////////////////////////////////////////
+
+    let video = PPU::new(args.nofps, gfx);
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
 
-    let vm_thread = spawn({
-        let global_exit_flag = global_exit_flag.clone();
-        let video = video.clone();
+    if let Ok(mut vm) = VM::new(
+        Cartridge::new(args.cartridge).expect("Cannot open cartridge"),
+        debugger,
+        video,
+        args.opcode_dump,
+        joypad,
+        args.disable_sound,
+        quit_requested.clone(),
+    ) {
+        vm.setup(args.skip_intro)?;
 
-        move || {
-            if let Ok(mut vm) = VM::new(
-                global_exit_flag.clone(),
-                Cartridge::new(args.cartridge).expect("Cannot open cartridge"),
-                debugger,
-                video,
-                args.opcode_dump,
-                joypad,
-                args.disable_sound,
-            ) {
-                if let Err(err) = vm.setup(args.skip_intro) {
-                    log::error!("Failed VM setup: {}", err);
-                    global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
-                    return;
-                }
-
-                if let Err(err) = vm.run() {
-                    log::error!("Failed VM run: {}", err);
-                    vm.dump_op_history();
-                    global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
-                    return;
-                }
-            }
-
-            global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
+        if let Err(err) = vm.run() {
+            vm.dump_op_history();
+            return Err(err);
         }
-    });
+    }
 
-    gfx::run(
-        global_exit_flag.clone(),
-        video.clone(),
-        breakpoint_flag,
-        joypad_button_input_requester,
-        args.tiles,
-        args.background,
-        args.window,
-    );
-
-    global_exit_flag.store(true, std::sync::atomic::Ordering::Release);
-
-    vm_thread.join().expect("Failed joining VM thread");
+    // gfx::run(
+    //     global_exit_flag.clone(),
+    //     video.clone(),
+    //     breakpoint_flag,
+    //     joypad_button_input_requester,
+    //     args.tiles,
+    //     args.background,
+    //     args.window,
+    // );
 
     log::info!("Emulation end");
 
