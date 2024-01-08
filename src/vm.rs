@@ -101,6 +101,7 @@ pub struct VM {
     deep_op_history: SizedQueue<(u64, u16, u8)>, // counter + pc + op
     delayed_cmds: Vec<DelayedCommand>,
     opcode_dump_file: Option<File>,
+    vm_debug_log: Arc<RwLock<Vec<String>>>,
 }
 
 impl VM {
@@ -112,6 +113,7 @@ impl VM {
         is_opcode_file_dump: bool,
         joypad: Joypad,
         disable_sound: bool,
+        vm_debug_log: Arc<RwLock<Vec<String>>>,
     ) -> Result<Self, Error> {
         let opcode_dump_file = if is_opcode_file_dump {
             Some(File::create("/tmp/lameboy_dump.txt").unwrap())
@@ -139,6 +141,7 @@ impl VM {
             deep_op_history: SizedQueue::new(128),
             delayed_cmds: vec![],
             opcode_dump_file,
+            vm_debug_log,
         })
     }
 
@@ -231,6 +234,8 @@ impl VM {
         log::info!("VM eval loop start");
 
         loop {
+            self.update_vm_debug_log();
+
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
                 loop {
@@ -3846,6 +3851,65 @@ impl VM {
 
     fn debug_oam(&self) {
         self.video.read().unwrap().debug_oam();
+    }
+
+    fn update_vm_debug_log(&self) {
+        let mut log = self.vm_debug_log.write().unwrap();
+        log.clear();
+
+        log.push(
+            format!(
+                "Next {:04X} -> {}",
+                self.cpu.pc,
+                OPCODE_NAME[self.mem_read(self.cpu.pc).unwrap() as usize]
+            )
+            .into(),
+        );
+
+        log.push(format!("AF {:04X}", self.cpu.af).into());
+        log.push(format!("BC {:04X}", self.cpu.bc).into());
+        log.push(format!("DE {:04X}", self.cpu.de).into());
+        log.push(format!("HL {:04X}", self.cpu.hl).into());
+        log.push(format!("PC {:04X} | SP {:04X}", self.cpu.pc, self.cpu.sp).into());
+
+        let video = self.video.read().unwrap();
+        log.push(
+            format!(
+                "LCDC {:02X} | STAT {:02X} | MODE {}",
+                video.lcdc,
+                video.stat,
+                video.stat & 0b11
+            )
+            .into(),
+        );
+        log.push(format!("LY {:02X} | LYC {:02X}", video.ly, video.lyc).into());
+
+        log.push(
+            format!(
+                "DIV {:02X} | TIMA {:02X} | TAC {:02X}",
+                self.timer.div(),
+                self.timer.tima(),
+                self.timer.tac()
+            )
+            .into(),
+        );
+
+        log.push(
+            format!(
+                "IME {} | IE {:02X} | IF {:02X}",
+                self.interrupt_master_enable_flag, self.interrupt_enable, self.interrupt_flag
+            )
+            .into(),
+        );
+
+        log.push(
+            format!(
+                "BOOT {} | ROM {:02X}",
+                self.mem.boot_lock_reg == 0,
+                self.mem.rom_bank_selector()
+            )
+            .into(),
+        );
     }
 
     fn interrupt(&mut self, interrupt: Interrupt) {

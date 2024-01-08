@@ -42,10 +42,17 @@ struct ImguiService {
     last_cursor: Option<imgui::MouseCursor>,
     show_menu: bool,
     show_ui: bool,
+    vm_debug_log: Arc<RwLock<Vec<String>>>,
 }
 
 impl ImguiService {
-    fn new(window: &Window, pixels: &Pixels, show_menu: bool, show_ui: bool) -> ImguiService {
+    fn new(
+        window: &Window,
+        pixels: &Pixels,
+        show_menu: bool,
+        show_ui: bool,
+        vm_debug_log: Arc<RwLock<Vec<String>>>,
+    ) -> ImguiService {
         let mut imgui = imgui::Context::create();
         imgui.set_ini_filename(None);
 
@@ -87,6 +94,7 @@ impl ImguiService {
             last_cursor: None,
             show_menu,
             show_ui,
+            vm_debug_log,
         }
     }
 
@@ -122,10 +130,14 @@ impl ImguiService {
 
         if self.show_ui {
             ui.window("VM Debug")
-                .size([100.0, 200.0], imgui::Condition::FirstUseEver)
+                .size([220.0, 240.0], imgui::Condition::FirstUseEver)
                 .opened(&mut self.show_ui)
                 .build(|| {
-                    ui.text("An example");
+                    self.vm_debug_log
+                        .read()
+                        .unwrap()
+                        .iter()
+                        .for_each(|line| ui.text(line));
                 });
         }
 
@@ -185,6 +197,7 @@ pub fn run(
     with_tile_debug_window: bool,
     with_background_debug_window: bool,
     with_window_debug_window: bool,
+    vm_debug_log: Arc<RwLock<Vec<String>>>,
 ) {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
@@ -219,7 +232,8 @@ pub fn run(
     video.write().unwrap().main_window_id = Some(main_window.id());
     let main_window_id = main_window.id();
 
-    let mut imgui_service = ImguiService::new(&main_window, &main_pixels, false, false);
+    let mut imgui_service =
+        ImguiService::new(&main_window, &main_pixels, false, false, vm_debug_log);
 
     windows.insert(main_window.id(), (main_window, main_pixels));
 
