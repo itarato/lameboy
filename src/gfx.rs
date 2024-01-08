@@ -40,7 +40,6 @@ struct ImguiService {
     renderer: imgui_wgpu::Renderer,
     last_frame: Instant,
     last_cursor: Option<imgui::MouseCursor>,
-    show_menu: bool,
     show_ui: bool,
     vm_debug_log: Arc<RwLock<Vec<String>>>,
 }
@@ -49,7 +48,6 @@ impl ImguiService {
     fn new(
         window: &Window,
         pixels: &Pixels,
-        show_menu: bool,
         show_ui: bool,
         vm_debug_log: Arc<RwLock<Vec<String>>>,
     ) -> ImguiService {
@@ -92,7 +90,6 @@ impl ImguiService {
             renderer,
             last_frame: Instant::now(),
             last_cursor: None,
-            show_menu,
             show_ui,
             vm_debug_log,
         }
@@ -118,14 +115,6 @@ impl ImguiService {
         if self.last_cursor != mouse_cursor {
             self.last_cursor = mouse_cursor;
             self.platform.prepare_render(ui, window);
-        }
-
-        if self.show_menu {
-            ui.main_menu_bar(|| {
-                ui.menu("Debug", || {
-                    self.show_ui |= ui.menu_item("VM");
-                })
-            });
         }
 
         if self.show_ui {
@@ -232,8 +221,7 @@ pub fn run(
     video.write().unwrap().main_window_id = Some(main_window.id());
     let main_window_id = main_window.id();
 
-    let mut imgui_service =
-        ImguiService::new(&main_window, &main_pixels, false, false, vm_debug_log);
+    let mut imgui_service = ImguiService::new(&main_window, &main_pixels, false, vm_debug_log);
 
     windows.insert(main_window.id(), (main_window, main_pixels));
 
@@ -295,7 +283,7 @@ pub fn run(
             }
 
             if input.key_pressed(VirtualKeyCode::I) {
-                imgui_service.show_menu = !imgui_service.show_menu;
+                imgui_service.show_ui = !imgui_service.show_ui;
             }
 
             if input.key_pressed(VirtualKeyCode::B) {
