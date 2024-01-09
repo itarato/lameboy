@@ -649,11 +649,17 @@ impl PPU {
         if Some(window_id) == self.main_window_id {
             self.transfer_display_to_screen_buffer(frame);
         } else if Some(window_id) == self.tile_debug_window_id {
-            self.draw_debug_tiles(frame);
+            self.transfer_tiles_to_screen_buffer(frame);
         } else if Some(window_id) == self.background_debug_window_id {
-            self.draw_debug_background(frame);
+            self.transfer_map_to_screen_buffer(
+                frame,
+                (self.background_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize,
+            );
         } else if Some(window_id) == self.window_debug_window_id {
-            self.draw_debug_window(frame);
+            self.transfer_map_to_screen_buffer(
+                frame,
+                (self.window_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize,
+            );
         }
     }
 
@@ -663,7 +669,7 @@ impl PPU {
      * Pixel height: 24 (tile) * 8 (pixel per tile)
      * -> Total: 16 * 8 * 24 * 8 * 4 (color bytes per pixel)
      */
-    pub fn draw_debug_tiles(&self, frame: &mut [u8]) {
+    pub fn transfer_tiles_to_screen_buffer(&self, frame: &mut [u8]) {
         const FRAME_TILE_LINE_OFFS: usize = 16 * 8 * 4;
 
         for y in 0..24 {
@@ -696,21 +702,7 @@ impl PPU {
         }
     }
 
-    pub fn draw_debug_background(&self, frame: &mut [u8]) {
-        self.draw_debug_window_or_background(
-            frame,
-            (self.background_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize,
-        );
-    }
-
-    pub fn draw_debug_window(&self, frame: &mut [u8]) {
-        self.draw_debug_window_or_background(
-            frame,
-            (self.window_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize,
-        );
-    }
-
-    pub fn draw_debug_window_or_background(&self, frame: &mut [u8], tile_map: usize) {
+    pub fn transfer_map_to_screen_buffer(&self, frame: &mut [u8], tile_map: usize) {
         let tile_data_select =
             (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
         let is_tile_data_section_wrapped = tile_data_select == 0x0800;
