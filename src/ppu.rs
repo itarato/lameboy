@@ -50,7 +50,7 @@ pub struct PPU {
     fps_ctrl_time: Instant,
     vram: [u8; VRAM_SIZE],
     oam_ram: [u8; OAM_RAM_SIZE],
-    display_buffer: [u8; DISPLAY_PIXELS_COUNT],
+    display_buffer: [u8; DISPLAY_PIXELS_COUNT << 2],
     ignore_fps_limiter: bool,
     pub main_window_id: Option<WindowId>,
     pub tile_debug_window_id: Option<WindowId>,
@@ -79,7 +79,7 @@ impl PPU {
             fps_ctrl_time: Instant::now(),
             vram: [0; VRAM_SIZE],
             oam_ram: [0; OAM_RAM_SIZE],
-            display_buffer: [0; DISPLAY_PIXELS_COUNT],
+            display_buffer: [0; DISPLAY_PIXELS_COUNT << 2],
             ignore_fps_limiter,
             main_window_id: None,
             tile_debug_window_id: None,
@@ -274,11 +274,18 @@ impl PPU {
             let y_flip = is_bit(byte_attr_and_flags, 6);
             let x_flip = is_bit(byte_attr_and_flags, 5);
             // DMG palette [Non CGB Mode only]: 0 = OBP0, 1 = OBP1
-            let palette = bit(byte_attr_and_flags, 4);
+            let palette = if is_bit(byte_attr_and_flags, 4) {
+                self.obp1
+            } else {
+                self.obp0
+            };
 
             if y_flip {
                 tile_y = tile_height - 1 - tile_y;
             }
+
+            // MISSING: 10 sprite per line check.
+            // MISSING: mode-3 length adjustment.
 
             let tile_start_addr = (byte_tile_index * 8 * 2) as usize;
 
@@ -293,35 +300,26 @@ impl PPU {
                     continue;
                 }
 
+                // Transparency check.
                 if color == 0 {
                     continue;
                 }
 
-                if priority {
-                    let bg_win_color = self.display_buffer
-                        [ly as usize * DISPLAY_WIDTH as usize + physical_x as usize];
-
-                    if bg_win_color == 0 {
-                        self.display_buffer
-                            [ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
-                            self.apply_obj_palette(color, palette);
-                    }
-                } else {
-                    self.display_buffer
-                        [ly as usize * DISPLAY_WIDTH as usize + physical_x as usize] =
-                        self.apply_obj_palette(color, palette);
+                if !priority || self.is_display_pixel_color_zero(physical_x as _, ly as _) {
+                    self.set_display_pixel(physical_x as _, ly as _, palette, color);
                 }
             }
         }
     }
 
+    // There are 32x32 tiles on the map: 256x256 pixels.
     fn draw_background_to_screen(&mut self, ly: u8) {
         let tile_data_section_start =
             (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
         let tile_map_start =
             (self.background_tile_map_display_section_start() - MEM_AREA_VRAM_START) as usize;
 
-        // There are 32x32 tiles on the map: 256x256 pixels.
+        // The background map wraps.
         let actual_ly = ly.wrapping_add(self.scy);
 
         let tile_row = actual_ly / 8;
@@ -346,8 +344,7 @@ impl PPU {
                 self.vram[tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2 + 1];
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
-            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] =
-                self.apply_bg_win_palette(color);
+            self.set_display_pixel(i as _, ly as _, self.bgp, color);
         }
     }
 
@@ -406,8 +403,7 @@ impl PPU {
                 self.vram[tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2 + 1];
             let color = (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x);
 
-            self.display_buffer[ly as usize * DISPLAY_WIDTH as usize + i as usize] =
-                self.apply_bg_win_palette(color);
+            self.set_display_pixel(i as _, ly as _, self.bgp, color);
         }
     }
 
@@ -628,6 +624,10 @@ impl PPU {
         }
 
         let elapsed = self.fps_ctrl_time.elapsed().as_micros();
+
+        // For performance debugging.
+        // println!("{}", elapsed);
+
         if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
             thread::sleep(Duration::from_micros(
                 ONE_FRAME_IN_MICROSECONDS as u64 - elapsed as u64,
@@ -639,7 +639,7 @@ impl PPU {
 
     pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {
         if Some(window_id) == self.main_window_id {
-            self.draw_display(frame);
+            self.transfer_display_to_screen_buffer(frame);
         } else if Some(window_id) == self.tile_debug_window_id {
             self.draw_debug_tiles(frame);
         } else if Some(window_id) == self.background_debug_window_id {
@@ -667,12 +667,13 @@ impl PPU {
                     let byte1 = self.vram[vram_pos + sprite_y * 2];
                     let byte2 = self.vram[vram_pos + sprite_y * 2 + 1];
                     for sprite_x in 0..8 {
-                        let gb_pixel_color = self.apply_bg_win_palette(
+                        let gb_pixel_color = apply_palette(
                             (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
                                 | ((byte1 >> (7 - sprite_x)) & 0b1),
+                            self.bgp,
                         );
 
-                        let pixel_color = self.pixel_color(gb_pixel_color);
+                        let pixel_color = pixel_rgb8888_color(gb_pixel_color);
 
                         let frame_pos_pixel_offset = sprite_x * 4;
                         frame
@@ -731,10 +732,11 @@ impl PPU {
 
                     for tile_x in 0..8u8 {
                         let tile_pixel_addr = tile_line_pos + tile_x as usize * 4;
-                        let color = self.apply_bg_win_palette(
+                        let color = apply_palette(
                             (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x),
+                            self.bgp,
                         );
-                        let pixel_color = self.pixel_color(color);
+                        let pixel_color = pixel_rgb8888_color(color);
 
                         frame[tile_pixel_addr + 0] = pixel_color[0];
                         frame[tile_pixel_addr + 1] = pixel_color[1];
@@ -746,52 +748,29 @@ impl PPU {
         }
     }
 
-    pub fn draw_display(&self, frame: &mut [u8]) {
-        let lcd_on = self.is_lcd_display_enabled();
-
-        for y in 0..DISPLAY_HEIGHT {
-            for x in 0..DISPLAY_WIDTH {
-                let pixel_pos: usize = ((y * DISPLAY_WIDTH) + x) as usize;
-                let frame_pos: usize = pixel_pos * 4;
-
-                let pixel_color = if lcd_on {
-                    self.pixel_color(self.display_buffer[pixel_pos])
-                } else {
-                    [0; 4]
-                };
-
-                frame[frame_pos + 0] = pixel_color[0];
-                frame[frame_pos + 1] = pixel_color[1];
-                frame[frame_pos + 2] = pixel_color[2];
-                frame[frame_pos + 3] = pixel_color[3];
-            }
-        }
-    }
-
-    fn pixel_color(&self, code: u8) -> [u8; 4] {
-        match code {
-            0b11 => [0x2d, 0x13, 0x09, 0xFF],
-            0b10 => [0x96, 0x42, 0x20, 0xFF],
-            0b01 => [0xe5, 0x94, 0x36, 0xFF],
-            0b00 => [0xf5, 0xea, 0x8b, 0xFF],
-            _ => unimplemented!("Unknown gb pixel color"),
-        }
-    }
-
-    fn apply_bg_win_palette(&self, color: u8) -> u8 {
-        assert!(color <= 0b11);
-        (self.bgp >> (color * 2)) & 0b11
-    }
-
-    fn apply_obj_palette(&self, color: u8, palette: u8) -> u8 {
-        assert!(palette <= 1);
-        assert!(color <= 0b11);
-
-        if palette == 0 {
-            (self.obp0 >> (color * 2)) & 0b11
+    pub fn transfer_display_to_screen_buffer(&self, frame: &mut [u8]) {
+        if self.is_lcd_display_enabled() {
+            frame.copy_from_slice(&self.display_buffer);
         } else {
-            (self.obp1 >> (color * 2)) & 0b11
+            // TODO: Maybe use that "whiter than white" DBG color - instead of black.
+            frame.iter_mut().for_each(|b| *b = 0);
         }
+    }
+
+    fn set_display_pixel(&mut self, x: usize, y: usize, palette: u8, raw_color: u8) {
+        let rgb8888 = pixel_rgb8888_color(apply_palette(raw_color, palette));
+        let offs = (y * DISPLAY_WIDTH as usize + x) << 2;
+        self.display_buffer[offs] = rgb8888[0];
+        self.display_buffer[offs + 1] = rgb8888[1];
+        self.display_buffer[offs + 2] = rgb8888[2];
+        self.display_buffer[offs + 3] = rgb8888[3];
+    }
+
+    fn is_display_pixel_color_zero(&self, x: usize, y: usize) -> bool {
+        let offs = (y * DISPLAY_WIDTH as usize + x) << 2;
+
+        // Practically we can just check the first byte as the colors don't share component values.
+        self.display_buffer[offs] == PALETTE[3][0]
     }
 
     pub fn debug_oam(&self) {

@@ -2,6 +2,14 @@ pub const DISPLAY_WIDTH: u32 = 160;
 pub const DISPLAY_HEIGHT: u32 = 144;
 pub const DISPLAY_PIXELS_COUNT: usize = (DISPLAY_WIDTH * DISPLAY_HEIGHT) as usize;
 
+// Palette:
+pub const PALETTE: [[u8; 4]; 4] = [
+    [0xf5, 0xea, 0x8b, 0xFF],
+    [0xe5, 0x94, 0x36, 0xFF],
+    [0x96, 0x42, 0x20, 0xFF],
+    [0x2d, 0x13, 0x09, 0xFF],
+];
+
 pub const FPS: u32 = 60;
 pub const SECOND_IN_MICROSECOND: u32 = 1_000_000;
 pub const ONE_FRAME_IN_MICROSECONDS: u32 = SECOND_IN_MICROSECOND / FPS;

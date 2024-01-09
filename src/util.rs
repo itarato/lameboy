@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use crate::conf::PALETTE;
+
 pub fn is_carry_add_u8(acc: u8, add: u8) -> bool {
     (u8::MAX - acc) < add
 }
@@ -88,6 +90,21 @@ pub fn set_bit(mut byte: u8, n: u8, is_on: bool) -> u8 {
         byte |= 1 << n;
     }
     byte
+}
+
+/**
+ * Applies GameBoy palette to the 2 bit raw color value.
+ */
+pub fn apply_palette(raw_color: u8, palette: u8) -> u8 {
+    assert!(raw_color <= 0b11);
+    (palette >> (raw_color * 2)) & 0b11
+}
+
+/**
+ * Turns a final GameBoy color to a screen rendered color: 4 bytes RGBA.
+ */
+pub fn pixel_rgb8888_color(gb_color: u8) -> [u8; 4] {
+    PALETTE[gb_color as usize]
 }
 
 pub struct SizedQueue<T> {
