@@ -710,40 +710,44 @@ impl PPU {
         );
     }
 
-    pub fn draw_debug_window_or_background(&self, frame: &mut [u8], tile_map_start: usize) {
-        let tile_data_section_start =
+    pub fn draw_debug_window_or_background(&self, frame: &mut [u8], tile_map: usize) {
+        let tile_data_select =
             (self.backround_window_tile_data_section_start() - MEM_AREA_VRAM_START) as usize;
+        let is_tile_data_section_wrapped = tile_data_select == 0x0800;
 
         for y in 0..32usize {
+            let tile_data_i_y = tile_map + y * 32;
+            let frame_y_pos = y * 32 * 8 * 8 * 4;
+
             for x in 0..32usize {
-                let tile_data_i = (y * 32) + x;
-                let tile_i = if tile_data_section_start == 0x0800 {
-                    self.vram[tile_map_start + tile_data_i].wrapping_add(128)
+                let tile_data_i = tile_data_i_y + x;
+                let tile_i = if is_tile_data_section_wrapped {
+                    self.vram[tile_data_i].wrapping_add(128)
                 } else {
-                    self.vram[tile_map_start + tile_data_i]
+                    self.vram[tile_data_i]
                 };
+                let frame_yx_pos = frame_y_pos + x * 8 * 4;
 
-                for tile_y in 0..8u8 {
-                    //                          32 tiles up      tile lines up              left     frame pixels
-                    let tile_line_pos = (y * 32 * 8 * 8 + tile_y as usize * 32 * 8 + x * 8) * 4;
+                for tile_y in 0..8 {
+                    let frame_yx_ty_pos = frame_yx_pos + tile_y as usize * 32 * 8 * 4;
 
-                    let tile_lo = self.vram
-                        [tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2];
-                    let tile_hi = self.vram
-                        [tile_data_section_start + tile_i as usize * 16 + tile_y as usize * 2 + 1];
+                    let lo =
+                        self.vram[tile_data_select + tile_i as usize * 16 + tile_y as usize * 2];
+                    let hi = self.vram
+                        [tile_data_select + tile_i as usize * 16 + tile_y as usize * 2 + 1];
 
                     for tile_x in 0..8u8 {
-                        let tile_pixel_addr = tile_line_pos + tile_x as usize * 4;
+                        let frame_yx_tytx_pos = frame_yx_ty_pos + tile_x as usize * 4;
                         let color = apply_palette(
-                            (bit(tile_hi, 7 - tile_x) << 1) | bit(tile_lo, 7 - tile_x),
+                            (bit(hi, 7 - tile_x) << 1) | bit(lo, 7 - tile_x),
                             self.bgp,
                         );
                         let pixel_color = pixel_rgb8888_color(color);
 
-                        frame[tile_pixel_addr + 0] = pixel_color[0];
-                        frame[tile_pixel_addr + 1] = pixel_color[1];
-                        frame[tile_pixel_addr + 2] = pixel_color[2];
-                        frame[tile_pixel_addr + 3] = pixel_color[3];
+                        frame[frame_yx_tytx_pos + 0] = pixel_color[0];
+                        frame[frame_yx_tytx_pos + 1] = pixel_color[1];
+                        frame[frame_yx_tytx_pos + 2] = pixel_color[2];
+                        frame[frame_yx_tytx_pos + 3] = pixel_color[3];
                     }
                 }
             }
