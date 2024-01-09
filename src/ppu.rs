@@ -770,7 +770,7 @@ impl PPU {
         let offs = (y * DISPLAY_WIDTH as usize + x) << 2;
 
         // Practically we can just check the first byte as the colors don't share component values.
-        self.display_buffer[offs] == PALETTE[3][0]
+        self.display_buffer[offs] == PALETTE[0][0]
     }
 
     pub fn debug_oam(&self) {
