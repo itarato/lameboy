@@ -161,7 +161,9 @@ impl Apu {
                 envelope_sweep_counter: 0,
             })
             .unwrap();
-        _channel_1_device.resume();
+        if !disable_sound {
+            _channel_1_device.resume();
+        }
 
         let channel_2_out = Arc::new(Mutex::new(SoundPacket::new()));
         let _channel_2_device = sdl_context
@@ -174,7 +176,9 @@ impl Apu {
                 envelope_sweep_counter: 0,
             })
             .unwrap();
-        _channel_2_device.resume();
+        if !disable_sound {
+            _channel_2_device.resume();
+        }
 
         Apu {
             nr10: 0,
