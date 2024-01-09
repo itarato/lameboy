@@ -79,9 +79,6 @@ impl PulseChannel {
                     self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
                 }
 
-                let pitch = pocket.pitch;
-                self.phase = (self.phase + (pitch / self.freq)) % 1.0;
-
                 if (*pocket).envelope_sweep_length > 0 {
                     if self.envelope_sweep_counter > 0 {
                         self.envelope_sweep_counter -= 1;
@@ -101,6 +98,7 @@ impl PulseChannel {
                     (*pocket).volume = 1.0;
                 }
 
+                self.phase = (self.phase + (pocket.pitch / self.freq)) % 1.0;
                 if self.phase <= pocket.waveform {
                     pocket.volume
                 } else {
@@ -305,6 +303,10 @@ impl Apu {
         }
 
         set_bit(self.nr52, 0, true);
+
+        let pace = (self.nr10 >> 4) & 0b111;
+        let direction = is_bit(self.nr10, 3);
+        let individual_step = self.nr10 & 0b111;
 
         // 00: 12.5%
         // 01: 25%
