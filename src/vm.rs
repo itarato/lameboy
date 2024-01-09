@@ -3596,13 +3596,7 @@ impl VM {
     }
 
     fn mem_write(&mut self, loc: u16, byte: u8) -> Result<(), Error> {
-        // if loc == 0x8800 {
-        //     self.debugger.request_one_time_break();
-        // }
-
         if loc <= MEM_AREA_ROM_BANK_0_END {
-            // Ignore for now. BGB seems to do nothing with these (eg LD (0x2000) a).
-            // return Err("Cannot write to ROM (0)".into());
             self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_ROM_BANK_N_END {
             return Err("Cannot write to ROM (N)".into());
@@ -3613,7 +3607,12 @@ impl VM {
         } else if loc <= MEM_AREA_WRAM_END {
             self.mem.write(loc, byte)?;
         } else if loc <= MEM_AREA_ECHO_END {
-            return Err("Write to MEM_AREA_ECHO is not implemented".into());
+            // return Err(format!(
+            //     "Write to MEM_AREA_ECHO is not implemented: {:04X} -> {:02}",
+            //     loc, byte
+            // )
+            // .into());
+            self.mem.write(loc - 0x2000, byte)?;
         } else if loc <= MEM_AREA_OAM_END {
             self.video.write().unwrap().write(loc, byte);
         } else if loc <= MEM_AREA_PROHIBITED_END {

@@ -464,8 +464,6 @@ impl PPU {
             }
             MEM_LOC_STAT => {
                 self.stat = (byte | 0x80) & !0b11u8 /* Ignore mode bits */;
-                // We do support stat interrupt - however check when this is triggered.
-                assert!((byte & 0b0011_1000) == 0);
             }
             MEM_LOC_SCY => self.scy = byte,
             MEM_LOC_SCX => self.scx = byte,
