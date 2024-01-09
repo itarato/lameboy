@@ -95,6 +95,24 @@ impl PPU {
         // Bit-2: LYC == LY (Read-only): Set when LY contains the same value as LYC; it is constantly updated.
         self.stat = 0b1000_0110;
         self.ly = 0;
+        self.stat_counter = 0;
+        self.lcdc = 0;
+        self.stat = 0x82;
+        self.prev_m3_len = 252;
+        self.scy = 0;
+        self.scx = 0;
+        self.ly = 0;
+        self.lyc = 0;
+        self.bgp = 0;
+        self.obp0 = 0;
+        self.obp1 = 0;
+        self.wy = 0;
+        self.wx = 0;
+        self.vram.iter_mut().for_each(|b| *b = 0);
+        self.oam_ram.iter_mut().for_each(|b| *b = 0);
+        self.display_buffer.iter_mut().for_each(|b| *b = 0);
+        self.lyc_change_interrupt = false;
+        self.wy_offset = 0;
     }
 
     /**
