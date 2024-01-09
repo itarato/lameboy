@@ -758,8 +758,9 @@ impl PPU {
         if self.is_lcd_display_enabled() {
             frame.copy_from_slice(&self.display_buffer);
         } else {
-            // TODO: Maybe use that "whiter than white" DBG color - instead of black.
-            frame.iter_mut().for_each(|b| *b = 0);
+            frame
+                .chunks_exact_mut(4)
+                .for_each(|chunk| chunk.copy_from_slice(&PALETTE[4]));
         }
     }
 

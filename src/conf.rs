@@ -3,11 +3,13 @@ pub const DISPLAY_HEIGHT: u32 = 144;
 pub const DISPLAY_PIXELS_COUNT: usize = (DISPLAY_WIDTH * DISPLAY_HEIGHT) as usize;
 
 // Palette:
-pub const PALETTE: [[u8; 4]; 4] = [
+pub const PALETTE: [[u8; 4]; 5] = [
     [0xf5, 0xea, 0x8b, 0xFF],
     [0xe5, 0x94, 0x36, 0xFF],
     [0x96, 0x42, 0x20, 0xFF],
     [0x2d, 0x13, 0x09, 0xFF],
+    // "Whiter than white" color for LCDC-off.
+    [0xfa, 0xfc, 0xf0, 0xFF],
 ];
 
 pub const FPS: u32 = 60;
