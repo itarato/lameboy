@@ -58,10 +58,12 @@ pub struct PPU {
     pub window_debug_window_id: Option<WindowId>,
     lyc_change_interrupt: bool,
     wy_offset: u8,
+    show_fps_stats: bool,
+    fps_stats: Stats,
 }
 
 impl PPU {
-    pub fn new(ignore_fps_limiter: bool) -> Self {
+    pub fn new(ignore_fps_limiter: bool, show_fps_stats: bool) -> Self {
         PPU {
             stat_counter: 0,
             prev_m3_len: 252,
@@ -87,6 +89,8 @@ impl PPU {
             window_debug_window_id: None,
             lyc_change_interrupt: false,
             wy_offset: 0,
+            show_fps_stats,
+            fps_stats: Stats::new(32, 16),
         }
     }
 
@@ -625,8 +629,12 @@ impl PPU {
 
         let elapsed = self.fps_ctrl_time.elapsed().as_micros();
 
-        // For performance debugging.
-        println!("{}", elapsed);
+        // For performance debugging. (The lower the better.)
+        // Be aware this only logs when LCDC(7) is on.
+        if self.show_fps_stats {
+            self.fps_stats.push(elapsed as i32);
+            self.fps_stats.dump_to_stdout_at_freq();
+        }
 
         if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
             thread::sleep(Duration::from_micros(

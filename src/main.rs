@@ -67,6 +67,10 @@ struct Args {
     /// Turn all sounds off.
     #[arg(long)]
     disable_sound: bool,
+
+    /// Print FPS stats to STDOUT.
+    #[arg(long)]
+    fps_stats: bool,
 }
 
 impl Args {
@@ -103,7 +107,7 @@ fn main() -> Result<(), Error> {
     let global_exit_flag = Arc::new(AtomicBool::new(false));
     let should_generate_vm_debug_log = Arc::new(AtomicBool::new(false));
 
-    let video = Arc::new(RwLock::new(PPU::new(args.nofps)));
+    let video = Arc::new(RwLock::new(PPU::new(args.nofps, args.fps_stats)));
     let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
 

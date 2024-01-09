@@ -133,6 +133,48 @@ impl<T> SizedQueue<T> {
     }
 }
 
+pub struct Stats {
+    queue: SizedQueue<i32>,
+    window_counter: Counter,
+}
+
+impl Stats {
+    pub fn new(window: usize, freq: u64) -> Stats {
+        Stats {
+            queue: SizedQueue::new(window),
+            window_counter: Counter::new(freq),
+        }
+    }
+
+    pub fn push(&mut self, e: i32) {
+        self.queue.push(e);
+    }
+
+    pub fn dump_to_stdout(&mut self) {
+        println!("AVG: {:6}\tP90: {:6}", self.avg(), self.p90());
+    }
+
+    pub fn dump_to_stdout_at_freq(&mut self) {
+        if self.window_counter.tick_and_check_overflow(1) {
+            self.dump_to_stdout();
+        }
+    }
+
+    pub fn avg(&self) -> i32 {
+        self.queue.deque.iter().sum::<i32>() / self.queue.deque.len() as i32
+    }
+
+    pub fn p90(&mut self) -> i32 {
+        let list = self.queue.deque.as_mut_slices().0;
+        if list.len() == 0 {
+            return 0;
+        }
+
+        list.sort();
+        list[(list.len() as f32 * 0.9) as usize]
+    }
+}
+
 #[derive(Debug)]
 pub struct Counter {
     pub counter: u64,
