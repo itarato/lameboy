@@ -626,7 +626,7 @@ impl PPU {
         let elapsed = self.fps_ctrl_time.elapsed().as_micros();
 
         // For performance debugging.
-        // println!("{}", elapsed);
+        println!("{}", elapsed);
 
         if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
             thread::sleep(Duration::from_micros(
@@ -656,38 +656,32 @@ impl PPU {
      * -> Total: 16 * 8 * 24 * 8 * 4 (color bytes per pixel)
      */
     pub fn draw_debug_tiles(&self, frame: &mut [u8]) {
-        const FRAME_LINE_OFFS: usize = 16 * 8 * 4;
+        const FRAME_TILE_LINE_OFFS: usize = 16 * 8 * 4;
 
         for y in 0..24 {
+            let vram_y_pos = y * 16 * 16;
+            let frame_y_pos = y * 8 * 8 * 4 * 16;
             for x in 0..16 {
-                let tile_number = (y * 16) + x;
-                let vram_pos = tile_number * 16; // 8x8 pixel with 2bpp = 16 bytes
-                let frame_pos = (y * 8 * 8 * 4 * 16) + (x * 8 * 4); // Assuming frame is 4-attr color (RGBA) * 8x8 sprite size
+                let vram_xy_pos = vram_y_pos + x * 16; // 8x8 pixel with 2bpp = 16 bytes
+                let frame_xy_pos = frame_y_pos + (x * 8 * 4); // Assuming frame is 4-attr color (RGBA) * 8x8 sprite size
+
                 for sprite_y in 0..8 {
-                    let byte1 = self.vram[vram_pos + sprite_y * 2];
-                    let byte2 = self.vram[vram_pos + sprite_y * 2 + 1];
-                    for sprite_x in 0..8 {
+                    let lo = self.vram[vram_xy_pos + sprite_y * 2];
+                    let hi = self.vram[vram_xy_pos + sprite_y * 2 + 1];
+                    let frame_xy_sy_pos = frame_xy_pos + FRAME_TILE_LINE_OFFS * sprite_y;
+
+                    for sprite_x in (0..8).rev() {
                         let gb_pixel_color = apply_palette(
-                            (((byte2 >> (7 - sprite_x)) & 0b1) << 1)
-                                | ((byte1 >> (7 - sprite_x)) & 0b1),
+                            (((hi >> sprite_x) & 0b1) << 1) | ((lo >> sprite_x) & 0b1),
                             self.bgp,
                         );
-
                         let pixel_color = pixel_rgb8888_color(gb_pixel_color);
+                        let frame_xy_sysx_pos = frame_xy_sy_pos + (7 - sprite_x) * 4;
 
-                        let frame_pos_pixel_offset = sprite_x * 4;
-                        frame
-                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 0] =
-                            pixel_color[0];
-                        frame
-                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 1] =
-                            pixel_color[1];
-                        frame
-                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 2] =
-                            pixel_color[2];
-                        frame
-                            [frame_pos + FRAME_LINE_OFFS * sprite_y + frame_pos_pixel_offset + 3] =
-                            pixel_color[3];
+                        frame[frame_xy_sysx_pos + 0] = pixel_color[0];
+                        frame[frame_xy_sysx_pos + 1] = pixel_color[1];
+                        frame[frame_xy_sysx_pos + 2] = pixel_color[2];
+                        frame[frame_xy_sysx_pos + 3] = pixel_color[3];
                     }
                 }
             }
