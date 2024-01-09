@@ -20,6 +20,8 @@ struct SoundPacket {
     length_enable: bool,
     length: u8,
     length_counter: Counter,
+    speaker_left: bool,
+    speaker_right: bool,
 }
 
 impl SoundPacket {
@@ -35,6 +37,8 @@ impl SoundPacket {
             length_enable: false,
             length: 0,
             length_counter: Counter::new(CPU_HZ as u64 / 256),
+            speaker_left: true,
+            speaker_right: true,
         }
     }
 
@@ -51,58 +55,74 @@ impl SoundPacket {
     }
 }
 
-struct SquareWave {
+struct PulseChannel {
     freq: f32,
     phase: f32,
     pocket: Arc<Mutex<SoundPacket>>,
     envelope_sweep_counter: usize,
 }
 
-impl AudioCallback for SquareWave {
+impl PulseChannel {
+    fn generate(&mut self, out: &mut [f32]) {
+        let mut pocket = self.pocket.lock().expect("Cannot lock pocket");
+
+        if !pocket.speaker_left && !pocket.speaker_right {
+            return;
+        }
+
+        for chunk in out.chunks_exact_mut(2) {
+            let value = if !pocket.is_on {
+                0.0
+            } else {
+                if (*pocket).restart {
+                    (*pocket).restart = false;
+                    self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
+                }
+
+                let pitch = pocket.pitch;
+                self.phase = (self.phase + (pitch / self.freq)) % 1.0;
+
+                if (*pocket).envelope_sweep_length > 0 {
+                    if self.envelope_sweep_counter > 0 {
+                        self.envelope_sweep_counter -= 1;
+                    } else {
+                        (*pocket).volume += if (*pocket).envelope_direction_down {
+                            -1f32 / 15f32
+                        } else {
+                            1f32 / 15f32
+                        };
+                        self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
+                    }
+                }
+
+                if (*pocket).volume < 0f32 {
+                    (*pocket).volume = 0.0;
+                } else if (*pocket).volume > 1f32 {
+                    (*pocket).volume = 1.0;
+                }
+
+                if self.phase <= pocket.waveform {
+                    pocket.volume
+                } else {
+                    -pocket.volume
+                }
+            };
+
+            if pocket.speaker_left {
+                chunk[0] = value; // Left speaker.
+            }
+            if pocket.speaker_right {
+                chunk[1] = value; // Right speaker.
+            }
+        }
+    }
+}
+
+impl AudioCallback for PulseChannel {
     type Channel = f32;
 
     fn callback(&mut self, out: &mut [f32]) {
-        let mut pocket = self.pocket.lock().expect("Cannot lock pocket");
-
-        for x in out.iter_mut() {
-            if !pocket.is_on {
-                *x = 0.0;
-                continue;
-            }
-
-            if (*pocket).restart {
-                (*pocket).restart = false;
-                self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
-            }
-
-            let pitch = pocket.pitch;
-            self.phase = (self.phase + (pitch / self.freq)) % 1.0;
-
-            if (*pocket).envelope_sweep_length > 0 {
-                if self.envelope_sweep_counter > 0 {
-                    self.envelope_sweep_counter -= 1;
-                } else {
-                    (*pocket).volume += if (*pocket).envelope_direction_down {
-                        -1f32 / 15f32
-                    } else {
-                        1f32 / 15f32
-                    };
-                    self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
-                }
-            }
-
-            if (*pocket).volume < 0f32 {
-                (*pocket).volume = 0.0;
-            } else if (*pocket).volume > 1f32 {
-                (*pocket).volume = 1.0;
-            }
-
-            *x = if self.phase <= pocket.waveform {
-                pocket.volume
-            } else {
-                -pocket.volume
-            }
-        }
+        self.generate(out);
     }
 }
 
@@ -133,10 +153,10 @@ pub struct Apu {
 
     wave_pattern_ram: [u8; 16],
 
-    _channel_1_device: AudioDevice<SquareWave>,
+    _channel_1_device: AudioDevice<PulseChannel>,
     channel_1_out: Arc<Mutex<SoundPacket>>,
 
-    _channel_2_device: AudioDevice<SquareWave>,
+    _channel_2_device: AudioDevice<PulseChannel>,
     channel_2_out: Arc<Mutex<SoundPacket>>,
 }
 
@@ -146,7 +166,7 @@ impl Apu {
 
         let desired_spec = AudioSpecDesired {
             freq: Some(44_100),
-            channels: Some(1),
+            channels: Some(2),
             samples: None,
         };
 
@@ -154,7 +174,7 @@ impl Apu {
         let _channel_1_device = sdl_context
             .audio()
             .unwrap()
-            .open_playback(None, &desired_spec, |spec| SquareWave {
+            .open_playback(None, &desired_spec, |spec| PulseChannel {
                 freq: spec.freq as f32,
                 phase: 0.5,
                 pocket: channel_1_out.clone(),
@@ -169,7 +189,7 @@ impl Apu {
         let _channel_2_device = sdl_context
             .audio()
             .unwrap()
-            .open_playback(None, &desired_spec, |spec| SquareWave {
+            .open_playback(None, &desired_spec, |spec| PulseChannel {
                 freq: spec.freq as f32,
                 phase: 0.5,
                 pocket: channel_2_out.clone(),
@@ -324,6 +344,8 @@ impl Apu {
             pocket.waveform = out_waveform;
             pocket.length_enable = length_enable;
             pocket.length = init_length_timer;
+            pocket.speaker_left = self.is_ch1_left();
+            pocket.speaker_right = self.is_ch1_right();
         }
     }
 
@@ -372,6 +394,33 @@ impl Apu {
             pocket.waveform = out_waveform;
             pocket.length_enable = length_enable;
             pocket.length = init_length_timer;
+            pocket.speaker_left = self.is_ch2_left();
+            pocket.speaker_right = self.is_ch2_right();
         }
+    }
+
+    fn is_ch4_left(&self) -> bool {
+        is_bit(self.nr51, 7)
+    }
+    fn is_ch3_left(&self) -> bool {
+        is_bit(self.nr51, 6)
+    }
+    fn is_ch2_left(&self) -> bool {
+        is_bit(self.nr51, 5)
+    }
+    fn is_ch1_left(&self) -> bool {
+        is_bit(self.nr51, 4)
+    }
+    fn is_ch4_right(&self) -> bool {
+        is_bit(self.nr51, 3)
+    }
+    fn is_ch3_right(&self) -> bool {
+        is_bit(self.nr51, 2)
+    }
+    fn is_ch2_right(&self) -> bool {
+        is_bit(self.nr51, 1)
+    }
+    fn is_ch1_right(&self) -> bool {
+        is_bit(self.nr51, 0)
     }
 }
