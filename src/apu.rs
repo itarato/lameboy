@@ -236,6 +236,8 @@ impl Apu {
 
     pub fn write(&mut self, loc: u16, byte: u8) {
         match loc {
+            // TODO: Maybe we need this:
+            // "During the All Sound OFF mode, each sound mode register cannot be set.)"
             MEM_LOC_NR10 => self.nr10 = byte,
             // NR11: Channel 1 length timer & duty cycle
             MEM_LOC_NR11 => self.nr11 = byte,
@@ -261,12 +263,18 @@ impl Apu {
             MEM_LOC_NR31 => self.nr31 = byte,
             MEM_LOC_NR32 => self.nr32 = byte,
             MEM_LOC_NR33 => self.nr33 = byte,
-            MEM_LOC_NR34 => self.nr34 = byte,
+            MEM_LOC_NR34 => {
+                self.nr34 = byte;
+                self.channel3_update();
+            }
 
             MEM_LOC_NR41 => self.nr41 = byte,
             MEM_LOC_NR42 => self.nr42 = byte,
             MEM_LOC_NR43 => self.nr43 = byte,
-            MEM_LOC_NR44 => self.nr44 = byte,
+            MEM_LOC_NR44 => {
+                self.nr44 = byte;
+                self.channel4_update();
+            }
 
             // FF24 — NR50: Master volume & VIN panning
             MEM_LOC_NR50 => self.nr50 = byte,
@@ -276,9 +284,22 @@ impl Apu {
             MEM_LOC_NR52 => {
                 // Cannot manually set CHx enable/disable flags.
                 self.nr52 = byte & 0xF0;
+
+                if !self.audio_on() {
+                    // TODO: The packets needs to be updated too to have an instant off.
+                    self.ch1_disable();
+                    self.ch2_disable();
+                    self.ch3_disable();
+                    self.ch4_disable();
+                }
             }
             MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
-                self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize] = byte;
+                if !self.is_ch3_on() {
+                    self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize] = byte;
+                } else {
+                    log::error!("Write to CH3 wave patterns while on");
+                    // Make sure the turn-off mechanism works. If it is - error can be ignored.
+                }
             }
             _ => unimplemented!("Apu chip loc write: {:#06X} not implemented", loc),
         };
@@ -289,6 +310,13 @@ impl Apu {
             MEM_LOC_NR50 => Ok(self.nr50),
             MEM_LOC_NR51 => Ok(self.nr51),
             MEM_LOC_NR52 => Ok(self.nr52),
+            MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
+                if self.is_ch3_on() {
+                    Ok(self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize])
+                } else {
+                    Ok(0xFF)
+                }
+            }
             _ => Err(format!("Apu chip read not implemented: {:#06X}", loc).into()),
         }
     }
@@ -297,12 +325,42 @@ impl Apu {
         is_bit(self.nr52, 7)
     }
 
-    fn channel1_update(&self) {
+    fn ch1_enable(&mut self) {
+        set_bit(self.nr52, 0, true);
+    }
+    fn ch2_enable(&mut self) {
+        set_bit(self.nr52, 1, true);
+    }
+    fn ch3_enable(&mut self) {
+        set_bit(self.nr52, 2, true);
+    }
+    fn ch4_enable(&mut self) {
+        set_bit(self.nr52, 3, true);
+    }
+    fn ch1_disable(&mut self) {
+        set_bit(self.nr52, 0, false);
+    }
+    fn ch2_disable(&mut self) {
+        set_bit(self.nr52, 1, false);
+    }
+    fn ch3_disable(&mut self) {
+        set_bit(self.nr52, 2, false);
+    }
+    fn ch4_disable(&mut self) {
+        set_bit(self.nr52, 3, false);
+    }
+
+    fn is_ch3_on(&self) -> bool {
+        is_bit(self.nr52, 2)
+    }
+
+    fn channel1_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr14, 7) {
+            self.ch1_disable();
             return;
         }
 
-        set_bit(self.nr52, 0, true);
+        self.ch1_enable();
 
         let pace = (self.nr10 >> 4) & 0b111;
         let direction = is_bit(self.nr10, 3);
@@ -351,12 +409,13 @@ impl Apu {
         }
     }
 
-    fn channel2_update(&self) {
+    fn channel2_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr24, 7) {
+            self.ch2_disable();
             return;
         }
 
-        set_bit(self.nr52, 1, true);
+        self.ch2_enable();
 
         // 00: 12.5%
         // 01: 25%
@@ -400,6 +459,33 @@ impl Apu {
             pocket.speaker_right = self.is_ch2_right();
         }
     }
+
+    fn channel3_update(&mut self) {
+        if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
+            self.ch3_disable();
+            return;
+        }
+
+        self.ch3_enable();
+
+        let dac_on = is_bit(self.nr30, 7);
+        // The higher the length timer, the shorter the time before the channel is cut.
+        let init_length_timer = self.nr31;
+        // 00	Mute (No sound)
+        // 01	100% volume (use samples read from Wave RAM as-is)
+        // 10	50% volume (shift samples read from Wave RAM right once)
+        // 11	25% volume (shift samples read from Wave RAM right twice)
+        let output_level = (self.nr32 >> 5) & 0b11;
+        let period_lo = self.nr33 as u16;
+        let period_hi = (self.nr34 & 0b111) as u16;
+        let period = (period_hi << 8) | period_lo;
+        let length_enable = is_bit(self.nr34, 6);
+        let wave_pattern = &self.wave_pattern_ram;
+
+        let tone_freq = (2097152.0 / (0x800 - period) as f32) / 32.0;
+    }
+
+    fn channel4_update(&self) {}
 
     fn is_ch4_left(&self) -> bool {
         is_bit(self.nr51, 7)
