@@ -22,6 +22,8 @@ struct PulseSoundPacket {
     length_counter: Counter,
     speaker_left: bool,
     speaker_right: bool,
+    global_volume_left: f32,
+    global_volume_right: f32,
 }
 
 impl PulseSoundPacket {
@@ -39,6 +41,8 @@ impl PulseSoundPacket {
             length_counter: Counter::new(CPU_HZ as u64 / 256),
             speaker_left: true,
             speaker_right: true,
+            global_volume_left: 0.5,
+            global_volume_right: 0.5,
         }
     }
 
@@ -66,6 +70,8 @@ struct WaveSoundPacket {
     tone_freq: f32,
     speaker_left: bool,
     speaker_right: bool,
+    global_volume_left: f32,
+    global_volume_right: f32,
 }
 
 impl WaveSoundPacket {
@@ -80,6 +86,8 @@ impl WaveSoundPacket {
             tone_freq: 0.0,
             speaker_left: true,
             speaker_right: true,
+            global_volume_left: 0.5,
+            global_volume_right: 0.5,
         }
     }
 
@@ -150,10 +158,12 @@ impl PulseChannel {
             // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
             // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
             if packet.speaker_left {
-                chunk[0] += value / volume_divider; // Left speaker.
+                chunk[0] += (value / volume_divider) * packet.global_volume_left;
+                // Left speaker.
             }
             if packet.speaker_right {
-                chunk[1] += value / volume_divider; // Right speaker.
+                chunk[1] += (value / volume_divider) * packet.global_volume_right;
+                // Right speaker.
             }
         }
     }
@@ -190,10 +200,12 @@ impl WaveChannel {
             // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
             // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
             if packet.speaker_left {
-                chunk[0] += value / volume_divider; // Left speaker.
+                chunk[0] += (value / volume_divider) * packet.global_volume_left;
+                // Left speaker.
             }
             if packet.speaker_right {
-                chunk[1] += value / volume_divider; // Right speaker.
+                chunk[1] += (value / volume_divider) * packet.global_volume_right;
+                // Right speaker.
             }
         }
     }
@@ -412,7 +424,31 @@ impl Apu {
             }
 
             // FF24 — NR50: Master volume & VIN panning
-            MEM_LOC_NR50 => self.nr50 = byte,
+            MEM_LOC_NR50 => {
+                self.nr50 = byte;
+
+                let volume_left_bits = (self.nr50 >> 4) & 0b111;
+                let volume_right_bits = self.nr50 & 0b111;
+
+                let volume_left = 8.0 / (volume_left_bits + 1) as f32;
+                let volume_right = 8.0 / (volume_right_bits + 1) as f32;
+
+                {
+                    let mut packet = self.ch1_packet.lock().unwrap();
+                    packet.global_volume_left = volume_left;
+                    packet.global_volume_right = volume_right;
+                }
+                {
+                    let mut packet = self.ch2_packet.lock().unwrap();
+                    packet.global_volume_left = volume_left;
+                    packet.global_volume_right = volume_right;
+                }
+                {
+                    let mut packet = self.ch3_packet.lock().unwrap();
+                    packet.global_volume_left = volume_left;
+                    packet.global_volume_right = volume_right;
+                }
+            }
             // FF25 — NR51: Apu panning
             MEM_LOC_NR51 => self.nr51 = byte,
             // FF26 — NR52: Audio master control
