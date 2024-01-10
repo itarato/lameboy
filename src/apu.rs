@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use sdl2::audio::AudioCallback;
 use sdl2::audio::AudioDevice;
 use sdl2::audio::AudioSpecDesired;
+use simple_logger::init;
 
 use crate::conf::*;
 use crate::util::*;
@@ -16,7 +17,6 @@ struct PulseSoundPacket {
     envelope_sweep_length: usize, // 22050 = 1s
     envelope_direction_down: bool,
     waveform: f32, // 0.0 .. 1.0
-    restart: bool,
     length_enable: bool,
     length: u8,
     length_counter: Counter,
@@ -24,6 +24,8 @@ struct PulseSoundPacket {
     speaker_right: bool,
     global_volume_left: f32,
     global_volume_right: f32,
+    global_speaker_left: bool,
+    global_speaker_right: bool,
 }
 
 impl PulseSoundPacket {
@@ -35,7 +37,6 @@ impl PulseSoundPacket {
             envelope_sweep_length: 0,
             envelope_direction_down: true,
             waveform: 0.0,
-            restart: false,
             length_enable: false,
             length: 0,
             length_counter: Counter::new(CPU_HZ as u64 / 256),
@@ -43,6 +44,8 @@ impl PulseSoundPacket {
             speaker_right: true,
             global_volume_left: 0.5,
             global_volume_right: 0.5,
+            global_speaker_left: true,
+            global_speaker_right: true,
         }
     }
 
@@ -72,6 +75,8 @@ struct WaveSoundPacket {
     speaker_right: bool,
     global_volume_left: f32,
     global_volume_right: f32,
+    global_speaker_left: bool,
+    global_speaker_right: bool,
 }
 
 impl WaveSoundPacket {
@@ -88,6 +93,8 @@ impl WaveSoundPacket {
             speaker_right: true,
             global_volume_left: 0.5,
             global_volume_right: 0.5,
+            global_speaker_left: true,
+            global_speaker_right: true,
         }
     }
 
@@ -123,11 +130,6 @@ impl PulseChannel {
             let value = if !packet.is_on {
                 0.0
             } else {
-                if (*packet).restart {
-                    (*packet).restart = false;
-                    self.envelope_sweep_counter = (*packet).envelope_sweep_length;
-                }
-
                 if (*packet).envelope_sweep_length > 0 {
                     if self.envelope_sweep_counter > 0 {
                         self.envelope_sweep_counter -= 1;
@@ -177,7 +179,7 @@ struct WaveChannel {
 
 impl WaveChannel {
     fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
-        let mut packet = self.packet.lock().expect("Cannot lock pocket");
+        let packet = self.packet.lock().expect("Cannot lock pocket");
 
         if !packet.speaker_left && !packet.speaker_right {
             return;
@@ -433,20 +435,29 @@ impl Apu {
                 let volume_left = 8.0 / (volume_left_bits + 1) as f32;
                 let volume_right = 8.0 / (volume_right_bits + 1) as f32;
 
+                let speaker_left = is_bit(self.nr50, 7);
+                let speaker_right = is_bit(self.nr50, 3);
+
                 {
                     let mut packet = self.ch1_packet.lock().unwrap();
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
+                    packet.global_speaker_left = speaker_left;
+                    packet.global_speaker_right = speaker_right;
                 }
                 {
                     let mut packet = self.ch2_packet.lock().unwrap();
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
+                    packet.global_speaker_left = speaker_left;
+                    packet.global_speaker_right = speaker_right;
                 }
                 {
                     let mut packet = self.ch3_packet.lock().unwrap();
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
+                    packet.global_speaker_left = speaker_left;
+                    packet.global_speaker_right = speaker_right;
                 }
             }
             // FF25 — NR51: Apu panning
@@ -516,6 +527,9 @@ impl Apu {
     }
     fn ch3_disable(&mut self) {
         set_bit(self.nr52, 2, false);
+        {
+            self.ch3_packet.lock().unwrap().is_on = false;
+        }
     }
     fn ch4_disable(&mut self) {
         set_bit(self.nr52, 3, false);
@@ -642,6 +656,7 @@ impl Apu {
         let dac_on = is_bit(self.nr30, 7);
         // The higher the length timer, the shorter the time before the channel is cut.
         let init_length_timer = self.nr31;
+        assert!(init_length_timer <= 64);
         // 00	Mute (No sound)
         // 01	100% volume (use samples read from Wave RAM as-is)
         // 10	50% volume (shift samples read from Wave RAM right once)
@@ -661,13 +676,14 @@ impl Apu {
             3 => 0.25,
             _ => unreachable!(),
         };
+        let length = 64 - init_length_timer;
 
         {
             let mut packet = self.ch3_packet.lock().unwrap();
 
-            packet.is_on = true;
+            packet.is_on = dac_on;
             packet.tone_freq = tone_freq;
-            packet.length = init_length_timer;
+            packet.length = length;
             packet.volume = volume;
             packet.length_enable = length_enable;
             packet.wave_pattern = wave_pattern.clone();
