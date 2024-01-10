@@ -106,6 +106,8 @@ impl PulseChannel {
                 }
             };
 
+            // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
+            // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
             if pocket.speaker_left {
                 chunk[0] += value / volume_divider; // Left speaker.
             }
@@ -116,10 +118,16 @@ impl PulseChannel {
     }
 }
 
+struct WaveChannel {}
+
+impl WaveChannel {
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {}
+}
+
 struct DmgChannels {
     ch1_pulse: PulseChannel,
     ch2_pulse: PulseChannel,
-    // ch3_wave: ?
+    ch3_wave: WaveChannel,
     // ch4_noise: ?
 }
 
@@ -142,6 +150,7 @@ impl DmgChannels {
                 pocket: ch2_packet,
                 envelope_sweep_counter: 0,
             },
+            ch3_wave: WaveChannel {},
         }
     }
 }
@@ -151,13 +160,14 @@ impl AudioCallback for DmgChannels {
 
     fn callback(&mut self, out: &mut [f32]) {
         // MUST BE EQUAL TO HOW MANY PARTS CONTRIBUTING TO THE DEVICE.
-        const PARTS_LEN: f32 = 2.0;
+        const PARTS_LEN: f32 = 3.0;
 
         // Silence it out - so channels can _add_ their part.
         out.iter_mut().for_each(|b| *b = 0.0);
 
         self.ch1_pulse.generate(out, PARTS_LEN);
         self.ch2_pulse.generate(out, PARTS_LEN);
+        self.ch3_wave.generate(out, PARTS_LEN);
     }
 }
 
