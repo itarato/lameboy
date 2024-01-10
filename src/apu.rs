@@ -60,10 +60,12 @@ struct WaveSoundPacket {
     is_on: bool,
     length_counter: Counter,
     length: u8,
-    output_level: u8,
+    volume: f32,
     length_enable: bool,
     wave_pattern: [u8; 16],
     tone_freq: f32,
+    speaker_left: bool,
+    speaker_right: bool,
 }
 
 impl WaveSoundPacket {
@@ -72,10 +74,12 @@ impl WaveSoundPacket {
             is_on: false,
             length_counter: Counter::new(CPU_HZ as u64 / 256),
             length: 0,
-            output_level: 0,
+            volume: 0.0,
             length_enable: false,
             wave_pattern: [0; 16],
             tone_freq: 0.0,
+            speaker_left: true,
+            speaker_right: true,
         }
     }
 
@@ -156,11 +160,43 @@ impl PulseChannel {
 }
 
 struct WaveChannel {
+    freq: f32,
+    phase: f32,
     packet: Arc<Mutex<WaveSoundPacket>>,
 }
 
 impl WaveChannel {
-    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {}
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
+        let mut packet = self.packet.lock().expect("Cannot lock pocket");
+
+        if !packet.speaker_left && !packet.speaker_right {
+            return;
+        }
+
+        for chunk in out.chunks_exact_mut(2) {
+            let value = if !packet.is_on {
+                0.0
+            } else {
+                self.phase = (self.phase + (packet.tone_freq / self.freq)) % 1.0;
+                if self.phase <= 0.5 {
+                    packet.volume
+                } else {
+                    -packet.volume
+                }
+            };
+
+            // MISSING: applying waveform to the samples.
+
+            // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
+            // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
+            if packet.speaker_left {
+                chunk[0] += value / volume_divider; // Left speaker.
+            }
+            if packet.speaker_right {
+                chunk[1] += value / volume_divider; // Right speaker.
+            }
+        }
+    }
 }
 
 struct DmgChannels {
@@ -179,18 +215,22 @@ impl DmgChannels {
     ) -> DmgChannels {
         DmgChannels {
             ch1_pulse: PulseChannel {
-                freq: freq,
-                phase: 0.5,
+                freq,
+                phase: 0.0,
                 packet: ch1_packet,
                 envelope_sweep_counter: 0,
             },
             ch2_pulse: PulseChannel {
-                freq: freq,
-                phase: 0.5,
+                freq,
+                phase: 0.0,
                 packet: ch2_packet,
                 envelope_sweep_counter: 0,
             },
-            ch3_wave: WaveChannel { packet: ch3_packet },
+            ch3_wave: WaveChannel {
+                freq,
+                phase: 0.0,
+                packet: ch3_packet,
+            },
         }
     }
 }
@@ -309,6 +349,24 @@ impl Apu {
         self.ch1_packet.lock().unwrap().tick(cycles);
         self.ch2_packet.lock().unwrap().tick(cycles);
         self.ch3_packet.lock().unwrap().tick(cycles);
+
+        {
+            if !self.ch1_packet.lock().unwrap().is_on {
+                self.ch1_disable();
+            }
+        }
+
+        {
+            if !self.ch2_packet.lock().unwrap().is_on {
+                self.ch1_disable();
+            }
+        }
+
+        {
+            if !self.ch3_packet.lock().unwrap().is_on {
+                self.ch3_disable();
+            }
+        }
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
@@ -472,17 +530,17 @@ impl Apu {
         };
 
         {
-            let mut pocket = self.ch1_packet.lock().unwrap();
-            pocket.is_on = true;
-            pocket.pitch = out_freq;
-            pocket.volume = out_volume;
-            pocket.envelope_sweep_length = out_envelop_sweep_length;
-            pocket.envelope_direction_down = !is_envelope_direction_increase;
-            pocket.waveform = out_waveform;
-            pocket.length_enable = length_enable;
-            pocket.length = init_length_timer;
-            pocket.speaker_left = self.is_ch1_left();
-            pocket.speaker_right = self.is_ch1_right();
+            let mut packet = self.ch1_packet.lock().unwrap();
+            packet.is_on = true;
+            packet.pitch = out_freq;
+            packet.volume = out_volume;
+            packet.envelope_sweep_length = out_envelop_sweep_length;
+            packet.envelope_direction_down = !is_envelope_direction_increase;
+            packet.waveform = out_waveform;
+            packet.length_enable = length_enable;
+            packet.length = init_length_timer;
+            packet.speaker_left = self.is_ch1_left();
+            packet.speaker_right = self.is_ch1_right();
         }
     }
 
@@ -523,17 +581,17 @@ impl Apu {
         };
 
         {
-            let mut pocket = self.ch2_packet.lock().unwrap();
-            pocket.is_on = true;
-            pocket.pitch = out_freq;
-            pocket.volume = out_volume;
-            pocket.envelope_sweep_length = out_envelop_sweep_length;
-            pocket.envelope_direction_down = !is_envelope_direction_increase;
-            pocket.waveform = out_waveform;
-            pocket.length_enable = length_enable;
-            pocket.length = init_length_timer;
-            pocket.speaker_left = self.is_ch2_left();
-            pocket.speaker_right = self.is_ch2_right();
+            let mut packet = self.ch2_packet.lock().unwrap();
+            packet.is_on = true;
+            packet.pitch = out_freq;
+            packet.volume = out_volume;
+            packet.envelope_sweep_length = out_envelop_sweep_length;
+            packet.envelope_direction_down = !is_envelope_direction_increase;
+            packet.waveform = out_waveform;
+            packet.length_enable = length_enable;
+            packet.length = init_length_timer;
+            packet.speaker_left = self.is_ch2_left();
+            packet.speaker_right = self.is_ch2_right();
         }
     }
 
@@ -560,18 +618,25 @@ impl Apu {
         let wave_pattern = &self.wave_pattern_ram;
 
         let tone_freq = (2097152.0 / (0x800 - period) as f32) / 32.0;
+        let volume: f32 = match output_level {
+            0 => 0.0,
+            1 => 1.0,
+            2 => 0.5,
+            3 => 0.25,
+            _ => unreachable!(),
+        };
 
         {
-            let mut pocket = self.ch3_packet.lock().unwrap();
+            let mut packet = self.ch3_packet.lock().unwrap();
 
-            pocket.is_on = true;
-            pocket.tone_freq = tone_freq;
-            pocket.length = init_length_timer;
-            pocket.output_level = output_level;
-            pocket.length_enable = length_enable;
-            pocket.wave_pattern = wave_pattern.clone();
-
-            // dbg!(pocket);
+            packet.is_on = true;
+            packet.tone_freq = tone_freq;
+            packet.length = init_length_timer;
+            packet.volume = volume;
+            packet.length_enable = length_enable;
+            packet.wave_pattern = wave_pattern.clone();
+            packet.speaker_left = self.is_ch3_left();
+            packet.speaker_right = self.is_ch3_right();
         }
     }
 
