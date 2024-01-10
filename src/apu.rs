@@ -63,7 +63,7 @@ struct PulseChannel {
 }
 
 impl PulseChannel {
-    fn generate(&mut self, out: &mut [f32]) {
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
         let mut pocket = self.pocket.lock().expect("Cannot lock pocket");
 
         if !pocket.speaker_left && !pocket.speaker_right {
@@ -107,20 +107,57 @@ impl PulseChannel {
             };
 
             if pocket.speaker_left {
-                chunk[0] = value; // Left speaker.
+                chunk[0] += value / volume_divider; // Left speaker.
             }
             if pocket.speaker_right {
-                chunk[1] = value; // Right speaker.
+                chunk[1] += value / volume_divider; // Right speaker.
             }
         }
     }
 }
 
-impl AudioCallback for PulseChannel {
+struct DmgChannels {
+    ch1_pulse: PulseChannel,
+    ch2_pulse: PulseChannel,
+    // ch3_wave: ?
+    // ch4_noise: ?
+}
+
+impl DmgChannels {
+    fn new(
+        freq: f32,
+        ch1_packet: Arc<Mutex<SoundPacket>>,
+        ch2_packet: Arc<Mutex<SoundPacket>>,
+    ) -> DmgChannels {
+        DmgChannels {
+            ch1_pulse: PulseChannel {
+                freq: freq,
+                phase: 0.5,
+                pocket: ch1_packet,
+                envelope_sweep_counter: 0,
+            },
+            ch2_pulse: PulseChannel {
+                freq: freq,
+                phase: 0.5,
+                pocket: ch2_packet,
+                envelope_sweep_counter: 0,
+            },
+        }
+    }
+}
+
+impl AudioCallback for DmgChannels {
     type Channel = f32;
 
     fn callback(&mut self, out: &mut [f32]) {
-        self.generate(out);
+        // MUST BE EQUAL TO HOW MANY PARTS CONTRIBUTING TO THE DEVICE.
+        const PARTS_LEN: f32 = 2.0;
+
+        // Silence it out - so channels can _add_ their part.
+        out.iter_mut().for_each(|b| *b = 0.0);
+
+        self.ch1_pulse.generate(out, PARTS_LEN);
+        self.ch2_pulse.generate(out, PARTS_LEN);
     }
 }
 
@@ -151,11 +188,9 @@ pub struct Apu {
 
     wave_pattern_ram: [u8; 16],
 
-    _channel_1_device: AudioDevice<PulseChannel>,
-    channel_1_out: Arc<Mutex<SoundPacket>>,
-
-    _channel_2_device: AudioDevice<PulseChannel>,
-    channel_2_out: Arc<Mutex<SoundPacket>>,
+    _sound_device: AudioDevice<DmgChannels>,
+    ch1_packet: Arc<Mutex<SoundPacket>>,
+    ch2_packet: Arc<Mutex<SoundPacket>>,
 }
 
 impl Apu {
@@ -168,34 +203,18 @@ impl Apu {
             samples: None,
         };
 
-        let channel_1_out = Arc::new(Mutex::new(SoundPacket::new()));
-        let _channel_1_device = sdl_context
-            .audio()
-            .unwrap()
-            .open_playback(None, &desired_spec, |spec| PulseChannel {
-                freq: spec.freq as f32,
-                phase: 0.5,
-                pocket: channel_1_out.clone(),
-                envelope_sweep_counter: 0,
-            })
-            .unwrap();
-        if !disable_sound {
-            _channel_1_device.resume();
-        }
+        let ch1_packet = Arc::new(Mutex::new(SoundPacket::new()));
+        let ch2_packet = Arc::new(Mutex::new(SoundPacket::new()));
 
-        let channel_2_out = Arc::new(Mutex::new(SoundPacket::new()));
-        let _channel_2_device = sdl_context
+        let _sound_device = sdl_context
             .audio()
             .unwrap()
-            .open_playback(None, &desired_spec, |spec| PulseChannel {
-                freq: spec.freq as f32,
-                phase: 0.5,
-                pocket: channel_2_out.clone(),
-                envelope_sweep_counter: 0,
+            .open_playback(None, &desired_spec, |spec| {
+                DmgChannels::new(spec.freq as _, ch1_packet.clone(), ch2_packet.clone())
             })
             .unwrap();
         if !disable_sound {
-            _channel_2_device.resume();
+            _sound_device.resume();
         }
 
         Apu {
@@ -221,17 +240,16 @@ impl Apu {
             nr51: 0,
             nr52: 0,
             wave_pattern_ram: [0; 16],
-            _channel_1_device,
-            channel_1_out,
-            _channel_2_device,
-            channel_2_out,
+            _sound_device,
+            ch1_packet,
+            ch2_packet,
             disable_sound,
         }
     }
 
     pub fn update(&mut self, cycles: u64) {
-        self.channel_1_out.lock().unwrap().tick(cycles);
-        self.channel_2_out.lock().unwrap().tick(cycles);
+        self.ch1_packet.lock().unwrap().tick(cycles);
+        self.ch2_packet.lock().unwrap().tick(cycles);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
@@ -395,7 +413,7 @@ impl Apu {
         };
 
         {
-            let mut pocket = self.channel_1_out.lock().unwrap();
+            let mut pocket = self.ch1_packet.lock().unwrap();
             pocket.is_on = true;
             pocket.pitch = out_freq;
             pocket.volume = out_volume;
@@ -446,7 +464,7 @@ impl Apu {
         };
 
         {
-            let mut pocket = self.channel_2_out.lock().unwrap();
+            let mut pocket = self.ch2_packet.lock().unwrap();
             pocket.is_on = true;
             pocket.pitch = out_freq;
             pocket.volume = out_volume;
