@@ -9,7 +9,7 @@ use crate::conf::*;
 use crate::util::*;
 
 #[derive(Debug)]
-struct SoundPacket {
+struct PulseSoundPacket {
     is_on: bool,
     pitch: f32,                   // 1.0 .. ~k
     volume: f32,                  // 0.0 .. 1.0
@@ -24,9 +24,9 @@ struct SoundPacket {
     speaker_right: bool,
 }
 
-impl SoundPacket {
-    fn new() -> SoundPacket {
-        SoundPacket {
+impl PulseSoundPacket {
+    fn new() -> PulseSoundPacket {
+        PulseSoundPacket {
             is_on: false,
             pitch: 0.0,
             volume: 0.0,
@@ -55,70 +55,109 @@ impl SoundPacket {
     }
 }
 
+#[derive(Debug)]
+struct WaveSoundPacket {
+    is_on: bool,
+    length_counter: Counter,
+    length: u8,
+    output_level: u8,
+    length_enable: bool,
+    wave_pattern: [u8; 16],
+    tone_freq: f32,
+}
+
+impl WaveSoundPacket {
+    fn new() -> WaveSoundPacket {
+        WaveSoundPacket {
+            is_on: false,
+            length_counter: Counter::new(CPU_HZ as u64 / 256),
+            length: 0,
+            output_level: 0,
+            length_enable: false,
+            wave_pattern: [0; 16],
+            tone_freq: 0.0,
+        }
+    }
+
+    fn tick(&mut self, cycles: u64) {
+        if self.length_enable && self.length > 0 {
+            if self.length_counter.tick_and_check_overflow(cycles) {
+                self.length -= 1;
+
+                if self.length == 0 {
+                    self.is_on = false;
+                }
+            }
+        }
+    }
+}
+
 struct PulseChannel {
     freq: f32,
     phase: f32,
-    pocket: Arc<Mutex<SoundPacket>>,
+    packet: Arc<Mutex<PulseSoundPacket>>,
     envelope_sweep_counter: usize,
 }
 
 impl PulseChannel {
     fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
-        let mut pocket = self.pocket.lock().expect("Cannot lock pocket");
+        let mut packet = self.packet.lock().expect("Cannot lock pocket");
 
-        if !pocket.speaker_left && !pocket.speaker_right {
+        if !packet.speaker_left && !packet.speaker_right {
             return;
         }
 
         for chunk in out.chunks_exact_mut(2) {
-            let value = if !pocket.is_on {
+            let value = if !packet.is_on {
                 0.0
             } else {
-                if (*pocket).restart {
-                    (*pocket).restart = false;
-                    self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
+                if (*packet).restart {
+                    (*packet).restart = false;
+                    self.envelope_sweep_counter = (*packet).envelope_sweep_length;
                 }
 
-                if (*pocket).envelope_sweep_length > 0 {
+                if (*packet).envelope_sweep_length > 0 {
                     if self.envelope_sweep_counter > 0 {
                         self.envelope_sweep_counter -= 1;
                     } else {
-                        (*pocket).volume += if (*pocket).envelope_direction_down {
+                        (*packet).volume += if (*packet).envelope_direction_down {
                             -1f32 / 15f32
                         } else {
                             1f32 / 15f32
                         };
-                        self.envelope_sweep_counter = (*pocket).envelope_sweep_length;
+                        self.envelope_sweep_counter = (*packet).envelope_sweep_length;
                     }
                 }
 
-                if (*pocket).volume < 0f32 {
-                    (*pocket).volume = 0.0;
-                } else if (*pocket).volume > 1f32 {
-                    (*pocket).volume = 1.0;
+                if (*packet).volume < 0f32 {
+                    (*packet).volume = 0.0;
+                } else if (*packet).volume > 1f32 {
+                    (*packet).volume = 1.0;
                 }
 
-                self.phase = (self.phase + (pocket.pitch / self.freq)) % 1.0;
-                if self.phase <= pocket.waveform {
-                    pocket.volume
+                self.phase = (self.phase + (packet.pitch / self.freq)) % 1.0;
+                if self.phase <= packet.waveform {
+                    packet.volume
                 } else {
-                    -pocket.volume
+                    -packet.volume
                 }
             };
 
             // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
             // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
-            if pocket.speaker_left {
+            if packet.speaker_left {
                 chunk[0] += value / volume_divider; // Left speaker.
             }
-            if pocket.speaker_right {
+            if packet.speaker_right {
                 chunk[1] += value / volume_divider; // Right speaker.
             }
         }
     }
 }
 
-struct WaveChannel {}
+struct WaveChannel {
+    packet: Arc<Mutex<WaveSoundPacket>>,
+}
 
 impl WaveChannel {
     fn generate(&mut self, out: &mut [f32], volume_divider: f32) {}
@@ -134,23 +173,24 @@ struct DmgChannels {
 impl DmgChannels {
     fn new(
         freq: f32,
-        ch1_packet: Arc<Mutex<SoundPacket>>,
-        ch2_packet: Arc<Mutex<SoundPacket>>,
+        ch1_packet: Arc<Mutex<PulseSoundPacket>>,
+        ch2_packet: Arc<Mutex<PulseSoundPacket>>,
+        ch3_packet: Arc<Mutex<WaveSoundPacket>>,
     ) -> DmgChannels {
         DmgChannels {
             ch1_pulse: PulseChannel {
                 freq: freq,
                 phase: 0.5,
-                pocket: ch1_packet,
+                packet: ch1_packet,
                 envelope_sweep_counter: 0,
             },
             ch2_pulse: PulseChannel {
                 freq: freq,
                 phase: 0.5,
-                pocket: ch2_packet,
+                packet: ch2_packet,
                 envelope_sweep_counter: 0,
             },
-            ch3_wave: WaveChannel {},
+            ch3_wave: WaveChannel { packet: ch3_packet },
         }
     }
 }
@@ -199,8 +239,9 @@ pub struct Apu {
     wave_pattern_ram: [u8; 16],
 
     _sound_device: AudioDevice<DmgChannels>,
-    ch1_packet: Arc<Mutex<SoundPacket>>,
-    ch2_packet: Arc<Mutex<SoundPacket>>,
+    ch1_packet: Arc<Mutex<PulseSoundPacket>>,
+    ch2_packet: Arc<Mutex<PulseSoundPacket>>,
+    ch3_packet: Arc<Mutex<WaveSoundPacket>>,
 }
 
 impl Apu {
@@ -213,14 +254,20 @@ impl Apu {
             samples: None,
         };
 
-        let ch1_packet = Arc::new(Mutex::new(SoundPacket::new()));
-        let ch2_packet = Arc::new(Mutex::new(SoundPacket::new()));
+        let ch1_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
+        let ch2_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
+        let ch3_packet = Arc::new(Mutex::new(WaveSoundPacket::new()));
 
         let _sound_device = sdl_context
             .audio()
             .unwrap()
             .open_playback(None, &desired_spec, |spec| {
-                DmgChannels::new(spec.freq as _, ch1_packet.clone(), ch2_packet.clone())
+                DmgChannels::new(
+                    spec.freq as _,
+                    ch1_packet.clone(),
+                    ch2_packet.clone(),
+                    ch3_packet.clone(),
+                )
             })
             .unwrap();
         if !disable_sound {
@@ -253,6 +300,7 @@ impl Apu {
             _sound_device,
             ch1_packet,
             ch2_packet,
+            ch3_packet,
             disable_sound,
         }
     }
@@ -260,6 +308,7 @@ impl Apu {
     pub fn update(&mut self, cycles: u64) {
         self.ch1_packet.lock().unwrap().tick(cycles);
         self.ch2_packet.lock().unwrap().tick(cycles);
+        self.ch3_packet.lock().unwrap().tick(cycles);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
@@ -511,6 +560,19 @@ impl Apu {
         let wave_pattern = &self.wave_pattern_ram;
 
         let tone_freq = (2097152.0 / (0x800 - period) as f32) / 32.0;
+
+        {
+            let mut pocket = self.ch3_packet.lock().unwrap();
+
+            pocket.is_on = true;
+            pocket.tone_freq = tone_freq;
+            pocket.length = init_length_timer;
+            pocket.output_level = output_level;
+            pocket.length_enable = length_enable;
+            pocket.wave_pattern = wave_pattern.clone();
+
+            // dbg!(pocket);
+        }
     }
 
     fn channel4_update(&self) {}
