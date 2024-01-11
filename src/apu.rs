@@ -4,7 +4,6 @@ use std::sync::Mutex;
 use sdl2::audio::AudioCallback;
 use sdl2::audio::AudioDevice;
 use sdl2::audio::AudioSpecDesired;
-use simple_logger::init;
 
 use crate::conf::*;
 use crate::util::*;
@@ -24,8 +23,6 @@ struct PulseSoundPacket {
     speaker_right: bool,
     global_volume_left: f32,
     global_volume_right: f32,
-    global_speaker_left: bool,
-    global_speaker_right: bool,
 }
 
 impl PulseSoundPacket {
@@ -44,8 +41,6 @@ impl PulseSoundPacket {
             speaker_right: true,
             global_volume_left: 0.5,
             global_volume_right: 0.5,
-            global_speaker_left: true,
-            global_speaker_right: true,
         }
     }
 
@@ -75,8 +70,6 @@ struct WaveSoundPacket {
     speaker_right: bool,
     global_volume_left: f32,
     global_volume_right: f32,
-    global_speaker_left: bool,
-    global_speaker_right: bool,
 }
 
 impl WaveSoundPacket {
@@ -93,8 +86,6 @@ impl WaveSoundPacket {
             speaker_right: true,
             global_volume_left: 0.5,
             global_volume_right: 0.5,
-            global_speaker_left: true,
-            global_speaker_right: true,
         }
     }
 
@@ -107,6 +98,26 @@ impl WaveSoundPacket {
                     self.is_on = false;
                 }
             }
+        }
+    }
+}
+
+struct NoiseSoundPacket {
+    is_on: bool,
+    speaker_left: bool,
+    speaker_right: bool,
+    global_volume_left: f32,
+    global_volume_right: f32,
+}
+
+impl NoiseSoundPacket {
+    fn new() -> NoiseSoundPacket {
+        NoiseSoundPacket {
+            is_on: false,
+            speaker_left: true,
+            speaker_right: true,
+            global_volume_left: 0.5,
+            global_volume_right: 0.5,
         }
     }
 }
@@ -213,11 +224,19 @@ impl WaveChannel {
     }
 }
 
+struct NoiseChannel {
+    packet: Arc<Mutex<NoiseSoundPacket>>,
+}
+
+impl NoiseChannel {
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {}
+}
+
 struct DmgChannels {
     ch1_pulse: PulseChannel,
     ch2_pulse: PulseChannel,
     ch3_wave: WaveChannel,
-    // ch4_noise: ?
+    ch4_noise: NoiseChannel,
 }
 
 impl DmgChannels {
@@ -226,6 +245,7 @@ impl DmgChannels {
         ch1_packet: Arc<Mutex<PulseSoundPacket>>,
         ch2_packet: Arc<Mutex<PulseSoundPacket>>,
         ch3_packet: Arc<Mutex<WaveSoundPacket>>,
+        ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
     ) -> DmgChannels {
         DmgChannels {
             ch1_pulse: PulseChannel {
@@ -245,6 +265,7 @@ impl DmgChannels {
                 phase: 0.0,
                 packet: ch3_packet,
             },
+            ch4_noise: NoiseChannel { packet: ch4_packet },
         }
     }
 }
@@ -254,7 +275,7 @@ impl AudioCallback for DmgChannels {
 
     fn callback(&mut self, out: &mut [f32]) {
         // MUST BE EQUAL TO HOW MANY PARTS CONTRIBUTING TO THE DEVICE.
-        const PARTS_LEN: f32 = 3.0;
+        const PARTS_LEN: f32 = 4.0;
 
         // Silence it out - so channels can _add_ their part.
         out.iter_mut().for_each(|b| *b = 0.0);
@@ -262,6 +283,7 @@ impl AudioCallback for DmgChannels {
         self.ch1_pulse.generate(out, PARTS_LEN);
         self.ch2_pulse.generate(out, PARTS_LEN);
         self.ch3_wave.generate(out, PARTS_LEN);
+        self.ch4_noise.generate(out, PARTS_LEN);
     }
 }
 
@@ -296,6 +318,7 @@ pub struct Apu {
     ch1_packet: Arc<Mutex<PulseSoundPacket>>,
     ch2_packet: Arc<Mutex<PulseSoundPacket>>,
     ch3_packet: Arc<Mutex<WaveSoundPacket>>,
+    ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
 }
 
 impl Apu {
@@ -311,6 +334,7 @@ impl Apu {
         let ch1_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
         let ch2_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
         let ch3_packet = Arc::new(Mutex::new(WaveSoundPacket::new()));
+        let ch4_packet = Arc::new(Mutex::new(NoiseSoundPacket::new()));
 
         let _sound_device = sdl_context
             .audio()
@@ -321,6 +345,7 @@ impl Apu {
                     ch1_packet.clone(),
                     ch2_packet.clone(),
                     ch3_packet.clone(),
+                    ch4_packet.clone(),
                 )
             })
             .unwrap();
@@ -355,6 +380,7 @@ impl Apu {
             ch1_packet,
             ch2_packet,
             ch3_packet,
+            ch4_packet,
             disable_sound,
         }
     }
@@ -379,6 +405,12 @@ impl Apu {
         {
             if !self.ch3_packet.lock().unwrap().is_on {
                 self.ch3_disable();
+            }
+        }
+
+        {
+            if !self.ch4_packet.lock().unwrap().is_on {
+                self.ch4_disable();
             }
         }
     }
@@ -442,22 +474,21 @@ impl Apu {
                     let mut packet = self.ch1_packet.lock().unwrap();
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
-                    packet.global_speaker_left = speaker_left;
-                    packet.global_speaker_right = speaker_right;
                 }
                 {
                     let mut packet = self.ch2_packet.lock().unwrap();
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
-                    packet.global_speaker_left = speaker_left;
-                    packet.global_speaker_right = speaker_right;
                 }
                 {
                     let mut packet = self.ch3_packet.lock().unwrap();
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
-                    packet.global_speaker_left = speaker_left;
-                    packet.global_speaker_right = speaker_right;
+                }
+                {
+                    let mut packet = self.ch4_packet.lock().unwrap();
+                    packet.global_volume_left = volume_left;
+                    packet.global_volume_right = volume_right;
                 }
             }
             // FF25 — NR51: Apu panning
@@ -648,6 +679,7 @@ impl Apu {
     fn channel3_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
             self.ch3_disable();
+            // MISSING: Update length!
             return;
         }
 
@@ -692,7 +724,30 @@ impl Apu {
         }
     }
 
-    fn channel4_update(&self) {}
+    fn channel4_update(&mut self) {
+        if self.disable_sound || !self.audio_on() || !is_bit(self.nr44, 7) {
+            self.ch4_disable();
+            return;
+        }
+
+        self.ch4_enable();
+
+        let initial_length_timer = self.nr41 & 0b11_1111;
+
+        let init_volume = self.nr42 >> 4;
+        let is_envelope_direction_increase = is_bit(self.nr42, 3);
+        let sweep_pace = self.nr42 & 0b111;
+
+        let clock_shift = (self.nr43 >> 4) & 0xF;
+        let lfsr_width = is_bit(self.nr43, 3);
+        let clock_divider = self.nr43 & 0b111;
+
+        let length_enable = is_bit(self.nr44, 6);
+
+        {
+            // let packet = self.ch4
+        }
+    }
 
     fn is_ch4_left(&self) -> bool {
         is_bit(self.nr51, 7)
