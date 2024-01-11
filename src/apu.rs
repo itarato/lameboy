@@ -7,6 +7,7 @@ use sdl2::audio::AudioSpecDesired;
 
 use crate::conf::*;
 use crate::util::*;
+use rand::prelude::*;
 
 #[derive(Debug)]
 struct PulseSoundPacket {
@@ -301,10 +302,10 @@ impl NoiseChannel {
                 }
 
                 self.phase = (self.phase + (440.0 / self.freq)) % 1.0;
-                if self.phase <= 0.5 {
-                    packet.volume * (!packet.lfsr & 0b1) as f32
+                if self.phase <= (rand::random::<u8>() as f32 / 255.0) {
+                    packet.volume //* (!packet.lfsr & 0b1) as f32
                 } else {
-                    -packet.volume * (!packet.lfsr & 0b1) as f32
+                    -packet.volume //* (!packet.lfsr & 0b1) as f32
                 }
             };
 
