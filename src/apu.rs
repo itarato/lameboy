@@ -109,9 +109,10 @@ struct NoiseSoundPacket {
     length_enable: bool,
     volume: f32,
     is_envelope_dir_inc: bool,
-    envelop_sweep_length: u32,
-    lfsr_width: u8,
-    lfsr_freq: f32,
+    envelope_sweep_length: u32,
+    lfsr_short_mode: bool,
+    lfsr: u16,
+    lfsr_counter: Counter,
     speaker_left: bool,
     speaker_right: bool,
     global_volume_left: f32,
@@ -127,9 +128,10 @@ impl NoiseSoundPacket {
             length_enable: false,
             volume: 0.0,
             is_envelope_dir_inc: false,
-            envelop_sweep_length: 0,
-            lfsr_width: 0,
-            lfsr_freq: 0.0,
+            envelope_sweep_length: 0,
+            lfsr_short_mode: false,
+            lfsr: 0,
+            lfsr_counter: Counter::new(CPU_HZ as u64 / 256),
             speaker_left: true,
             speaker_right: true,
             global_volume_left: 0.5,
@@ -147,14 +149,22 @@ impl NoiseSoundPacket {
                 }
             }
         }
+
+        if self.lfsr_counter.tick_and_check_overflow(cycles) {
+            let new_bit = !(self.lfsr ^ (self.lfsr >> 1)) & 0b1;
+            self.lfsr = (self.lfsr >> 1) | new_bit << 14;
+            if self.lfsr_short_mode {
+                self.lfsr = set_bit_16(self.lfsr, 7, new_bit != 0);
+            }
+        }
     }
 }
 
 struct PulseChannel {
     freq: f32,
     phase: f32,
-    packet: Arc<Mutex<PulseSoundPacket>>,
     envelope_sweep_counter: usize,
+    packet: Arc<Mutex<PulseSoundPacket>>,
 }
 
 impl PulseChannel {
@@ -253,11 +263,63 @@ impl WaveChannel {
 }
 
 struct NoiseChannel {
+    freq: f32,
+    phase: f32,
+    envelope_sweep_counter: u32,
     packet: Arc<Mutex<NoiseSoundPacket>>,
 }
 
 impl NoiseChannel {
-    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {}
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
+        let mut packet = self.packet.lock().expect("Cannot lock pocket");
+
+        if !packet.speaker_left && !packet.speaker_right {
+            return;
+        }
+
+        for chunk in out.chunks_exact_mut(2) {
+            let value = if !packet.is_on {
+                0.0
+            } else {
+                if (*packet).envelope_sweep_length > 0 {
+                    if self.envelope_sweep_counter > 0 {
+                        self.envelope_sweep_counter -= 1;
+                    } else {
+                        (*packet).volume += if !(*packet).is_envelope_dir_inc {
+                            -1f32 / 15f32
+                        } else {
+                            1f32 / 15f32
+                        };
+                        self.envelope_sweep_counter = (*packet).envelope_sweep_length;
+                    }
+                }
+
+                if (*packet).volume < 0f32 {
+                    (*packet).volume = 0.0;
+                } else if (*packet).volume > 1f32 {
+                    (*packet).volume = 1.0;
+                }
+
+                self.phase = (self.phase + (440.0 / self.freq)) % 1.0;
+                if self.phase <= 0.5 {
+                    packet.volume * (!packet.lfsr & 0b1) as f32
+                } else {
+                    -packet.volume * (!packet.lfsr & 0b1) as f32
+                }
+            };
+
+            // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
+            // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
+            if packet.speaker_left {
+                chunk[0] += (value / volume_divider) * packet.global_volume_left;
+                // Left speaker.
+            }
+            if packet.speaker_right {
+                chunk[1] += (value / volume_divider) * packet.global_volume_right;
+                // Right speaker.
+            }
+        }
+    }
 }
 
 struct DmgChannels {
@@ -279,21 +341,26 @@ impl DmgChannels {
             ch1_pulse: PulseChannel {
                 freq,
                 phase: 0.0,
-                packet: ch1_packet,
                 envelope_sweep_counter: 0,
+                packet: ch1_packet,
             },
             ch2_pulse: PulseChannel {
                 freq,
                 phase: 0.0,
-                packet: ch2_packet,
                 envelope_sweep_counter: 0,
+                packet: ch2_packet,
             },
             ch3_wave: WaveChannel {
                 freq,
                 phase: 0.0,
                 packet: ch3_packet,
             },
-            ch4_noise: NoiseChannel { packet: ch4_packet },
+            ch4_noise: NoiseChannel {
+                freq,
+                phase: 0.0,
+                envelope_sweep_counter: 0,
+                packet: ch4_packet,
+            },
         }
     }
 }
@@ -414,30 +481,30 @@ impl Apu {
     }
 
     pub fn update(&mut self, cycles: u64) {
-        let mut disable_ch1 = false;
-        let mut disable_ch2 = false;
-        let mut disable_ch3 = false;
-        let mut disable_ch4 = false;
+        let disable_ch1;
+        let disable_ch2;
+        let disable_ch3;
+        let disable_ch4;
 
         {
             let mut packet = self.ch1_packet.lock().unwrap();
             packet.tick(cycles);
-            let disable_ch1 = !packet.is_on;
+            disable_ch1 = !packet.is_on;
         }
         {
             let mut packet = self.ch2_packet.lock().unwrap();
             packet.tick(cycles);
-            let disable_ch2 = !packet.is_on;
+            disable_ch2 = !packet.is_on;
         }
         {
             let mut packet = self.ch3_packet.lock().unwrap();
             packet.tick(cycles);
-            let disable_ch3 = !packet.is_on;
+            disable_ch3 = !packet.is_on;
         }
         {
             let mut packet = self.ch4_packet.lock().unwrap();
             packet.tick(cycles);
-            let disable_ch4 = !packet.is_on;
+            disable_ch4 = !packet.is_on;
         }
 
         if disable_ch1 {
@@ -505,9 +572,6 @@ impl Apu {
 
                 let volume_left = 8.0 / (volume_left_bits + 1) as f32;
                 let volume_right = 8.0 / (volume_right_bits + 1) as f32;
-
-                let speaker_left = is_bit(self.nr50, 7);
-                let speaker_right = is_bit(self.nr50, 3);
 
                 {
                     let mut packet = self.ch1_packet.lock().unwrap();
@@ -578,28 +642,28 @@ impl Apu {
     }
 
     fn ch1_enable(&mut self) {
-        set_bit(self.nr52, 0, true);
+        self.nr52 = set_bit(self.nr52, 0, true);
     }
     fn ch2_enable(&mut self) {
-        set_bit(self.nr52, 1, true);
+        self.nr52 = set_bit(self.nr52, 1, true);
     }
     fn ch3_enable(&mut self) {
-        set_bit(self.nr52, 2, true);
+        self.nr52 = set_bit(self.nr52, 2, true);
     }
     fn ch4_enable(&mut self) {
-        set_bit(self.nr52, 3, true);
+        self.nr52 = set_bit(self.nr52, 3, true);
     }
     fn ch1_disable(&mut self) {
-        set_bit(self.nr52, 0, false);
+        self.nr52 = set_bit(self.nr52, 0, false);
     }
     fn ch2_disable(&mut self) {
-        set_bit(self.nr52, 1, false);
+        self.nr52 = set_bit(self.nr52, 1, false);
     }
     fn ch3_disable(&mut self) {
-        set_bit(self.nr52, 2, false);
+        self.nr52 = set_bit(self.nr52, 2, false);
     }
     fn ch4_disable(&mut self) {
-        set_bit(self.nr52, 3, false);
+        self.nr52 = set_bit(self.nr52, 3, false);
     }
 
     fn is_ch3_on(&self) -> bool {
@@ -790,7 +854,7 @@ impl Apu {
         let sweep_pace = self.nr42 & 0b111;
 
         let clock_shift = ((self.nr43 >> 4) & 0xF) as u32;
-        let lfsr_width_bit = is_bit(self.nr43, 3);
+        let lfsr_short_mode = is_bit(self.nr43, 3);
         let clock_divider_raw = self.nr43 & 0b111;
 
         let length_enable = is_bit(self.nr44, 6);
@@ -798,8 +862,7 @@ impl Apu {
         let length = 64 - initial_length_timer;
         let volume = init_volume as f32 / 15.0;
         let is_on = init_volume > 0 || is_envelope_direction_increase;
-        let envelop_sweep_length = (44_100 * sweep_pace as u32) / 64;
-        let lfsr_width = if lfsr_width_bit { 7 } else { 15 };
+        let envelope_sweep_length = (44_100 * sweep_pace as u32) / 64;
         let clock_divider = if clock_divider_raw == 0 {
             0.5
         } else {
@@ -820,9 +883,10 @@ impl Apu {
             packet.length_enable = length_enable;
             packet.volume = volume;
             packet.is_envelope_dir_inc = is_envelope_direction_increase;
-            packet.lfsr_width = lfsr_width;
-            packet.lfsr_freq = lfsr_freq;
-            packet.envelop_sweep_length = envelop_sweep_length;
+            packet.lfsr = 0;
+            packet.lfsr_short_mode = lfsr_short_mode;
+            packet.lfsr_counter = Counter::new((CPU_HZ as f32 / lfsr_freq) as u64);
+            packet.envelope_sweep_length = envelope_sweep_length;
             packet.speaker_left = self.is_ch4_left();
             packet.speaker_right = self.is_ch4_right();
         }

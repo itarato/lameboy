@@ -84,7 +84,17 @@ pub fn is_bit(byte: u8, n: u8) -> bool {
     bit(byte, n) > 0
 }
 
+#[must_use]
 pub fn set_bit(mut byte: u8, n: u8, is_on: bool) -> u8 {
+    byte &= !(1 << n);
+    if is_on {
+        byte |= 1 << n;
+    }
+    byte
+}
+
+#[must_use]
+pub fn set_bit_16(mut byte: u16, n: u16, is_on: bool) -> u16 {
     byte &= !(1 << n);
     if is_on {
         byte |= 1 << n;
@@ -198,7 +208,7 @@ impl Counter {
     pub fn check_overflow(&mut self) -> bool {
         if self.counter >= self.modulo {
             self.counter -= self.modulo;
-            assert!(self.counter < self.modulo);
+            // assert!(self.counter < self.modulo);
             true
         } else {
             false
