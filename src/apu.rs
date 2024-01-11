@@ -104,6 +104,14 @@ impl WaveSoundPacket {
 
 struct NoiseSoundPacket {
     is_on: bool,
+    length_counter: Counter,
+    length: u8,
+    length_enable: bool,
+    volume: f32,
+    is_envelope_dir_inc: bool,
+    envelop_sweep_length: u32,
+    lfsr_width: u8,
+    lfsr_freq: f32,
     speaker_left: bool,
     speaker_right: bool,
     global_volume_left: f32,
@@ -114,10 +122,30 @@ impl NoiseSoundPacket {
     fn new() -> NoiseSoundPacket {
         NoiseSoundPacket {
             is_on: false,
+            length_counter: Counter::new(CPU_HZ as u64 / 256),
+            length: 0,
+            length_enable: false,
+            volume: 0.0,
+            is_envelope_dir_inc: false,
+            envelop_sweep_length: 0,
+            lfsr_width: 0,
+            lfsr_freq: 0.0,
             speaker_left: true,
             speaker_right: true,
             global_volume_left: 0.5,
             global_volume_right: 0.5,
+        }
+    }
+
+    fn tick(&mut self, cycles: u64) {
+        if self.length_enable && self.length > 0 {
+            if self.length_counter.tick_and_check_overflow(cycles) {
+                self.length -= 1;
+
+                if self.length == 0 {
+                    self.is_on = false;
+                }
+            }
         }
     }
 }
@@ -386,32 +414,43 @@ impl Apu {
     }
 
     pub fn update(&mut self, cycles: u64) {
-        self.ch1_packet.lock().unwrap().tick(cycles);
-        self.ch2_packet.lock().unwrap().tick(cycles);
-        self.ch3_packet.lock().unwrap().tick(cycles);
+        let mut disable_ch1 = false;
+        let mut disable_ch2 = false;
+        let mut disable_ch3 = false;
+        let mut disable_ch4 = false;
 
         {
-            if !self.ch1_packet.lock().unwrap().is_on {
-                self.ch1_disable();
-            }
+            let mut packet = self.ch1_packet.lock().unwrap();
+            packet.tick(cycles);
+            let disable_ch1 = !packet.is_on;
+        }
+        {
+            let mut packet = self.ch2_packet.lock().unwrap();
+            packet.tick(cycles);
+            let disable_ch2 = !packet.is_on;
+        }
+        {
+            let mut packet = self.ch3_packet.lock().unwrap();
+            packet.tick(cycles);
+            let disable_ch3 = !packet.is_on;
+        }
+        {
+            let mut packet = self.ch4_packet.lock().unwrap();
+            packet.tick(cycles);
+            let disable_ch4 = !packet.is_on;
         }
 
-        {
-            if !self.ch2_packet.lock().unwrap().is_on {
-                self.ch1_disable();
-            }
+        if disable_ch1 {
+            self.ch1_disable();
         }
-
-        {
-            if !self.ch3_packet.lock().unwrap().is_on {
-                self.ch3_disable();
-            }
+        if disable_ch2 {
+            self.ch2_disable();
         }
-
-        {
-            if !self.ch4_packet.lock().unwrap().is_on {
-                self.ch4_disable();
-            }
+        if disable_ch3 {
+            self.ch3_disable();
+        }
+        if disable_ch4 {
+            self.ch4_disable();
         }
     }
 
@@ -558,9 +597,6 @@ impl Apu {
     }
     fn ch3_disable(&mut self) {
         set_bit(self.nr52, 2, false);
-        {
-            self.ch3_packet.lock().unwrap().is_on = false;
-        }
     }
     fn ch4_disable(&mut self) {
         set_bit(self.nr52, 3, false);
@@ -575,8 +611,6 @@ impl Apu {
             self.ch1_disable();
             return;
         }
-
-        self.ch1_enable();
 
         let pace = (self.nr10 >> 4) & 0b111;
         let direction = is_bit(self.nr10, 3);
@@ -609,10 +643,17 @@ impl Apu {
             0b11 => 0.75,
             _ => panic!("Illegal wave form"),
         };
+        let is_on = init_volume > 0 || is_envelope_direction_increase;
+
+        if is_on {
+            self.ch1_enable();
+        } else {
+            self.ch1_disable();
+        }
 
         {
             let mut packet = self.ch1_packet.lock().unwrap();
-            packet.is_on = true;
+            packet.is_on = is_on;
             packet.pitch = out_freq;
             packet.volume = out_volume;
             packet.envelope_sweep_length = out_envelop_sweep_length;
@@ -630,8 +671,6 @@ impl Apu {
             self.ch2_disable();
             return;
         }
-
-        self.ch2_enable();
 
         // 00: 12.5%
         // 01: 25%
@@ -661,9 +700,17 @@ impl Apu {
             _ => panic!("Illegal wave form"),
         };
 
+        let is_on = init_volume > 0 || is_envelope_direction_increase;
+
+        if is_on {
+            self.ch2_enable();
+        } else {
+            self.ch2_disable();
+        }
+
         {
             let mut packet = self.ch2_packet.lock().unwrap();
-            packet.is_on = true;
+            packet.is_on = is_on;
             packet.pitch = out_freq;
             packet.volume = out_volume;
             packet.envelope_sweep_length = out_envelop_sweep_length;
@@ -679,11 +726,10 @@ impl Apu {
     fn channel3_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
             self.ch3_disable();
+            self.ch3_packet.lock().unwrap().is_on = false;
             // MISSING: Update length!
             return;
         }
-
-        self.ch3_enable();
 
         let dac_on = is_bit(self.nr30, 7);
         // The higher the length timer, the shorter the time before the channel is cut.
@@ -698,7 +744,7 @@ impl Apu {
         let period_hi = (self.nr34 & 0b111) as u16;
         let period = (period_hi << 8) | period_lo;
         let length_enable = is_bit(self.nr34, 6);
-        let wave_pattern = &self.wave_pattern_ram;
+        let wave_pattern = self.wave_pattern_ram.clone();
 
         let tone_freq = (2097152.0 / (0x800 - period) as f32) / 32.0;
         let volume: f32 = match output_level {
@@ -709,16 +755,23 @@ impl Apu {
             _ => unreachable!(),
         };
         let length = 64 - init_length_timer;
+        let is_on = dac_on;
+
+        if is_on {
+            self.ch3_enable();
+        } else {
+            self.ch3_disable();
+        }
 
         {
             let mut packet = self.ch3_packet.lock().unwrap();
 
-            packet.is_on = dac_on;
+            packet.is_on = is_on;
             packet.tone_freq = tone_freq;
             packet.length = length;
             packet.volume = volume;
             packet.length_enable = length_enable;
-            packet.wave_pattern = wave_pattern.clone();
+            packet.wave_pattern = wave_pattern;
             packet.speaker_left = self.is_ch3_left();
             packet.speaker_right = self.is_ch3_right();
         }
@@ -730,22 +783,48 @@ impl Apu {
             return;
         }
 
-        self.ch4_enable();
-
         let initial_length_timer = self.nr41 & 0b11_1111;
 
         let init_volume = self.nr42 >> 4;
         let is_envelope_direction_increase = is_bit(self.nr42, 3);
         let sweep_pace = self.nr42 & 0b111;
 
-        let clock_shift = (self.nr43 >> 4) & 0xF;
-        let lfsr_width = is_bit(self.nr43, 3);
-        let clock_divider = self.nr43 & 0b111;
+        let clock_shift = ((self.nr43 >> 4) & 0xF) as u32;
+        let lfsr_width_bit = is_bit(self.nr43, 3);
+        let clock_divider_raw = self.nr43 & 0b111;
 
         let length_enable = is_bit(self.nr44, 6);
 
+        let length = 64 - initial_length_timer;
+        let volume = init_volume as f32 / 15.0;
+        let is_on = init_volume > 0 || is_envelope_direction_increase;
+        let envelop_sweep_length = (44_100 * sweep_pace as u32) / 64;
+        let lfsr_width = if lfsr_width_bit { 7 } else { 15 };
+        let clock_divider = if clock_divider_raw == 0 {
+            0.5
+        } else {
+            clock_divider_raw as f32
+        };
+        let lfsr_freq = 262144.0 / (clock_divider * (1 << clock_shift) as f32);
+
+        if is_on {
+            self.ch4_enable();
+        } else {
+            self.ch4_disable();
+        }
+
         {
-            // let packet = self.ch4
+            let mut packet = self.ch4_packet.lock().unwrap();
+            packet.is_on = is_on;
+            packet.length = length;
+            packet.length_enable = length_enable;
+            packet.volume = volume;
+            packet.is_envelope_dir_inc = is_envelope_direction_increase;
+            packet.lfsr_width = lfsr_width;
+            packet.lfsr_freq = lfsr_freq;
+            packet.envelop_sweep_length = envelop_sweep_length;
+            packet.speaker_left = self.is_ch4_left();
+            packet.speaker_right = self.is_ch4_right();
         }
     }
 
