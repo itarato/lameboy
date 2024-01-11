@@ -7,7 +7,6 @@ use sdl2::audio::AudioSpecDesired;
 
 use crate::conf::*;
 use crate::util::*;
-use rand::prelude::*;
 
 #[derive(Debug)]
 struct PulseSoundPacket {
