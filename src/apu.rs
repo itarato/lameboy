@@ -47,11 +47,17 @@ impl PulseSoundPacket {
 
     fn tick(&mut self, cycles: u64) {
         if self.length_enable && self.length > 0 {
-            if self.length_counter.tick_and_check_overflow(cycles) {
+            self.length_counter.tick(cycles);
+            let mut overflow_count = self.length_counter.check_overflow_count();
+
+            while overflow_count > 0 {
+                overflow_count -= 1;
+
                 self.length -= 1;
 
                 if self.length == 0 {
                     self.is_on = false;
+                    break;
                 }
             }
         }
@@ -92,11 +98,17 @@ impl WaveSoundPacket {
 
     fn tick(&mut self, cycles: u64) {
         if self.length_enable && self.length > 0 {
-            if self.length_counter.tick_and_check_overflow(cycles) {
+            self.length_counter.tick(cycles);
+            let mut overflow_count = self.length_counter.check_overflow_count();
+
+            while overflow_count > 0 {
+                overflow_count -= 1;
+
                 self.length -= 1;
 
                 if self.length == 0 {
                     self.is_on = false;
+                    break;
                 }
             }
         }
@@ -142,18 +154,28 @@ impl NoiseSoundPacket {
 
     fn tick(&mut self, cycles: u64) {
         if self.length_enable && self.length > 0 {
-            if self.length_counter.tick_and_check_overflow(cycles) {
+            self.length_counter.tick(cycles);
+            let mut overflow_count = self.length_counter.check_overflow_count();
+
+            while overflow_count > 0 {
+                overflow_count -= 1;
+
                 self.length -= 1;
 
                 if self.length == 0 {
                     self.is_on = false;
+                    break;
                 }
             }
         }
 
-        if self.lfsr_counter.tick_and_check_overflow(cycles) {
+        self.lfsr_counter.tick(cycles);
+        let mut overflow_count = self.lfsr_counter.check_overflow_count();
+        while overflow_count > 0 {
+            overflow_count -= 1;
             let new_bit = !(self.lfsr ^ (self.lfsr >> 1)) & 0b1;
             self.lfsr = (self.lfsr >> 1) | new_bit << 14;
+
             if self.lfsr_short_mode {
                 self.lfsr = set_bit_16(self.lfsr, 7, new_bit != 0);
             }
@@ -799,7 +821,6 @@ impl Apu {
         let dac_on = is_bit(self.nr30, 7);
         // The higher the length timer, the shorter the time before the channel is cut.
         let init_length_timer = self.nr31;
-        assert!(init_length_timer <= 64);
         // 00	Mute (No sound)
         // 01	100% volume (use samples read from Wave RAM as-is)
         // 10	50% volume (shift samples read from Wave RAM right once)
@@ -819,7 +840,7 @@ impl Apu {
             3 => 0.25,
             _ => unreachable!(),
         };
-        let length = 64 - init_length_timer;
+        let length = 0xff - init_length_timer;
         let is_on = dac_on;
 
         if is_on {
