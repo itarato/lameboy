@@ -45,21 +45,10 @@ impl PulseSoundPacket {
         }
     }
 
-    fn tick(&mut self, cycles: u64) {
+    fn tick(&mut self) {
         if self.length_enable && self.length > 0 {
-            self.length_counter.tick(cycles);
-            let mut overflow_count = self.length_counter.check_overflow_count();
-
-            while overflow_count > 0 {
-                overflow_count -= 1;
-
-                self.length -= 1;
-
-                if self.length == 0 {
-                    self.active = false;
-                    break;
-                }
-            }
+            self.length -= 1;
+            self.active = self.length > 0;
         }
     }
 }
@@ -96,21 +85,10 @@ impl WaveSoundPacket {
         }
     }
 
-    fn tick(&mut self, cycles: u64) {
+    fn tick(&mut self) {
         if self.length_enable && self.length > 0 {
-            self.length_counter.tick(cycles);
-            let mut overflow_count = self.length_counter.check_overflow_count();
-
-            while overflow_count > 0 {
-                overflow_count -= 1;
-
-                self.length -= 1;
-
-                if self.length == 0 {
-                    self.active = false;
-                    break;
-                }
-            }
+            self.length -= 1;
+            self.active = self.length > 0;
         }
     }
 }
@@ -152,21 +130,10 @@ impl NoiseSoundPacket {
         }
     }
 
-    fn tick(&mut self, cycles: u64) {
-        if self.length_enable && self.length > 0 {
-            self.length_counter.tick(cycles);
-            let mut overflow_count = self.length_counter.check_overflow_count();
-
-            while overflow_count > 0 {
-                overflow_count -= 1;
-
-                self.length -= 1;
-
-                if self.length == 0 {
-                    self.active = false;
-                    break;
-                }
-            }
+    fn tick(&mut self, cycles: u64, apu_clock_overflow: bool) {
+        if apu_clock_overflow && self.length_enable && self.length > 0 {
+            self.length -= 1;
+            self.active = self.length > 0;
         }
 
         self.lfsr_counter.tick(cycles);
@@ -437,6 +404,8 @@ pub struct Apu {
     ch2_packet: Arc<Mutex<PulseSoundPacket>>,
     ch3_packet: Arc<Mutex<WaveSoundPacket>>,
     ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
+
+    clock: Counter,
 }
 
 impl Apu {
@@ -501,26 +470,20 @@ impl Apu {
             ch3_packet,
             ch4_packet,
             disable_sound,
+            clock: Counter::new(CPU_HZ as u64 / 256),
         }
     }
 
     pub fn update(&mut self, cycles: u64) {
-        {
-            let mut packet = self.ch1_packet.lock().unwrap();
-            packet.tick(cycles);
+        let did_overflow = self.clock.tick_and_check_overflow(cycles);
+
+        if did_overflow {
+            self.ch1_packet.lock().unwrap().tick();
+            self.ch2_packet.lock().unwrap().tick();
+            self.ch3_packet.lock().unwrap().tick();
         }
-        {
-            let mut packet = self.ch2_packet.lock().unwrap();
-            packet.tick(cycles);
-        }
-        {
-            let mut packet = self.ch3_packet.lock().unwrap();
-            packet.tick(cycles);
-        }
-        {
-            let mut packet = self.ch4_packet.lock().unwrap();
-            packet.tick(cycles);
-        }
+
+        self.ch4_packet.lock().unwrap().tick(cycles, did_overflow);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
