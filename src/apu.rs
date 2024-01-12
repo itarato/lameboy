@@ -659,7 +659,6 @@ impl Apu {
 
     fn channel1_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr14, 7) {
-            self.ch1_packet.lock().unwrap().active = false;
             return;
         }
 
@@ -713,7 +712,6 @@ impl Apu {
 
     fn channel2_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr24, 7) {
-            self.ch2_packet.lock().unwrap().active = false;
             return;
         }
 
@@ -764,7 +762,6 @@ impl Apu {
 
     fn channel3_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
-            self.ch3_packet.lock().unwrap().active = false;
             // MISSING: Update length!
             return;
         }
@@ -812,7 +809,6 @@ impl Apu {
 
     fn channel4_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr44, 7) {
-            self.ch4_packet.lock().unwrap().active = false;
             return;
         }
 
