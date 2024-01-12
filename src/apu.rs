@@ -415,7 +415,7 @@ impl Apu {
         let desired_spec = AudioSpecDesired {
             freq: Some(44_100),
             channels: Some(2),
-            samples: None,
+            samples: Some(256),
         };
 
         let ch1_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
