@@ -127,7 +127,7 @@ impl PPU {
     //       - use is_stat_mode_0_interrupt_selected ...
     //       - make return a list of instructions
     #[must_use]
-    pub fn update(&mut self, cpu_cycles: u64) -> u8 {
+    pub fn update(&mut self, cpu_cycles: u32) -> u8 {
         let mut interrupt_mask = 0;
         if !self.is_lcd_display_enabled() {
             return interrupt_mask;
@@ -135,7 +135,7 @@ impl PPU {
 
         // println!("Ticks: {}", cpu_cycles);
 
-        self.stat_counter += cpu_cycles;
+        self.stat_counter += cpu_cycles as u64;
 
         // Mode 2  2_____2_____2_____2_____2_____2___________________2____
         // Mode 3  _33____33____33____33____33____33__________________3___

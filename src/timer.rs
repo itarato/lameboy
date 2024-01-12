@@ -24,7 +24,7 @@ impl Timer {
     }
 
     #[must_use]
-    pub fn handle_ticks(&mut self, cpu_clocks: u64, pre_exec_tma: u8) -> Result<bool, Error> {
+    pub fn handle_ticks(&mut self, cpu_clocks: u32, pre_exec_tma: u8) -> Result<bool, Error> {
         // println!("DIV: {} TIMA: {}", self.div, self.tima);
 
         let mut needs_tima_interrupt = false;

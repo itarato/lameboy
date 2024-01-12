@@ -288,8 +288,7 @@ impl VM {
                 self.delayed_cmds.remove(*i);
             }
 
-            let diff_cpu_clocks: u64 =
-                (interrupt_mcycles as u64 + cpu_mcycles as u64) * CYCLE_PER_MCYCLE;
+            let diff_cpu_clocks: u32 = (interrupt_mcycles + cpu_mcycles as u32) * CYCLE_PER_MCYCLE;
 
             self.sound.update(diff_cpu_clocks);
 

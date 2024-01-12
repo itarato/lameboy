@@ -52,8 +52,8 @@ impl PulseSoundPacket {
     }
 
     #[must_use]
-    fn tick(&mut self, cpu_clocks: u32) -> Option<u16> {
-        if self.length_enable && self.length > 0 {
+    fn tick(&mut self, clock_overflow: bool, cpu_clocks: u32) -> Option<u16> {
+        if clock_overflow && self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
         }
@@ -99,7 +99,9 @@ struct WaveSoundPacket {
     length: u8,
     volume: f32,
     length_enable: bool,
+    wave_counter: Counter,
     wave_pattern: [u8; 16],
+    wave_ptr: usize,
     tone_freq: f32,
     speaker_left: bool,
     speaker_right: bool,
@@ -114,7 +116,9 @@ impl WaveSoundPacket {
             length: 0,
             volume: 0.0,
             length_enable: false,
+            wave_counter: Counter::new(CPU_HZ / (440 * 32)),
             wave_pattern: [0; 16],
+            wave_ptr: 0,
             tone_freq: 0.0,
             speaker_left: true,
             speaker_right: true,
@@ -123,10 +127,19 @@ impl WaveSoundPacket {
         }
     }
 
-    fn tick(&mut self) {
-        if self.length_enable && self.length > 0 {
+    fn tick(&mut self, clock_overflow: bool, cpu_clocks: u32) {
+        if clock_overflow && self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
+        }
+
+        self.wave_counter.tick(cpu_clocks);
+        let mut wave_overflows = self.wave_counter.check_overflow_count();
+
+        while wave_overflows > 0 {
+            wave_overflows -= 1;
+
+            self.wave_ptr = (self.wave_ptr + 1) % 32;
         }
     }
 }
@@ -166,8 +179,8 @@ impl NoiseSoundPacket {
         }
     }
 
-    fn tick(&mut self, cycles: u32, apu_clock_overflow: bool) {
-        if apu_clock_overflow && self.length_enable && self.length > 0 {
+    fn tick(&mut self, clock_overflow: bool, cycles: u32) {
+        if clock_overflow && self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
         }
@@ -265,6 +278,13 @@ impl WaveChannel {
                 0.0
             } else {
                 self.phase = (self.phase + (packet.tone_freq / self.freq)) % 1.0;
+                let wave_sample = if packet.wave_ptr % 2 == 0 {
+                    packet.wave_pattern[packet.wave_ptr / 2] >> 4
+                } else {
+                    packet.wave_pattern[packet.wave_ptr / 2] & 0xF
+                };
+                // WHAT THE HELL DO I DO WITH THIS???
+
                 if self.phase <= 0.5 {
                     packet.volume
                 } else {
@@ -510,26 +530,32 @@ impl Apu {
         }
     }
 
-    pub fn update(&mut self, cycles: u64) {
-        let did_overflow = self.clock.tick_and_check_overflow(cycles as _);
-
-        if did_overflow {
-            self.ch3_packet.lock().unwrap().tick();
-        }
+    pub fn update(&mut self, cpu_clocks: u32) {
+        let clock_overflow = self.clock.tick_and_check_overflow(cpu_clocks);
 
         {
             let mut ch1_packet = self.ch1_packet.lock().unwrap();
-            if let Some(new_period) = ch1_packet.tick(cycles as u32) {
+            if let Some(new_period) = ch1_packet.tick(clock_overflow, cpu_clocks) {
                 self.nr13 = (new_period & 0xff) as u8;
                 self.nr14 = (self.nr14 & !0b111) | ((new_period >> 8) & 0b111) as u8;
             }
         }
 
-        let _ = self.ch2_packet.lock().unwrap().tick(cycles as u32);
+        let _ = self
+            .ch2_packet
+            .lock()
+            .unwrap()
+            .tick(clock_overflow, cpu_clocks);
+
+        self.ch3_packet
+            .lock()
+            .unwrap()
+            .tick(clock_overflow, cpu_clocks);
+
         self.ch4_packet
             .lock()
             .unwrap()
-            .tick(cycles as u32, did_overflow);
+            .tick(clock_overflow, cpu_clocks);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
@@ -567,7 +593,14 @@ impl Apu {
                 self.channel2_update();
             }
 
-            MEM_LOC_NR30 => self.nr30 = byte,
+            MEM_LOC_NR30 => {
+                self.nr30 = byte;
+
+                let dac_on = is_bit(self.nr30, 7);
+                if !dac_on {
+                    self.ch3_packet.lock().unwrap().active = false;
+                }
+            }
             MEM_LOC_NR31 => {
                 self.nr31 = byte;
 
@@ -671,6 +704,9 @@ impl Apu {
                 if self.is_ch3_on() {
                     Ok(self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize])
                 } else {
+                    // NOT SURE: this might return the actual bytes.
+                    // Strange quote: "Wave RAM can be accessed normally even if the DAC is on, as long as the channel is not active."
+                    // -> how else wave channel can be not active then dac-off?
                     Ok(0xFF)
                 }
             }
@@ -844,6 +880,8 @@ impl Apu {
             // Not sure if this should always be true - but for now it is. Otherwise this goes on beeping forever.
             packet.length_enable = true;
             packet.wave_pattern = wave_pattern;
+            packet.wave_ptr = 0;
+            packet.wave_counter = Counter::new(CPU_HZ / (tone_freq as u32));
             packet.speaker_left = self.is_ch3_left();
             packet.speaker_right = self.is_ch3_right();
         }
