@@ -12,8 +12,11 @@ use crate::util::*;
 #[derive(Debug)]
 struct PulseSoundPacket {
     active: bool,
-    pitch: f32,                   // 1.0 .. ~k
-    volume: f32,                  // 0.0 .. 1.0
+    freq: f32,   // 1.0 .. ~k
+    volume: f32, // 0.0 .. 1.0
+    sweep_counter: Option<Counter>,
+    sweep_direction_sub: bool,
+    sweep_step: u8,
     envelope_sweep_length: usize, // 22050 = 1s
     envelope_direction_down: bool,
     waveform: f32, // 0.0 .. 1.0
@@ -23,14 +26,18 @@ struct PulseSoundPacket {
     speaker_right: bool,
     global_volume_left: f32,
     global_volume_right: f32,
+    period: u16,
 }
 
 impl PulseSoundPacket {
     fn new() -> PulseSoundPacket {
         PulseSoundPacket {
             active: false,
-            pitch: 0.0,
+            freq: 0.0,
             volume: 0.0,
+            sweep_counter: None,
+            sweep_direction_sub: true,
+            sweep_step: 0,
             envelope_sweep_length: 0,
             envelope_direction_down: true,
             waveform: 0.0,
@@ -40,13 +47,48 @@ impl PulseSoundPacket {
             speaker_right: true,
             global_volume_left: 0.5,
             global_volume_right: 0.5,
+            period: 0,
         }
     }
 
-    fn tick(&mut self) {
+    #[must_use]
+    fn tick(&mut self, cpu_clocks: u32) -> Option<u16> {
         if self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
+        }
+
+        if let Some(sweep_counter) = self.sweep_counter.as_mut() {
+            sweep_counter.tick(cpu_clocks);
+            let mut overflow_count = sweep_counter.check_overflow_count();
+            let old_period = self.period;
+
+            while overflow_count > 0 {
+                overflow_count -= 1;
+
+                let dir: i16 = if self.sweep_direction_sub { -1 } else { 1 };
+                let new_period =
+                    self.period as i16 + dir * (self.period as i16 / (1 << self.sweep_step));
+
+                let new_period: u16 = if new_period < 0 {
+                    0
+                } else if new_period > 0b0000_0111_1111_1111 {
+                    self.sweep_counter = None;
+                    0b0000_0111_1111_1111
+                } else {
+                    new_period as u16
+                };
+                self.period = new_period;
+                self.freq = (CPU_HZ as f32 / 32.0) / (2048.0 - self.period as f32);
+            }
+
+            if old_period == self.period {
+                None
+            } else {
+                Some(self.period)
+            }
+        } else {
+            None
         }
     }
 }
@@ -116,7 +158,7 @@ impl NoiseSoundPacket {
             envelope_sweep_length: 0,
             lfsr_short_mode: false,
             lfsr: 0,
-            lfsr_counter: Counter::new(CPU_HZ as u64 / 256),
+            lfsr_counter: Counter::new(CPU_HZ / 256),
             speaker_left: true,
             speaker_right: true,
             global_volume_left: 0.5,
@@ -124,7 +166,7 @@ impl NoiseSoundPacket {
         }
     }
 
-    fn tick(&mut self, cycles: u64, apu_clock_overflow: bool) {
+    fn tick(&mut self, cycles: u32, apu_clock_overflow: bool) {
         if apu_clock_overflow && self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
@@ -182,7 +224,7 @@ impl PulseChannel {
                     (*packet).volume = 1.0;
                 }
 
-                self.phase = (self.phase + (packet.pitch / self.freq)) % 1.0;
+                self.phase = (self.phase + (packet.freq / self.freq)) % 1.0;
                 if self.phase <= packet.waveform {
                     packet.volume
                 } else {
@@ -464,20 +506,30 @@ impl Apu {
             ch3_packet,
             ch4_packet,
             disable_sound,
-            clock: Counter::new(CPU_HZ as u64 / 256),
+            clock: Counter::new(CPU_HZ / 256),
         }
     }
 
     pub fn update(&mut self, cycles: u64) {
-        let did_overflow = self.clock.tick_and_check_overflow(cycles);
+        let did_overflow = self.clock.tick_and_check_overflow(cycles as _);
 
         if did_overflow {
-            self.ch1_packet.lock().unwrap().tick();
-            self.ch2_packet.lock().unwrap().tick();
             self.ch3_packet.lock().unwrap().tick();
         }
 
-        self.ch4_packet.lock().unwrap().tick(cycles, did_overflow);
+        {
+            let mut ch1_packet = self.ch1_packet.lock().unwrap();
+            if let Some(new_period) = ch1_packet.tick(cycles as u32) {
+                self.nr13 = (new_period & 0xff) as u8;
+                self.nr14 = (self.nr14 & !0b111) | ((new_period >> 8) & 0b111) as u8;
+            }
+        }
+
+        let _ = self.ch2_packet.lock().unwrap().tick(cycles as u32);
+        self.ch4_packet
+            .lock()
+            .unwrap()
+            .tick(cycles as u32, did_overflow);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
@@ -643,8 +695,8 @@ impl Apu {
         }
 
         let pace = (self.nr10 >> 4) & 0b111;
-        let direction = is_bit(self.nr10, 3);
-        let individual_step = self.nr10 & 0b111;
+        let sweep_direction_sub = is_bit(self.nr10, 3);
+        let sweep_individual_step = self.nr10 & 0b111;
 
         // 00: 12.5%
         // 01: 25%
@@ -664,6 +716,10 @@ impl Apu {
 
         let out_freq = (CPU_HZ as f32 / 32.0) / (2048.0 - period as f32);
         let out_volume = init_volume as f32 / 15.0;
+        let out_sweep_counter = match pace {
+            0 => None,
+            v => Some(Counter::new(CPU_HZ / (128 * v as u32))),
+        };
         let out_envelop_sweep_length = (44_100 * sweep_pace as usize) / 64;
         let out_waveform = match wave_duty {
             0b00 => 0.125,
@@ -677,8 +733,11 @@ impl Apu {
         {
             let mut packet = self.ch1_packet.lock().unwrap();
             packet.active = active;
-            packet.pitch = out_freq;
+            packet.freq = out_freq;
             packet.volume = out_volume;
+            packet.sweep_direction_sub = sweep_direction_sub;
+            packet.sweep_step = sweep_individual_step;
+            packet.sweep_counter = out_sweep_counter;
             packet.envelope_sweep_length = out_envelop_sweep_length;
             packet.envelope_direction_down = !is_envelope_direction_increase;
             packet.waveform = out_waveform;
@@ -686,6 +745,7 @@ impl Apu {
             packet.length = init_length_timer;
             packet.speaker_left = self.is_ch1_left();
             packet.speaker_right = self.is_ch1_right();
+            packet.period = period;
         }
     }
 
@@ -729,7 +789,7 @@ impl Apu {
         {
             let mut packet = self.ch2_packet.lock().unwrap();
             packet.active = active;
-            packet.pitch = out_freq;
+            packet.freq = out_freq;
             packet.volume = out_volume;
             packet.envelope_sweep_length = out_envelop_sweep_length;
             packet.envelope_direction_down = !is_envelope_direction_increase;
@@ -829,7 +889,7 @@ impl Apu {
             packet.is_envelope_dir_inc = is_envelope_direction_increase;
             packet.lfsr = 0;
             packet.lfsr_short_mode = lfsr_short_mode;
-            packet.lfsr_counter = Counter::new((CPU_HZ as f32 / lfsr_freq) as u64);
+            packet.lfsr_counter = Counter::new((CPU_HZ as f32 / lfsr_freq) as u32);
             packet.envelope_sweep_length = envelope_sweep_length;
             packet.speaker_left = self.is_ch4_left();
             packet.speaker_right = self.is_ch4_right();

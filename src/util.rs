@@ -149,7 +149,7 @@ pub struct Stats {
 }
 
 impl Stats {
-    pub fn new(window: usize, freq: u64) -> Stats {
+    pub fn new(window: usize, freq: u32) -> Stats {
         Stats {
             queue: SizedQueue::new(window),
             window_counter: Counter::new(freq),
@@ -187,21 +187,21 @@ impl Stats {
 
 #[derive(Debug)]
 pub struct Counter {
-    pub counter: u64,
-    modulo: u64,
+    pub counter: u32,
+    modulo: u32,
 }
 
 impl Counter {
-    pub fn new(modulo: u64) -> Counter {
+    pub fn new(modulo: u32) -> Counter {
         Counter { counter: 0, modulo }
     }
 
-    pub fn tick_and_check_overflow(&mut self, len: u64) -> bool {
+    pub fn tick_and_check_overflow(&mut self, len: u32) -> bool {
         self.tick(len);
         self.check_overflow()
     }
 
-    pub fn tick(&mut self, len: u64) {
+    pub fn tick(&mut self, len: u32) {
         self.counter += len;
     }
 
@@ -226,7 +226,7 @@ impl Counter {
         count
     }
 
-    pub fn update_modulo(&mut self, modulo: u64) {
+    pub fn update_modulo(&mut self, modulo: u32) {
         self.modulo = modulo;
     }
 

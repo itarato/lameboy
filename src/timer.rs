@@ -18,8 +18,8 @@ impl Timer {
             tac: 0b1111_1000,
             tma: 0,
             tima: 0,
-            div_ticker: Counter::new(DIV_REG_UPDATE_PER_MCYCLE as u64),
-            tima_ticker: Counter::new(TIMA_UPDATE_PER_MCYCLE[3] as u64),
+            div_ticker: Counter::new(DIV_REG_UPDATE_PER_MCYCLE),
+            tima_ticker: Counter::new(TIMA_UPDATE_PER_MCYCLE[3]),
         }
     }
 
@@ -29,14 +29,14 @@ impl Timer {
 
         let mut needs_tima_interrupt = false;
 
-        self.div_ticker.tick(cpu_clocks);
+        self.div_ticker.tick(cpu_clocks as _);
         if self.div_ticker.check_overflow() {
             self.div = self.div.wrapping_add(1);
         }
 
         let tima_enabled = is_bit(self.tac, 2);
         if tima_enabled {
-            self.tima_ticker.tick(cpu_clocks);
+            self.tima_ticker.tick(cpu_clocks as _);
 
             let mut overflow_count = self.tima_ticker.check_overflow_count();
             while overflow_count > 0 {
@@ -80,7 +80,7 @@ impl Timer {
         self.tac = byte | 0b1111_1000; // Keep useless bytes to 1.
 
         let tima_freq = TIMA_UPDATE_PER_MCYCLE[(self.tac & 0b11) as usize];
-        self.tima_ticker.update_modulo(tima_freq as u64);
+        self.tima_ticker.update_modulo(tima_freq);
     }
     pub fn set_tma(&mut self, byte: u8) {
         self.tma = byte;
