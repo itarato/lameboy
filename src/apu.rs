@@ -19,7 +19,6 @@ struct PulseSoundPacket {
     waveform: f32, // 0.0 .. 1.0
     length_enable: bool,
     length: u8,
-    length_counter: Counter,
     speaker_left: bool,
     speaker_right: bool,
     global_volume_left: f32,
@@ -37,7 +36,6 @@ impl PulseSoundPacket {
             waveform: 0.0,
             length_enable: false,
             length: 0,
-            length_counter: Counter::new(CPU_HZ as u64 / 256),
             speaker_left: true,
             speaker_right: true,
             global_volume_left: 0.5,
@@ -56,7 +54,6 @@ impl PulseSoundPacket {
 #[derive(Debug)]
 struct WaveSoundPacket {
     active: bool,
-    length_counter: Counter,
     length: u8,
     volume: f32,
     length_enable: bool,
@@ -72,7 +69,6 @@ impl WaveSoundPacket {
     fn new() -> WaveSoundPacket {
         WaveSoundPacket {
             active: false,
-            length_counter: Counter::new(CPU_HZ as u64 / 256),
             length: 0,
             volume: 0.0,
             length_enable: false,
@@ -95,7 +91,6 @@ impl WaveSoundPacket {
 
 struct NoiseSoundPacket {
     active: bool,
-    length_counter: Counter,
     length: u8,
     length_enable: bool,
     volume: f32,
@@ -114,7 +109,6 @@ impl NoiseSoundPacket {
     fn new() -> NoiseSoundPacket {
         NoiseSoundPacket {
             active: false,
-            length_counter: Counter::new(CPU_HZ as u64 / 256),
             length: 0,
             length_enable: false,
             volume: 0.0,
@@ -789,7 +783,6 @@ impl Apu {
             packet.volume = volume;
             // Not sure if this should always be true - but for now it is. Otherwise this goes on beeping forever.
             packet.length_enable = true;
-            packet.length_counter = Counter::new((CPU_HZ as f32 / tone_freq) as _);
             packet.wave_pattern = wave_pattern;
             packet.speaker_left = self.is_ch3_left();
             packet.speaker_right = self.is_ch3_right();
