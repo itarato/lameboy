@@ -3,6 +3,7 @@ use std::sync::Mutex;
 
 use sdl2::audio::AudioCallback;
 use sdl2::audio::AudioDevice;
+use sdl2::audio::AudioFormatNum;
 use sdl2::audio::AudioSpecDesired;
 
 use crate::conf::*;
@@ -395,7 +396,7 @@ impl AudioCallback for DmgChannels {
         const PARTS_LEN: f32 = 4.0;
 
         // Silence it out - so channels can _add_ their part.
-        out.iter_mut().for_each(|b| *b = 0.0);
+        out.iter_mut().for_each(|b| *b = Self::Channel::SILENCE);
 
         self.ch1_pulse.generate(out, PARTS_LEN);
         self.ch2_pulse.generate(out, PARTS_LEN);
@@ -493,6 +494,7 @@ impl Apu {
             nr51: 0,
             nr52: 0,
             wave_pattern_ram: [0; 16],
+            // Just to keep the thread alive.
             _sound_device,
             ch1_packet,
             ch2_packet,
@@ -614,7 +616,7 @@ impl Apu {
                 if !self.is_ch3_on() {
                     self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize] = byte;
                 } else {
-                    log::error!("Write to CH3 wave patterns while on");
+                    log::error!("Write to CH3 wave patterns while on: {:04X}", loc);
                     // Make sure the turn-off mechanism works. If it is - error can be ignored.
                 }
             }
