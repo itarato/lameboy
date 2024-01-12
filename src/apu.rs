@@ -492,7 +492,12 @@ impl Apu {
             // "During the All Sound OFF mode, each sound mode register cannot be set.)"
             MEM_LOC_NR10 => self.nr10 = byte,
             // NR11: Channel 1 length timer & duty cycle
-            MEM_LOC_NR11 => self.nr11 = byte,
+            MEM_LOC_NR11 => {
+                self.nr11 = byte;
+
+                let length = 64 - (self.nr11 & 0b11_1111);
+                self.ch1_packet.lock().unwrap().length = length;
+            }
             // NR12: Channel 1 volume & envelope
             MEM_LOC_NR12 => self.nr12 = byte,
             // NR13: Channel 1 period low [write-only].
@@ -503,7 +508,12 @@ impl Apu {
                 self.channel1_update();
             }
 
-            MEM_LOC_NR21 => self.nr21 = byte,
+            MEM_LOC_NR21 => {
+                self.nr21 = byte;
+
+                let length = 64 - (self.nr21 & 0b11_1111);
+                self.ch2_packet.lock().unwrap().length = length;
+            }
             MEM_LOC_NR22 => self.nr22 = byte,
             MEM_LOC_NR23 => self.nr23 = byte,
             MEM_LOC_NR24 => {
@@ -512,7 +522,12 @@ impl Apu {
             }
 
             MEM_LOC_NR30 => self.nr30 = byte,
-            MEM_LOC_NR31 => self.nr31 = byte,
+            MEM_LOC_NR31 => {
+                self.nr31 = byte;
+
+                let length = 255 - self.nr31;
+                self.ch3_packet.lock().unwrap().length = length;
+            }
             MEM_LOC_NR32 => self.nr32 = byte,
             MEM_LOC_NR33 => self.nr33 = byte,
             MEM_LOC_NR34 => {
@@ -520,7 +535,12 @@ impl Apu {
                 self.channel3_update();
             }
 
-            MEM_LOC_NR41 => self.nr41 = byte,
+            MEM_LOC_NR41 => {
+                self.nr41 = byte;
+
+                let length = 64 - (self.nr41 & 0b11_1111);
+                self.ch4_packet.lock().unwrap().length = length;
+            }
             MEM_LOC_NR42 => self.nr42 = byte,
             MEM_LOC_NR43 => self.nr43 = byte,
             MEM_LOC_NR44 => {
@@ -621,7 +641,10 @@ impl Apu {
     }
 
     fn channel1_update(&mut self) {
+        let length_enable = is_bit(self.nr14, 6);
+
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr14, 7) {
+            self.ch1_packet.lock().unwrap().length_enable = length_enable;
             return;
         }
 
@@ -641,7 +664,6 @@ impl Apu {
         let is_envelope_direction_increase = is_bit(self.nr12, 3);
         let sweep_pace = self.nr12 & 0b111;
 
-        let length_enable = is_bit(self.nr14, 6);
         let period_hi = (self.nr14 & 0b111) as u16;
         let period_lo = self.nr13 as u16;
         let period = (period_hi << 8) | period_lo;
@@ -674,7 +696,10 @@ impl Apu {
     }
 
     fn channel2_update(&mut self) {
+        let length_enable = is_bit(self.nr24, 6);
+
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr24, 7) {
+            self.ch2_packet.lock().unwrap().length_enable = length_enable;
             return;
         }
 
@@ -690,7 +715,6 @@ impl Apu {
         let is_envelope_direction_increase = is_bit(self.nr22, 3);
         let sweep_pace = self.nr22 & 0b111;
 
-        let length_enable = is_bit(self.nr24, 6);
         let period_hi = (self.nr24 & 0b111) as u16;
         let period_lo = self.nr23 as u16;
         let period = (period_hi << 8) | period_lo;
@@ -724,8 +748,10 @@ impl Apu {
     }
 
     fn channel3_update(&mut self) {
+        let length_enable = is_bit(self.nr34, 6);
+
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
-            // MISSING: Update length!
+            self.ch3_packet.lock().unwrap().length_enable = length_enable;
             return;
         }
 
@@ -771,7 +797,10 @@ impl Apu {
     }
 
     fn channel4_update(&mut self) {
+        let length_enable = is_bit(self.nr44, 6);
+
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr44, 7) {
+            self.ch4_packet.lock().unwrap().length_enable = length_enable;
             return;
         }
 
