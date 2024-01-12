@@ -626,11 +626,15 @@ impl Apu {
                 self.nr52 = byte & 0xF0;
 
                 if !self.audio_on() {
-                    // TODO: The packets needs to be updated too to have an instant off.
                     self.ch1_disable();
                     self.ch2_disable();
                     self.ch3_disable();
                     self.ch4_disable();
+
+                    self.ch1_packet.lock().unwrap().is_on = false;
+                    self.ch2_packet.lock().unwrap().is_on = false;
+                    self.ch3_packet.lock().unwrap().is_on = false;
+                    self.ch4_packet.lock().unwrap().is_on = false;
                 }
             }
             MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
