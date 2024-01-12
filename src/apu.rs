@@ -10,7 +10,7 @@ use crate::util::*;
 
 #[derive(Debug)]
 struct PulseSoundPacket {
-    is_on: bool,
+    active: bool,
     pitch: f32,                   // 1.0 .. ~k
     volume: f32,                  // 0.0 .. 1.0
     envelope_sweep_length: usize, // 22050 = 1s
@@ -28,7 +28,7 @@ struct PulseSoundPacket {
 impl PulseSoundPacket {
     fn new() -> PulseSoundPacket {
         PulseSoundPacket {
-            is_on: false,
+            active: false,
             pitch: 0.0,
             volume: 0.0,
             envelope_sweep_length: 0,
@@ -55,7 +55,7 @@ impl PulseSoundPacket {
                 self.length -= 1;
 
                 if self.length == 0 {
-                    self.is_on = false;
+                    self.active = false;
                     break;
                 }
             }
@@ -65,7 +65,7 @@ impl PulseSoundPacket {
 
 #[derive(Debug)]
 struct WaveSoundPacket {
-    is_on: bool,
+    active: bool,
     length_counter: Counter,
     length: u8,
     volume: f32,
@@ -81,7 +81,7 @@ struct WaveSoundPacket {
 impl WaveSoundPacket {
     fn new() -> WaveSoundPacket {
         WaveSoundPacket {
-            is_on: false,
+            active: false,
             length_counter: Counter::new(CPU_HZ as u64 / 256),
             length: 0,
             volume: 0.0,
@@ -106,7 +106,7 @@ impl WaveSoundPacket {
                 self.length -= 1;
 
                 if self.length == 0 {
-                    self.is_on = false;
+                    self.active = false;
                     break;
                 }
             }
@@ -115,7 +115,7 @@ impl WaveSoundPacket {
 }
 
 struct NoiseSoundPacket {
-    is_on: bool,
+    active: bool,
     length_counter: Counter,
     length: u8,
     length_enable: bool,
@@ -134,7 +134,7 @@ struct NoiseSoundPacket {
 impl NoiseSoundPacket {
     fn new() -> NoiseSoundPacket {
         NoiseSoundPacket {
-            is_on: false,
+            active: false,
             length_counter: Counter::new(CPU_HZ as u64 / 256),
             length: 0,
             length_enable: false,
@@ -162,7 +162,7 @@ impl NoiseSoundPacket {
                 self.length -= 1;
 
                 if self.length == 0 {
-                    self.is_on = false;
+                    self.active = false;
                     break;
                 }
             }
@@ -198,7 +198,7 @@ impl PulseChannel {
         }
 
         for chunk in out.chunks_exact_mut(2) {
-            let value = if !packet.is_on {
+            let value = if !packet.active {
                 0.0
             } else {
                 if (*packet).envelope_sweep_length > 0 {
@@ -257,7 +257,7 @@ impl WaveChannel {
         }
 
         for chunk in out.chunks_exact_mut(2) {
-            let value = if !packet.is_on {
+            let value = if !packet.active {
                 0.0
             } else {
                 self.phase = (self.phase + (packet.tone_freq / self.freq)) % 1.0;
@@ -300,7 +300,7 @@ impl NoiseChannel {
         }
 
         for chunk in out.chunks_exact_mut(2) {
-            let value = if !packet.is_on {
+            let value = if !packet.active {
                 0.0
             } else {
                 if (*packet).envelope_sweep_length > 0 {
@@ -503,43 +503,21 @@ impl Apu {
     }
 
     pub fn update(&mut self, cycles: u64) {
-        let disable_ch1;
-        let disable_ch2;
-        let disable_ch3;
-        let disable_ch4;
-
         {
             let mut packet = self.ch1_packet.lock().unwrap();
             packet.tick(cycles);
-            disable_ch1 = !packet.is_on;
         }
         {
             let mut packet = self.ch2_packet.lock().unwrap();
             packet.tick(cycles);
-            disable_ch2 = !packet.is_on;
         }
         {
             let mut packet = self.ch3_packet.lock().unwrap();
             packet.tick(cycles);
-            disable_ch3 = !packet.is_on;
         }
         {
             let mut packet = self.ch4_packet.lock().unwrap();
             packet.tick(cycles);
-            disable_ch4 = !packet.is_on;
-        }
-
-        if disable_ch1 {
-            self.ch1_disable();
-        }
-        if disable_ch2 {
-            self.ch2_disable();
-        }
-        if disable_ch3 {
-            self.ch3_disable();
-        }
-        if disable_ch4 {
-            self.ch4_disable();
         }
     }
 
@@ -626,15 +604,10 @@ impl Apu {
                 self.nr52 = byte & 0xF0;
 
                 if !self.audio_on() {
-                    self.ch1_disable();
-                    self.ch2_disable();
-                    self.ch3_disable();
-                    self.ch4_disable();
-
-                    self.ch1_packet.lock().unwrap().is_on = false;
-                    self.ch2_packet.lock().unwrap().is_on = false;
-                    self.ch3_packet.lock().unwrap().is_on = false;
-                    self.ch4_packet.lock().unwrap().is_on = false;
+                    self.ch1_packet.lock().unwrap().active = false;
+                    self.ch2_packet.lock().unwrap().active = false;
+                    self.ch3_packet.lock().unwrap().active = false;
+                    self.ch4_packet.lock().unwrap().active = false;
                 }
             }
             MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
@@ -653,7 +626,16 @@ impl Apu {
         match loc {
             MEM_LOC_NR50 => Ok(self.nr50),
             MEM_LOC_NR51 => Ok(self.nr51),
-            MEM_LOC_NR52 => Ok(self.nr52),
+            MEM_LOC_NR52 => {
+                let mut byte = self.nr52 & 0xF0;
+
+                byte = set_bit(byte, 0, self.ch1_packet.lock().unwrap().active);
+                byte = set_bit(byte, 1, self.ch2_packet.lock().unwrap().active);
+                byte = set_bit(byte, 2, self.ch3_packet.lock().unwrap().active);
+                byte = set_bit(byte, 3, self.ch4_packet.lock().unwrap().active);
+
+                Ok(byte)
+            }
             MEM_LOC_WAVE_PATTERN_START..=MEM_LOC_WAVE_PATTERN_END => {
                 if self.is_ch3_on() {
                     Ok(self.wave_pattern_ram[(loc - MEM_LOC_WAVE_PATTERN_START) as usize])
@@ -669,38 +651,13 @@ impl Apu {
         is_bit(self.nr52, 7)
     }
 
-    fn ch1_enable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 0, true);
-    }
-    fn ch2_enable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 1, true);
-    }
-    fn ch3_enable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 2, true);
-    }
-    fn ch4_enable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 3, true);
-    }
-    fn ch1_disable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 0, false);
-    }
-    fn ch2_disable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 1, false);
-    }
-    fn ch3_disable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 2, false);
-    }
-    fn ch4_disable(&mut self) {
-        self.nr52 = set_bit(self.nr52, 3, false);
-    }
-
     fn is_ch3_on(&self) -> bool {
-        is_bit(self.nr52, 2)
+        self.ch3_packet.lock().unwrap().active
     }
 
     fn channel1_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr14, 7) {
-            self.ch1_disable();
+            self.ch1_packet.lock().unwrap().active = false;
             return;
         }
 
@@ -735,17 +692,11 @@ impl Apu {
             0b11 => 0.75,
             _ => panic!("Illegal wave form"),
         };
-        let is_on = init_volume > 0 || is_envelope_direction_increase;
-
-        if is_on {
-            self.ch1_enable();
-        } else {
-            self.ch1_disable();
-        }
+        let active = init_volume > 0 || is_envelope_direction_increase;
 
         {
             let mut packet = self.ch1_packet.lock().unwrap();
-            packet.is_on = is_on;
+            packet.active = active;
             packet.pitch = out_freq;
             packet.volume = out_volume;
             packet.envelope_sweep_length = out_envelop_sweep_length;
@@ -760,7 +711,7 @@ impl Apu {
 
     fn channel2_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr24, 7) {
-            self.ch2_disable();
+            self.ch2_packet.lock().unwrap().active = false;
             return;
         }
 
@@ -792,17 +743,11 @@ impl Apu {
             _ => panic!("Illegal wave form"),
         };
 
-        let is_on = init_volume > 0 || is_envelope_direction_increase;
-
-        if is_on {
-            self.ch2_enable();
-        } else {
-            self.ch2_disable();
-        }
+        let active = init_volume > 0 || is_envelope_direction_increase;
 
         {
             let mut packet = self.ch2_packet.lock().unwrap();
-            packet.is_on = is_on;
+            packet.active = active;
             packet.pitch = out_freq;
             packet.volume = out_volume;
             packet.envelope_sweep_length = out_envelop_sweep_length;
@@ -817,8 +762,7 @@ impl Apu {
 
     fn channel3_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
-            self.ch3_disable();
-            self.ch3_packet.lock().unwrap().is_on = false;
+            self.ch3_packet.lock().unwrap().active = false;
             // MISSING: Update length!
             return;
         }
@@ -846,18 +790,12 @@ impl Apu {
             _ => unreachable!(),
         };
         let length = 0xff - init_length_timer;
-        let is_on = dac_on;
-
-        if is_on {
-            self.ch3_enable();
-        } else {
-            self.ch3_disable();
-        }
+        let active = dac_on;
 
         {
             let mut packet = self.ch3_packet.lock().unwrap();
 
-            packet.is_on = is_on;
+            packet.active = active;
             packet.tone_freq = tone_freq;
             packet.length = length;
             packet.volume = volume;
@@ -872,7 +810,7 @@ impl Apu {
 
     fn channel4_update(&mut self) {
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr44, 7) {
-            self.ch4_disable();
+            self.ch4_packet.lock().unwrap().active = false;
             return;
         }
 
@@ -890,7 +828,7 @@ impl Apu {
 
         let length = 64 - initial_length_timer;
         let volume = init_volume as f32 / 15.0;
-        let is_on = init_volume > 0 || is_envelope_direction_increase;
+        let active = init_volume > 0 || is_envelope_direction_increase;
         let envelope_sweep_length = (44_100 * sweep_pace as u32) / 64;
         let clock_divider = if clock_divider_raw == 0 {
             0.5
@@ -899,15 +837,9 @@ impl Apu {
         };
         let lfsr_freq = 262144.0 / (clock_divider * (1 << clock_shift) as f32);
 
-        if is_on {
-            self.ch4_enable();
-        } else {
-            self.ch4_disable();
-        }
-
         {
             let mut packet = self.ch4_packet.lock().unwrap();
-            packet.is_on = is_on;
+            packet.active = active;
             packet.length = length;
             packet.length_enable = length_enable;
             packet.volume = volume;
