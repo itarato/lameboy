@@ -351,7 +351,7 @@ impl PPU {
             return;
         }
 
-        if self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled() {
+        if ly > 0 && (self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled()) {
             // If the window is used and a scan line interrupt
             // disables it (either by writing to LCDC or by setting
             // WX > 166) and a scan line interrupt a little later on
