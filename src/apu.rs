@@ -97,11 +97,9 @@ impl PulseSoundPacket {
 struct WaveSoundPacket {
     active: bool,
     length: u8,
-    volume: f32,
+    out_level: u8,
     length_enable: bool,
-    wave_counter: Counter,
     wave_pattern: [u8; 16],
-    wave_ptr: usize,
     tone_freq: f32,
     speaker_left: bool,
     speaker_right: bool,
@@ -114,11 +112,9 @@ impl WaveSoundPacket {
         WaveSoundPacket {
             active: false,
             length: 0,
-            volume: 0.0,
+            out_level: 0,
             length_enable: false,
-            wave_counter: Counter::new(CPU_HZ / (440 * 32)),
             wave_pattern: [0; 16],
-            wave_ptr: 0,
             tone_freq: 0.0,
             speaker_left: true,
             speaker_right: true,
@@ -127,19 +123,10 @@ impl WaveSoundPacket {
         }
     }
 
-    fn tick(&mut self, clock_overflow: bool, cpu_clocks: u32) {
+    fn tick(&mut self, clock_overflow: bool) {
         if clock_overflow && self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
-        }
-
-        self.wave_counter.tick(cpu_clocks);
-        let mut wave_overflows = self.wave_counter.check_overflow_count();
-
-        while wave_overflows > 0 {
-            wave_overflows -= 1;
-
-            self.wave_ptr = (self.wave_ptr + 1) % 32;
         }
     }
 }
@@ -278,21 +265,26 @@ impl WaveChannel {
                 0.0
             } else {
                 self.phase = (self.phase + (packet.tone_freq / self.freq)) % 1.0;
-                let wave_sample = if packet.wave_ptr % 2 == 0 {
-                    packet.wave_pattern[packet.wave_ptr / 2] >> 4
+
+                let half_adjusted_phase = if self.phase < 0.5 {
+                    self.phase
                 } else {
-                    packet.wave_pattern[packet.wave_ptr / 2] & 0xF
+                    self.phase - 0.5
                 };
-                // WHAT THE HELL DO I DO WITH THIS???
+                let wave_ptr = (half_adjusted_phase / (0.5 / 31.999)) as usize;
+
+                let wave_sample = if wave_ptr % 2 == 0 {
+                    packet.wave_pattern[wave_ptr / 2] >> 4
+                } else {
+                    packet.wave_pattern[wave_ptr / 2] & 0xF
+                } >> packet.out_level;
 
                 if self.phase <= 0.5 {
-                    packet.volume
+                    wave_sample as f32 / 15.0
                 } else {
-                    -packet.volume
+                    -(wave_sample as f32 / 15.0)
                 }
             };
-
-            // MISSING: applying waveform to the samples.
 
             // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
             // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
@@ -547,10 +539,7 @@ impl Apu {
             .unwrap()
             .tick(clock_overflow, cpu_clocks);
 
-        self.ch3_packet
-            .lock()
-            .unwrap()
-            .tick(clock_overflow, cpu_clocks);
+        self.ch3_packet.lock().unwrap().tick(clock_overflow);
 
         self.ch4_packet
             .lock()
@@ -852,7 +841,7 @@ impl Apu {
         // 01	100% volume (use samples read from Wave RAM as-is)
         // 10	50% volume (shift samples read from Wave RAM right once)
         // 11	25% volume (shift samples read from Wave RAM right twice)
-        let output_level = (self.nr32 >> 5) & 0b11;
+        let output_level_raw = (self.nr32 >> 5) & 0b11;
         let period_lo = self.nr33 as u16;
         let period_hi = (self.nr34 & 0b111) as u16;
         let period = (period_hi << 8) | period_lo;
@@ -860,11 +849,11 @@ impl Apu {
         let wave_pattern = self.wave_pattern_ram.clone();
 
         let tone_freq = (2097152.0 / (0x800 - period) as f32) / 32.0;
-        let volume: f32 = match output_level {
-            0 => 0.0,
-            1 => 1.0,
-            2 => 0.5,
-            3 => 0.25,
+        let out_level: u8 = match output_level_raw {
+            0 => 4,
+            1 => 0,
+            2 => 1,
+            3 => 2,
             _ => unreachable!(),
         };
         let length = 0xff - init_length_timer;
@@ -876,12 +865,10 @@ impl Apu {
             packet.active = active;
             packet.tone_freq = tone_freq;
             packet.length = length;
-            packet.volume = volume;
+            packet.out_level = out_level;
             // Not sure if this should always be true - but for now it is. Otherwise this goes on beeping forever.
             packet.length_enable = true;
             packet.wave_pattern = wave_pattern;
-            packet.wave_ptr = 0;
-            packet.wave_counter = Counter::new(CPU_HZ / (tone_freq as u32));
             packet.speaker_left = self.is_ch3_left();
             packet.speaker_right = self.is_ch3_right();
         }
