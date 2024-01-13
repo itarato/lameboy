@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use winit::window::WindowId;
 
 use crate::conf::*;
@@ -47,6 +49,7 @@ pub struct PPU {
     vram: [u8; VRAM_SIZE],
     oam_ram: [u8; OAM_RAM_SIZE],
     display_buffer: [u8; DISPLAY_PIXELS_COUNT << 2],
+    pub display_finished: AtomicBool,
     pub main_window_id: Option<WindowId>,
     pub tile_debug_window_id: Option<WindowId>,
     pub background_debug_window_id: Option<WindowId>,
@@ -74,6 +77,7 @@ impl PPU {
             vram: [0; VRAM_SIZE],
             oam_ram: [0; OAM_RAM_SIZE],
             display_buffer: [0; DISPLAY_PIXELS_COUNT << 2],
+            display_finished: AtomicBool::new(false),
             main_window_id: None,
             tile_debug_window_id: None,
             background_debug_window_id: None,
@@ -179,6 +183,9 @@ impl PPU {
                             interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
                         }
                         interrupt_mask |= VIDEO_RESULT_MASK_VBLANK_INTERRUPT;
+
+                        self.display_finished
+                            .store(true, std::sync::atomic::Ordering::Relaxed);
                     }
                 }
             }

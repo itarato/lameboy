@@ -378,7 +378,15 @@ pub fn run(
                 buttons.write().expect("Cannot lock buttons").right = false;
             }
 
-            main_window.request_redraw();
+            match video
+                .read()
+                .unwrap()
+                .display_finished
+                .compare_exchange_weak(true, false, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                Ok(_) => main_window.request_redraw(),
+                Err(_) => (),
+            };
 
             if show_tiles {
                 tile_window.request_redraw();
