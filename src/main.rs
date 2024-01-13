@@ -42,7 +42,7 @@ struct Args {
 
     /// Skip FPS limiter.
     #[arg(short, long)]
-    nofps: bool,
+    no_fps: bool,
 
     /// Dump opcode list to file.
     #[arg(long)]
@@ -67,10 +67,6 @@ struct Args {
     /// Turn all sounds off.
     #[arg(long)]
     disable_sound: bool,
-
-    /// Print FPS stats to STDOUT.
-    #[arg(long)]
-    fps_stats: bool,
 }
 
 impl Args {
@@ -107,7 +103,7 @@ fn main() -> Result<(), Error> {
     let global_exit_flag = Arc::new(AtomicBool::new(false));
     let should_generate_vm_debug_log = Arc::new(AtomicBool::new(false));
 
-    let video = Arc::new(RwLock::new(PPU::new(args.nofps, args.fps_stats)));
+    let video = Arc::new(RwLock::new(PPU::new()));
     let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
 
@@ -134,7 +130,7 @@ fn main() -> Result<(), Error> {
                     return;
                 }
 
-                if let Err(err) = vm.run(should_generate_vm_debug_log) {
+                if let Err(err) = vm.run(should_generate_vm_debug_log, args.no_fps) {
                     log::error!("Failed VM run: {}", err);
                     vm.dump_op_history();
                     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);

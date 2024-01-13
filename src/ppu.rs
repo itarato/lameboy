@@ -2,9 +2,6 @@ use winit::window::WindowId;
 
 use crate::conf::*;
 use crate::util::*;
-use std::thread;
-use std::time::Duration;
-use std::time::Instant;
 
 #[derive(PartialEq)]
 enum LcdPpuMode {
@@ -47,23 +44,19 @@ pub struct PPU {
     obp1: u8,
     pub wy: u8,
     pub wx: u8,
-    fps_ctrl_time: Instant,
     vram: [u8; VRAM_SIZE],
     oam_ram: [u8; OAM_RAM_SIZE],
     display_buffer: [u8; DISPLAY_PIXELS_COUNT << 2],
-    ignore_fps_limiter: bool,
     pub main_window_id: Option<WindowId>,
     pub tile_debug_window_id: Option<WindowId>,
     pub background_debug_window_id: Option<WindowId>,
     pub window_debug_window_id: Option<WindowId>,
     lyc_change_interrupt: bool,
     wy_offset: u8,
-    show_fps_stats: bool,
-    fps_stats: Stats,
 }
 
 impl PPU {
-    pub fn new(ignore_fps_limiter: bool, show_fps_stats: bool) -> Self {
+    pub fn new() -> Self {
         PPU {
             stat_counter: 0,
             prev_m3_len: 252,
@@ -78,19 +71,15 @@ impl PPU {
             obp1: 0,
             wy: 0,
             wx: 0,
-            fps_ctrl_time: Instant::now(),
             vram: [0; VRAM_SIZE],
             oam_ram: [0; OAM_RAM_SIZE],
             display_buffer: [0; DISPLAY_PIXELS_COUNT << 2],
-            ignore_fps_limiter,
             main_window_id: None,
             tile_debug_window_id: None,
             background_debug_window_id: None,
             window_debug_window_id: None,
             lyc_change_interrupt: false,
             wy_offset: 0,
-            show_fps_stats,
-            fps_stats: Stats::new(32, 16),
         }
     }
 
@@ -204,8 +193,6 @@ impl PPU {
                     if self.set_lcd_stat_ppu_mode(2) {
                         interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
                     }
-
-                    self.ensure_fps();
                 } else {
                     self.update_ly(144 + (self.stat_counter / 456) as u8, &mut interrupt_mask);
                 }
@@ -620,29 +607,6 @@ impl PPU {
             LcdPpuMode::M2 => self.is_mode2_oam_interrupt_enabled(),
             _ => false,
         }
-    }
-
-    fn ensure_fps(&mut self) {
-        if self.ignore_fps_limiter {
-            return;
-        }
-
-        let elapsed = self.fps_ctrl_time.elapsed().as_micros();
-
-        // For performance debugging. (The lower the better.)
-        // Be aware this only logs when LCDC(7) is on.
-        if self.show_fps_stats {
-            self.fps_stats.push(elapsed as i32);
-            self.fps_stats.dump_to_stdout_at_freq();
-        }
-
-        if elapsed < ONE_FRAME_IN_MICROSECONDS as u128 {
-            thread::sleep(Duration::from_micros(
-                ONE_FRAME_IN_MICROSECONDS as u64 - elapsed as u64,
-            ));
-        }
-
-        self.fps_ctrl_time = Instant::now();
     }
 
     pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {

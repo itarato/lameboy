@@ -6,6 +6,9 @@ use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::sync::RwLock;
+use std::thread::sleep;
+use std::time::Duration;
+use std::time::Instant;
 
 use crate::apu::*;
 use crate::cartridge::*;
@@ -230,8 +233,15 @@ impl VM {
         Ok(())
     }
 
-    pub fn run(&mut self, should_generate_vm_debug_log: Arc<AtomicBool>) -> Result<(), Error> {
+    pub fn run(
+        &mut self,
+        should_generate_vm_debug_log: Arc<AtomicBool>,
+        ignore_speed_limit: bool,
+    ) -> Result<(), Error> {
         log::info!("VM eval loop start");
+
+        let mut vm_timer = Instant::now();
+        let mut vm_measured_clocks = 0u128;
 
         loop {
             if should_generate_vm_debug_log.load(std::sync::atomic::Ordering::Relaxed) {
@@ -259,6 +269,9 @@ impl VM {
                         None => (),
                     };
                 }
+
+                vm_timer = Instant::now();
+                vm_measured_clocks = 0;
             }
 
             let interrupt_mcycles = if self.check_interrupt() { 4 } else { 0 };
@@ -319,6 +332,18 @@ impl VM {
                 .load(std::sync::atomic::Ordering::Acquire)
             {
                 break;
+            }
+
+            if !ignore_speed_limit {
+                vm_measured_clocks += diff_cpu_clocks as u128;
+                let expected_elapsed_nanos = (CPU_CLOCK_NANOS * vm_measured_clocks as f64) as u128;
+                let actual_elapsed_nanos = vm_timer.elapsed().as_nanos();
+
+                if actual_elapsed_nanos < expected_elapsed_nanos {
+                    sleep(Duration::from_nanos(
+                        (expected_elapsed_nanos - actual_elapsed_nanos) as u64,
+                    ));
+                }
             }
         }
 

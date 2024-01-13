@@ -12,14 +12,13 @@ pub const PALETTE: [[u8; 4]; 5] = [
     [0xfa, 0xfc, 0xf0, 0xFF],
 ];
 
-pub const FPS: u32 = 60;
-pub const SECOND_IN_MICROSECOND: u32 = 1_000_000;
-pub const ONE_FRAME_IN_MICROSECONDS: u32 = SECOND_IN_MICROSECOND / FPS;
-
 pub const CYCLE_PER_MCYCLE: u32 = 4;
 
 // Cycles per second.
 pub const CPU_HZ: u32 = 4194304;
+
+// How many nanoseconds a CPU clock is (approx).
+pub const CPU_CLOCK_NANOS: f64 = 1_000_000_000 as f64 / CPU_HZ as f64;
 
 // Cycles per second.
 const DIV_REG_UPDATE_HZ: u32 = 256;
