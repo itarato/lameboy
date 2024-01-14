@@ -9,6 +9,8 @@ use sdl2::audio::AudioSpecDesired;
 use crate::conf::*;
 use crate::util::*;
 
+const NOISE_CHANNEL_DIVISORS: [u8; 8] = [8, 16, 32, 48, 64, 80, 96, 112];
+
 #[derive(Debug)]
 struct PulseSoundPacket {
     active: bool,
@@ -136,11 +138,11 @@ struct NoiseSoundPacket {
     length: u8,
     length_enable: bool,
     volume: f32,
+    freq: f32,
     is_envelope_dir_inc: bool,
     envelope_sweep_length: u32,
     lfsr_short_mode: bool,
     lfsr: u16,
-    lfsr_counter: Counter,
     speaker_left: bool,
     speaker_right: bool,
     global_volume_left: f32,
@@ -154,11 +156,11 @@ impl NoiseSoundPacket {
             length: 0,
             length_enable: false,
             volume: 0.0,
+            freq: 440.0,
             is_envelope_dir_inc: false,
             envelope_sweep_length: 0,
             lfsr_short_mode: false,
             lfsr: 0,
-            lfsr_counter: Counter::new(CPU_HZ / 256),
             speaker_left: true,
             speaker_right: true,
             global_volume_left: 0.5,
@@ -166,22 +168,10 @@ impl NoiseSoundPacket {
         }
     }
 
-    fn tick(&mut self, clock_overflow: bool, cycles: u32) {
+    fn tick(&mut self, clock_overflow: bool) {
         if clock_overflow && self.length_enable && self.length > 0 {
             self.length -= 1;
             self.active = self.length > 0;
-        }
-
-        self.lfsr_counter.tick(cycles);
-        let mut overflow_count = self.lfsr_counter.check_overflow_count();
-        while overflow_count > 0 {
-            overflow_count -= 1;
-            let new_bit = !(self.lfsr ^ (self.lfsr >> 1)) & 0b1;
-            self.lfsr = (self.lfsr >> 1) | new_bit << 14;
-
-            if self.lfsr_short_mode {
-                self.lfsr = set_bit_16(self.lfsr, 7, new_bit != 0);
-            }
         }
     }
 }
@@ -232,8 +222,6 @@ impl PulseChannel {
                 }
             };
 
-            // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
-            // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
             if packet.speaker_left {
                 chunk[0] += (value / volume_divider) * packet.global_volume_left;
                 // Left speaker.
@@ -286,8 +274,6 @@ impl WaveChannel {
                 }
             };
 
-            // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
-            // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
             if packet.speaker_left {
                 chunk[0] += (value / volume_divider) * packet.global_volume_left;
                 // Left speaker.
@@ -305,6 +291,7 @@ struct NoiseChannel {
     phase: f32,
     envelope_sweep_counter: u32,
     packet: Arc<Mutex<NoiseSoundPacket>>,
+    prev_lfsr_div: u32,
 }
 
 impl NoiseChannel {
@@ -315,39 +302,52 @@ impl NoiseChannel {
             return;
         }
 
+        // This is a hack but that's what most the DMG sounds like :/
+        const LFSR_FREQ: f32 = 60.0;
+
         for chunk in out.chunks_exact_mut(2) {
             let value = if !packet.active {
                 0.0
             } else {
-                if (*packet).envelope_sweep_length > 0 {
+                if packet.envelope_sweep_length > 0 {
                     if self.envelope_sweep_counter > 0 {
                         self.envelope_sweep_counter -= 1;
                     } else {
-                        (*packet).volume += if !(*packet).is_envelope_dir_inc {
+                        (*packet).volume += if !packet.is_envelope_dir_inc {
                             -1f32 / 15f32
                         } else {
                             1f32 / 15f32
                         };
-                        self.envelope_sweep_counter = (*packet).envelope_sweep_length;
+                        self.envelope_sweep_counter = packet.envelope_sweep_length;
+
+                        if (*packet).volume < 0f32 {
+                            packet.volume = 0.0;
+                        } else if (*packet).volume > 1f32 {
+                            packet.volume = 1.0;
+                        }
                     }
                 }
 
-                if (*packet).volume < 0f32 {
-                    (*packet).volume = 0.0;
-                } else if (*packet).volume > 1f32 {
-                    (*packet).volume = 1.0;
+                self.phase = (self.phase + (packet.freq / self.freq)) % 1.0;
+                let lfsr_div = (self.phase / (1.0 / LFSR_FREQ)) as u32;
+                if lfsr_div != self.prev_lfsr_div {
+                    self.prev_lfsr_div = lfsr_div;
+
+                    let new_bit = !(packet.lfsr ^ (packet.lfsr >> 1)) & 0b1;
+                    packet.lfsr = (packet.lfsr >> 1) | new_bit << 14;
+
+                    if packet.lfsr_short_mode {
+                        packet.lfsr = set_bit_16(packet.lfsr, 7, new_bit != 0);
+                    }
                 }
 
-                self.phase = (self.phase + (440.0 / self.freq)) % 1.0;
-                if self.phase <= (rand::random::<u8>() as f32 / 255.0) {
-                    packet.volume //* (!packet.lfsr & 0b1) as f32
+                if self.phase <= 0.5 {
+                    packet.volume * ((packet.lfsr >> 14) & 0b1) as f32
                 } else {
-                    -packet.volume //* (!packet.lfsr & 0b1) as f32
+                    -packet.volume * ((packet.lfsr >> 14) & 0b1) as f32
                 }
             };
 
-            // IDEA: Instead of fix dividing the volume by part-len, we could dynamically adjust so only sound made will decrease the rest.
-            // Eg: adding the `idx`th sound to the sample: chunk[_] = (chunk[_] / idx) * (idx - 1) + value / idx
             if packet.speaker_left {
                 chunk[0] += (value / volume_divider) * packet.global_volume_left;
                 // Left speaker.
@@ -398,6 +398,7 @@ impl DmgChannels {
                 phase: 0.0,
                 envelope_sweep_counter: 0,
                 packet: ch4_packet,
+                prev_lfsr_div: 0,
             },
         }
     }
@@ -541,10 +542,7 @@ impl Apu {
 
         self.ch3_packet.lock().unwrap().tick(clock_overflow);
 
-        self.ch4_packet
-            .lock()
-            .unwrap()
-            .tick(clock_overflow, cpu_clocks);
+        self.ch4_packet.lock().unwrap().tick(clock_overflow);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
@@ -898,12 +896,9 @@ impl Apu {
         let volume = init_volume as f32 / 15.0;
         let active = init_volume > 0 || is_envelope_direction_increase;
         let envelope_sweep_length = (44_100 * sweep_pace as u32) / 64;
-        let clock_divider = if clock_divider_raw == 0 {
-            0.5
-        } else {
-            clock_divider_raw as f32
-        };
-        let lfsr_freq = 262144.0 / (clock_divider * (1 << clock_shift) as f32);
+        let lfsr_freq = 262144.0
+            / ((NOISE_CHANNEL_DIVISORS[clock_divider_raw as usize] as u32) * (1 << clock_shift))
+                as f32;
 
         {
             let mut packet = self.ch4_packet.lock().unwrap();
@@ -914,7 +909,7 @@ impl Apu {
             packet.is_envelope_dir_inc = is_envelope_direction_increase;
             packet.lfsr = 0;
             packet.lfsr_short_mode = lfsr_short_mode;
-            packet.lfsr_counter = Counter::new((CPU_HZ as f32 / lfsr_freq) as u32);
+            packet.freq = lfsr_freq;
             packet.envelope_sweep_length = envelope_sweep_length;
             packet.speaker_left = self.is_ch4_left();
             packet.speaker_right = self.is_ch4_right();
