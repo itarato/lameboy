@@ -248,6 +248,10 @@ impl VM {
                 self.update_vm_debug_log();
             }
 
+            if self.cpu.pc == 0x48 {
+                print!("THIS IS 48");
+            }
+
             if self.debugger.should_stop(self.cpu.pc) {
                 self.print_debug_panel();
                 loop {
@@ -318,6 +322,18 @@ impl VM {
                 }
                 if video_interrupt_mask & VIDEO_RESULT_MASK_VBLANK_INTERRUPT > 0 {
                     self.interrupt_flag |= 0b1;
+                }
+
+                if video_interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT > 0 {
+                    println!(
+                        "YES WAS STAT IE={:02X} IF={:02X} IME={}",
+                        self.interrupt_enable,
+                        self.interrupt_flag,
+                        self.interrupt_master_enable_flag
+                    );
+                    if self.interrupt_flag & 0b10 == 0 {
+                        println!("NOOO");
+                    }
                 }
             }
 
@@ -3803,6 +3819,10 @@ impl VM {
     }
 
     fn check_interrupt(&mut self) -> bool /* Whether interrupt has happened. */ {
+        if is_bit(self.interrupt_flag, Interrupt::LCD.bit()) && self.is_lcd_interrupt_enabled() {
+            println!("CHECK INT");
+        }
+
         if !self.interrupt_master_enable_flag && self.state != State::Halt {
             return false;
         }
@@ -3831,6 +3851,7 @@ impl VM {
         } else if is_bit(self.interrupt_flag, Interrupt::LCD.bit())
             && self.is_lcd_interrupt_enabled()
         {
+            println!("STAT IIINNTTEERE");
             self.interrupt(Interrupt::LCD);
             true
         } else if is_bit(self.interrupt_flag, Interrupt::Timer.bit())
@@ -3943,5 +3964,10 @@ impl VM {
         self.interrupt_flag &= !(1u8 << interrupt.bit());
         self.push_u16(self.cpu.pc).expect("Failed stacking PC");
         self.cpu.pc = interrupt.addr();
+
+        if self.cpu.pc == 0x48 {
+            println!("NOT 48??????????????????????");
+            // self.debugger.request_one_time_break();
+        }
     }
 }

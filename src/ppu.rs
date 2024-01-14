@@ -170,7 +170,15 @@ impl PPU {
                     self.stat_counter -= m0_len;
 
                     // Increase LY.
-                    self.update_ly(self.ly + 1, &mut interrupt_mask);
+                    self.update_ly(
+                        self.ly + 1,
+                        &mut interrupt_mask,
+                        if self.ly < (144 - 1) {
+                            LcdPpuMode::M2
+                        } else {
+                            LcdPpuMode::M1
+                        },
+                    );
 
                     if self.ly < 144 {
                         // Mode to 2.
@@ -194,35 +202,51 @@ impl PPU {
                 if self.stat_counter >= 4560 {
                     self.stat_counter -= 4560;
 
-                    self.update_ly(0, &mut interrupt_mask);
+                    self.update_ly(0, &mut interrupt_mask, LcdPpuMode::M2);
 
                     // Mode to 2.
                     if self.set_lcd_stat_ppu_mode(2) {
                         interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
                     }
                 } else {
-                    self.update_ly(144 + (self.stat_counter / 456) as u8, &mut interrupt_mask);
+                    self.update_ly(
+                        144 + (self.stat_counter / 456) as u8,
+                        &mut interrupt_mask,
+                        LcdPpuMode::M1,
+                    );
                 }
             }
         };
 
         if self.lyc_change_interrupt {
             self.lyc_change_interrupt = false;
-            interrupt_mask = interrupt_mask | VIDEO_RESULT_MASK_STAT_INTERRUPT;
+            interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+        }
+
+        if interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT != 0 {
+            println!("WAS STAT");
         }
 
         interrupt_mask
     }
 
-    fn update_ly(&mut self, new_ly: u8, interrupt_mask: &mut u8) {
+    fn update_ly(&mut self, new_ly: u8, interrupt_mask: &mut u8, new_stat_mode: LcdPpuMode) {
         self.ly = new_ly;
 
         if self.ly == self.lyc {
             self.stat |= 0b0100;
 
-            if self.is_lyc_coincidence_interrupt_enabled() {
-                *interrupt_mask = *interrupt_mask | VIDEO_RESULT_MASK_STAT_INTERRUPT;
-            }
+            // if self.is_lyc_coincidence_interrupt_enabled() {
+            self.stat = set_bit(self.stat, 6, true);
+            *interrupt_mask = *interrupt_mask | VIDEO_RESULT_MASK_STAT_INTERRUPT;
+
+            match new_stat_mode {
+                LcdPpuMode::M0 => self.stat = set_bit(self.stat, 3, true),
+                LcdPpuMode::M1 => self.stat = set_bit(self.stat, 4, true),
+                LcdPpuMode::M2 => self.stat = set_bit(self.stat, 5, true),
+                _ => (),
+            };
+            // }
         } else {
             self.stat &= 0b1111_1011;
         }
@@ -351,7 +375,7 @@ impl PPU {
             return;
         }
 
-        if (self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled()) {
+        if self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled() {
             // If the window is used and a scan line interrupt
             // disables it (either by writing to LCDC or by setting
             // WX > 166) and a scan line interrupt a little later on
@@ -361,9 +385,8 @@ impl PPU {
             // 16 lines of useful graphics in the window, you could
             // display the first 8 lines at the top of the screen and
             // the next 8 lines at the bottom if you wanted to do so.
-            if ly != 0 {
-                self.wy_offset += 1;
-            }
+            self.wy_offset += 1;
+
             return;
         }
 
@@ -493,7 +516,10 @@ impl PPU {
             MEM_LOC_OBP0 => self.obp0 = byte,
             MEM_LOC_OBP1 => self.obp1 = byte,
             MEM_LOC_WY => self.wy = byte,
-            MEM_LOC_WX => self.wx = byte,
+            MEM_LOC_WX => {
+                self.wx = byte;
+                println!("WX={} M={} LY={}", byte, self.stat & 0b11, self.ly);
+            }
             _ => panic!("Illegal video address write: {:#06X}", loc),
         }
     }
@@ -608,14 +634,16 @@ impl PPU {
         self.stat |= mode;
 
         match self.lcd_ppu_mode() {
-            LcdPpuMode::M0 => self.is_mode0_hblank_interrupt_enabled(),
+            // LcdPpuMode::M0 => self.is_mode0_hblank_interrupt_enabled(),
             LcdPpuMode::M1 => {
                 self.wy_offset = 0;
-                self.is_mode1_vblank_interrupt_enabled()
+                // self.is_mode1_vblank_interrupt_enabled()
             }
-            LcdPpuMode::M2 => self.is_mode2_oam_interrupt_enabled(),
-            _ => false,
+            // LcdPpuMode::M2 => self.is_mode2_oam_interrupt_enabled(),
+            _ => (),
         }
+
+        false
     }
 
     pub fn fill_frame_buffer(&self, window_id: WindowId, frame: &mut [u8]) {
