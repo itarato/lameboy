@@ -191,17 +191,19 @@ impl PPU {
             }
             // Waiting until the next frame.
             LcdPpuMode::M1 => {
-                if self.stat_counter >= 4560 {
-                    self.stat_counter -= 4560;
+                if self.stat_counter >= 456 {
+                    self.stat_counter -= 456;
 
-                    self.update_ly(0, &mut interrupt_mask);
-
-                    // Mode to 2.
-                    if self.set_lcd_stat_ppu_mode(2) {
-                        interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                    if self.ly == 152 {
+                        self.update_ly(0, &mut interrupt_mask);
+                    } else if self.ly == 0 {
+                        // Mode to 2.
+                        if self.set_lcd_stat_ppu_mode(2) {
+                            interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
+                        }
+                    } else {
+                        self.update_ly(self.ly + 1, &mut interrupt_mask);
                     }
-                } else {
-                    self.update_ly(144 + (self.stat_counter / 456) as u8, &mut interrupt_mask);
                 }
             }
         };
@@ -351,7 +353,7 @@ impl PPU {
             return;
         }
 
-        if (self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled()) {
+        if self.wx >= DISPLAY_WIDTH as u8 + 7 || !self.is_window_display_enabled() {
             // If the window is used and a scan line interrupt
             // disables it (either by writing to LCDC or by setting
             // WX > 166) and a scan line interrupt a little later on
@@ -361,9 +363,8 @@ impl PPU {
             // 16 lines of useful graphics in the window, you could
             // display the first 8 lines at the top of the screen and
             // the next 8 lines at the bottom if you wanted to do so.
-            if ly != 0 {
-                self.wy_offset += 1;
-            }
+            self.wy_offset += 1;
+
             return;
         }
 
