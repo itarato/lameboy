@@ -223,9 +223,9 @@ impl PPU {
             interrupt_mask |= VIDEO_RESULT_MASK_STAT_INTERRUPT;
         }
 
-        if interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT != 0 {
-            println!("WAS STAT");
-        }
+        // if interrupt_mask & VIDEO_RESULT_MASK_STAT_INTERRUPT != 0 {
+        //     println!("WAS STAT");
+        // }
 
         interrupt_mask
     }
