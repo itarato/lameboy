@@ -198,6 +198,7 @@ pub fn run(
     with_window_debug_window: bool,
     vm_debug_log: Arc<RwLock<Vec<String>>>,
     global_should_generate_vm_debug_log: Arc<AtomicBool>,
+    catridge_title: String,
 ) {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
@@ -221,7 +222,7 @@ pub fn run(
         make_window(&event_loop, "(3) Window map (32 x 32)", 256, 256, show_win);
     let (main_window, main_pixels) = make_window(
         &event_loop,
-        "Lameboy 0.0",
+        format!("Lameboy <{}>", catridge_title).as_str(),
         DISPLAY_WIDTH,
         DISPLAY_HEIGHT,
         true,

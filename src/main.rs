@@ -106,6 +106,8 @@ fn main() -> Result<(), Error> {
     let video = Arc::new(RwLock::new(PPU::new()));
     let joypad_button_input_requester = Arc::new(RwLock::new(joypad::JoypadInputRequest::new()));
     let joypad = joypad::Joypad::new(joypad_button_input_requester.clone());
+    let cartridge = Cartridge::new(args.cartridge).expect("Cannot open cartridge");
+    let cartridge_title = cartridge.get_title();
 
     let vm_thread = spawn({
         let global_exit_flag = global_exit_flag.clone();
@@ -116,7 +118,7 @@ fn main() -> Result<(), Error> {
         move || {
             if let Ok(mut vm) = VM::new(
                 global_exit_flag.clone(),
-                Cartridge::new(args.cartridge).expect("Cannot open cartridge"),
+                cartridge,
                 debugger,
                 video,
                 args.opcode_dump,
@@ -152,6 +154,7 @@ fn main() -> Result<(), Error> {
         args.window,
         vm_debug_log,
         should_generate_vm_debug_log,
+        cartridge_title,
     );
 
     global_exit_flag.store(true, std::sync::atomic::Ordering::Release);

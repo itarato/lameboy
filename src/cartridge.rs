@@ -242,4 +242,17 @@ impl Cartridge {
     pub fn rom_bank_selector(&self) -> u8 {
         self.ctrl.rom_bank_selector()
     }
+
+    pub fn get_title(&self) -> String {
+        let mut out = String::new();
+
+        for c in self.data[0x0134..0x0144].iter() {
+            if *c == b'\0' {
+                break;
+            }
+            out.push(*c as char);
+        }
+
+        out
+    }
 }
