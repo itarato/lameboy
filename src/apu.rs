@@ -4,6 +4,7 @@ use sdl2::audio::AudioFormatNum;
 use sdl2::audio::AudioSpecDesired;
 
 use crate::conf::*;
+use crate::cpu;
 use crate::util::*;
 
 const NOISE_CHANNEL_DIVISORS: [u8; 8] = [8, 16, 32, 48, 64, 80, 96, 112];
@@ -340,6 +341,8 @@ impl NoiseChannel {
 }
 
 struct DmgChannels {
+    clock: Counter,
+
     ch1_pulse: PulseChannel,
     ch2_pulse: PulseChannel,
     ch3_wave: WaveChannel,
@@ -349,11 +352,24 @@ struct DmgChannels {
 impl DmgChannels {
     fn new(freq: f32) -> DmgChannels {
         DmgChannels {
+            clock: Counter::new(CPU_HZ / 256),
+
             ch1_pulse: PulseChannel::new(freq),
             ch2_pulse: PulseChannel::new(freq),
             ch3_wave: WaveChannel::new(freq),
             ch4_noise: NoiseChannel::new(freq),
         }
+    }
+
+    pub fn tick(&mut self, cpu_clocks: u32) -> Option<u16> {
+        let clock_overflow = self.clock.tick_and_check_overflow(cpu_clocks);
+
+        let new_ch1_period = self.ch1_pulse.tick(clock_overflow, cpu_clocks);
+        let _ = self.ch2_pulse.tick(clock_overflow, cpu_clocks);
+        self.ch3_wave.tick(clock_overflow);
+        self.ch4_noise.tick(clock_overflow);
+
+        new_ch1_period
     }
 }
 
@@ -401,7 +417,6 @@ pub struct Apu {
 
     wave_pattern_ram: [u8; 16],
     sound_device: AudioDevice<DmgChannels>,
-    clock: Counter,
 }
 
 impl Apu {
@@ -447,31 +462,14 @@ impl Apu {
             // Just to keep the thread alive.
             sound_device,
             disable_sound,
-            clock: Counter::new(CPU_HZ / 256),
         }
     }
 
     pub fn update(&mut self, cpu_clocks: u32) {
-        // TODO: Put this ticker entirely into the sound device.
-        let clock_overflow = self.clock.tick_and_check_overflow(cpu_clocks);
-
-        {
-            let ref mut ch1 = self.sound_device.lock().ch1_pulse;
-            if let Some(new_period) = ch1.tick(clock_overflow, cpu_clocks) {
-                self.nr13 = (new_period & 0xff) as u8;
-                self.nr14 = (self.nr14 & !0b111) | ((new_period >> 8) & 0b111) as u8;
-            }
+        if let Some(new_ch1_period) = self.sound_device.lock().tick(cpu_clocks) {
+            self.nr13 = (new_ch1_period & 0xff) as u8;
+            self.nr14 = (self.nr14 & !0b111) | ((new_ch1_period >> 8) & 0b111) as u8;
         }
-
-        let _ = self
-            .sound_device
-            .lock()
-            .ch2_pulse
-            .tick(clock_overflow, cpu_clocks);
-
-        self.sound_device.lock().ch3_wave.tick(clock_overflow);
-
-        self.sound_device.lock().ch4_noise.tick(clock_overflow);
     }
 
     pub fn write(&mut self, loc: u16, byte: u8) {
