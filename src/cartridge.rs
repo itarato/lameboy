@@ -76,8 +76,6 @@ impl MBC1 {
 
 impl CartridgeController for MBC1 {
     fn set_register(&mut self, loc: u16, byte: u8) {
-        // println!("Cartridge set: {:#06X} = {:#04X}", loc, byte);
-
         if (0x0000..=0x1FFF).contains(&loc) {
             if byte & 0xF == 0b1010 {
                 self.ram_gate_reg = RamGate::EnableRamAccess;

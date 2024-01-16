@@ -4,7 +4,6 @@ use sdl2::audio::AudioFormatNum;
 use sdl2::audio::AudioSpecDesired;
 
 use crate::conf::*;
-use crate::cpu;
 use crate::util::*;
 
 const NOISE_CHANNEL_DIVISORS: [u8; 8] = [8, 16, 32, 48, 64, 80, 96, 112];
