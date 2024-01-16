@@ -775,7 +775,7 @@ impl Apu {
         let period_lo = self.nr33 as u16;
         let period_hi = (self.nr34 & 0b111) as u16;
         let period = (period_hi << 8) | period_lo;
-        // let length_enable = is_bit(self.nr34, 6);
+        let length_enable = is_bit(self.nr34, 6);
         let wave_pattern = self.wave_pattern_ram.clone();
 
         let tone_freq = (2097152.0 / (0x800 - period) as f32) / 32.0;
@@ -800,7 +800,7 @@ impl Apu {
             packet.length = length;
             packet.out_level = out_level;
             // Not sure if this should always be true - but for now it is. Otherwise this goes on beeping forever.
-            packet.length_enable = true;
+            packet.length_enable = length_enable;
             packet.wave_pattern = wave_pattern;
             packet.speaker_left = is_ch3_left;
             packet.speaker_right = is_ch3_right;
