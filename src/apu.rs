@@ -11,44 +11,6 @@ use crate::util::*;
 
 const NOISE_CHANNEL_DIVISORS: [u8; 8] = [8, 16, 32, 48, 64, 80, 96, 112];
 
-#[derive(Debug)]
-struct WaveSoundPacket {
-    active: bool,
-    length: u8,
-    out_level: u8,
-    length_enable: bool,
-    wave_pattern: [u8; 16],
-    tone_freq: f32,
-    speaker_left: bool,
-    speaker_right: bool,
-    global_volume_left: f32,
-    global_volume_right: f32,
-}
-
-impl WaveSoundPacket {
-    fn new() -> WaveSoundPacket {
-        WaveSoundPacket {
-            active: false,
-            length: 0,
-            out_level: 0,
-            length_enable: false,
-            wave_pattern: [0; 16],
-            tone_freq: 0.0,
-            speaker_left: true,
-            speaker_right: true,
-            global_volume_left: 0.5,
-            global_volume_right: 0.5,
-        }
-    }
-
-    fn tick(&mut self, clock_overflow: bool) {
-        if clock_overflow && self.length_enable && self.length > 0 {
-            self.length -= 1;
-            self.active = self.length > 0;
-        }
-    }
-}
-
 struct NoiseSoundPacket {
     active: bool,
     length: u8,
@@ -231,22 +193,53 @@ impl PulseChannel {
 struct WaveChannel {
     freq: f32,
     phase: f32,
-    packet: Arc<Mutex<WaveSoundPacket>>,
+    active: bool,
+    length: u8,
+    out_level: u8,
+    length_enable: bool,
+    wave_pattern: [u8; 16],
+    tone_freq: f32,
+    speaker_left: bool,
+    speaker_right: bool,
+    global_volume_left: f32,
+    global_volume_right: f32,
 }
 
 impl WaveChannel {
-    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
-        let packet = self.packet.lock().expect("Cannot lock pocket");
+    fn new(freq: f32) -> WaveChannel {
+        WaveChannel {
+            freq,
+            phase: 0.0,
+            active: false,
+            length: 0,
+            out_level: 0,
+            length_enable: false,
+            wave_pattern: [0; 16],
+            tone_freq: 0.0,
+            speaker_left: true,
+            speaker_right: true,
+            global_volume_left: 0.5,
+            global_volume_right: 0.5,
+        }
+    }
 
-        if !packet.speaker_left && !packet.speaker_right {
+    fn tick(&mut self, clock_overflow: bool) {
+        if clock_overflow && self.length_enable && self.length > 0 {
+            self.length -= 1;
+            self.active = self.length > 0;
+        }
+    }
+
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
+        if !self.speaker_left && !self.speaker_right {
             return;
         }
 
         for chunk in out.chunks_exact_mut(2) {
-            let value = if !packet.active {
+            let value = if !self.active {
                 0.0
             } else {
-                self.phase = (self.phase + (packet.tone_freq / self.freq)) % 1.0;
+                self.phase = (self.phase + (self.tone_freq / self.freq)) % 1.0;
 
                 let half_adjusted_phase = if self.phase < 0.5 {
                     self.phase
@@ -256,10 +249,10 @@ impl WaveChannel {
                 let wave_ptr = (half_adjusted_phase / (0.5 / 31.999)) as usize;
 
                 let wave_sample = if wave_ptr % 2 == 0 {
-                    packet.wave_pattern[wave_ptr / 2] >> 4
+                    self.wave_pattern[wave_ptr / 2] >> 4
                 } else {
-                    packet.wave_pattern[wave_ptr / 2] & 0xF
-                } >> packet.out_level;
+                    self.wave_pattern[wave_ptr / 2] & 0xF
+                } >> self.out_level;
 
                 if self.phase <= 0.5 {
                     wave_sample as f32 / 15.0
@@ -268,12 +261,12 @@ impl WaveChannel {
                 }
             };
 
-            if packet.speaker_left {
-                chunk[0] += (value / volume_divider) * packet.global_volume_left;
+            if self.speaker_left {
+                chunk[0] += (value / volume_divider) * self.global_volume_left;
                 // Left speaker.
             }
-            if packet.speaker_right {
-                chunk[1] += (value / volume_divider) * packet.global_volume_right;
+            if self.speaker_right {
+                chunk[1] += (value / volume_divider) * self.global_volume_right;
                 // Right speaker.
             }
         }
@@ -362,19 +355,11 @@ struct DmgChannels {
 }
 
 impl DmgChannels {
-    fn new(
-        freq: f32,
-        ch3_packet: Arc<Mutex<WaveSoundPacket>>,
-        ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
-    ) -> DmgChannels {
+    fn new(freq: f32, ch4_packet: Arc<Mutex<NoiseSoundPacket>>) -> DmgChannels {
         DmgChannels {
             ch1_pulse: PulseChannel::new(freq),
             ch2_pulse: PulseChannel::new(freq),
-            ch3_wave: WaveChannel {
-                freq,
-                phase: 0.0,
-                packet: ch3_packet,
-            },
+            ch3_wave: WaveChannel::new(freq),
             ch4_noise: NoiseChannel {
                 freq,
                 phase: 0.0,
@@ -431,7 +416,6 @@ pub struct Apu {
     wave_pattern_ram: [u8; 16],
 
     sound_device: AudioDevice<DmgChannels>,
-    ch3_packet: Arc<Mutex<WaveSoundPacket>>,
     ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
 
     clock: Counter,
@@ -447,14 +431,13 @@ impl Apu {
             samples: Some(256),
         };
 
-        let ch3_packet = Arc::new(Mutex::new(WaveSoundPacket::new()));
         let ch4_packet = Arc::new(Mutex::new(NoiseSoundPacket::new()));
 
         let sound_device = sdl_context
             .audio()
             .unwrap()
             .open_playback(None, &desired_spec, |spec| {
-                DmgChannels::new(spec.freq as _, ch3_packet.clone(), ch4_packet.clone())
+                DmgChannels::new(spec.freq as _, ch4_packet.clone())
             })
             .unwrap();
         sound_device.resume();
@@ -484,7 +467,6 @@ impl Apu {
             wave_pattern_ram: [0; 16],
             // Just to keep the thread alive.
             sound_device,
-            ch3_packet,
             ch4_packet,
             disable_sound,
             clock: Counter::new(CPU_HZ / 256),
@@ -509,7 +491,7 @@ impl Apu {
             .ch2_pulse
             .tick(clock_overflow, cpu_clocks);
 
-        self.ch3_packet.lock().unwrap().tick(clock_overflow);
+        self.sound_device.lock().ch3_wave.tick(clock_overflow);
 
         self.ch4_packet.lock().unwrap().tick(clock_overflow);
     }
@@ -554,14 +536,14 @@ impl Apu {
 
                 let dac_on = is_bit(self.nr30, 7);
                 if !dac_on {
-                    self.ch3_packet.lock().unwrap().active = false;
+                    self.sound_device.lock().ch3_wave.active = false;
                 }
             }
             MEM_LOC_NR31 => {
                 self.nr31 = byte;
 
                 let length = 255 - self.nr31;
-                self.ch3_packet.lock().unwrap().length = length;
+                self.sound_device.lock().ch3_wave.length = length;
             }
             MEM_LOC_NR32 => self.nr32 = byte,
             MEM_LOC_NR33 => self.nr33 = byte,
@@ -604,7 +586,7 @@ impl Apu {
                     packet.global_volume_right = volume_right;
                 }
                 {
-                    let mut packet = self.ch3_packet.lock().unwrap();
+                    let ref mut packet = self.sound_device.lock().ch3_wave;
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
                 }
@@ -626,7 +608,7 @@ impl Apu {
                 if !self.audio_on() {
                     self.sound_device.lock().ch1_pulse.active = false;
                     self.sound_device.lock().ch2_pulse.active = false;
-                    self.ch3_packet.lock().unwrap().active = false;
+                    self.sound_device.lock().ch3_wave.active = false;
                     self.ch4_packet.lock().unwrap().active = false;
                 }
             }
@@ -651,7 +633,7 @@ impl Apu {
 
                 byte = set_bit(byte, 0, self.sound_device.lock().ch1_pulse.active);
                 byte = set_bit(byte, 1, self.sound_device.lock().ch2_pulse.active);
-                byte = set_bit(byte, 2, self.ch3_packet.lock().unwrap().active);
+                byte = set_bit(byte, 2, self.sound_device.lock().ch3_wave.active);
                 byte = set_bit(byte, 3, self.ch4_packet.lock().unwrap().active);
 
                 Ok(byte)
@@ -674,8 +656,8 @@ impl Apu {
         is_bit(self.nr52, 7)
     }
 
-    fn is_ch3_on(&self) -> bool {
-        self.ch3_packet.lock().unwrap().active
+    fn is_ch3_on(&mut self) -> bool {
+        self.sound_device.lock().ch3_wave.active
     }
 
     fn channel1_update(&mut self) {
@@ -803,7 +785,7 @@ impl Apu {
         let length_enable = is_bit(self.nr34, 6);
 
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr34, 7) {
-            self.ch3_packet.lock().unwrap().length_enable = length_enable;
+            self.sound_device.lock().ch3_wave.length_enable = length_enable;
             return;
         }
 
@@ -833,7 +815,10 @@ impl Apu {
         let active = dac_on;
 
         {
-            let mut packet = self.ch3_packet.lock().unwrap();
+            let is_ch3_left = self.is_ch3_left();
+            let is_ch3_right = self.is_ch3_right();
+
+            let ref mut packet = self.sound_device.lock().ch3_wave;
 
             packet.active = active;
             packet.tone_freq = tone_freq;
@@ -842,8 +827,8 @@ impl Apu {
             // Not sure if this should always be true - but for now it is. Otherwise this goes on beeping forever.
             packet.length_enable = true;
             packet.wave_pattern = wave_pattern;
-            packet.speaker_left = self.is_ch3_left();
-            packet.speaker_right = self.is_ch3_right();
+            packet.speaker_left = is_ch3_left;
+            packet.speaker_right = is_ch3_right;
         }
     }
 
