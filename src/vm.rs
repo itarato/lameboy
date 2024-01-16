@@ -1276,7 +1276,8 @@ impl VM {
             }
             0x8E => {
                 // ADC A,(HL) 1 8 | Z 0 H C
-                self.cpu.add_with_carry(self.read_hl()?);
+                let byte = self.read_hl()?;
+                self.cpu.add_with_carry(byte);
             }
             0x8F => {
                 // ADC A,A 1 4 | Z 0 H C
@@ -3504,7 +3505,7 @@ impl VM {
         Ok(op)
     }
 
-    fn read_hl(&self) -> Result<u8, Error> {
+    fn read_hl(&mut self) -> Result<u8, Error> {
         self.mem_read(self.cpu.hl)
     }
 
@@ -3553,7 +3554,7 @@ impl VM {
         Ok(self.debugger.parse(buf))
     }
 
-    fn print_debug_panel(&self) {
+    fn print_debug_panel(&mut self) {
         println!();
         println!(
             "\x1B[93mA\x1B[0m {:02X} {:02X} \x1B[93mF\x1B[0m | \x1B[93mZ\x1B[0m{} \x1B[93mN\x1B[0m{} \x1B[93mH\x1B[0m{} \x1B[93mC\x1B[0m{} | \x1B[93mLCDC\x1B[0m {:02X}",
@@ -3599,7 +3600,7 @@ impl VM {
         println!();
     }
 
-    fn print_debug_memory(&self, from: u16, len: usize) {
+    fn print_debug_memory(&mut self, from: u16, len: usize) {
         for i in 0..len {
             if i % 8 == 0 {
                 print!("\n\x1B[93m{:#06X}\x1B[0m", from + i as u16)
@@ -3726,7 +3727,7 @@ impl VM {
         Ok(())
     }
 
-    fn mem_read(&self, loc: u16) -> Result<u8, Error> {
+    fn mem_read(&mut self, loc: u16) -> Result<u8, Error> {
         match loc {
             // TODO: Add oam/vram read here proxy to video
             MEM_AREA_ROM_BANK_0_START..=MEM_AREA_ROM_BANK_N_END => self.mem.read(loc),
@@ -3878,18 +3879,12 @@ impl VM {
         self.video.read().unwrap().debug_oam();
     }
 
-    fn update_vm_debug_log(&self) {
+    fn update_vm_debug_log(&mut self) {
+        let opcode = self.mem_read(self.cpu.pc).unwrap() as usize;
         let mut log = self.vm_debug_log.write().unwrap();
         log.clear();
 
-        log.push(
-            format!(
-                "Next {:04X} -> {}",
-                self.cpu.pc,
-                OPCODE_NAME[self.mem_read(self.cpu.pc).unwrap() as usize]
-            )
-            .into(),
-        );
+        log.push(format!("Next {:04X} -> {}", self.cpu.pc, OPCODE_NAME[opcode]).into());
 
         log.push(format!("AF {:04X}", self.cpu.af).into());
         log.push(format!("BC {:04X}", self.cpu.bc).into());

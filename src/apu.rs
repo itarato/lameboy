@@ -12,90 +12,6 @@ use crate::util::*;
 const NOISE_CHANNEL_DIVISORS: [u8; 8] = [8, 16, 32, 48, 64, 80, 96, 112];
 
 #[derive(Debug)]
-struct PulseSoundPacket {
-    active: bool,
-    freq: f32,   // 1.0 .. ~k
-    volume: f32, // 0.0 .. 1.0
-    sweep_counter: Option<Counter>,
-    sweep_direction_sub: bool,
-    sweep_step: u8,
-    envelope_sweep_length: usize, // 22050 = 1s
-    envelope_direction_down: bool,
-    waveform: f32, // 0.0 .. 1.0
-    length_enable: bool,
-    length: u8,
-    speaker_left: bool,
-    speaker_right: bool,
-    global_volume_left: f32,
-    global_volume_right: f32,
-    period: u16,
-}
-
-impl PulseSoundPacket {
-    fn new() -> PulseSoundPacket {
-        PulseSoundPacket {
-            active: false,
-            freq: 0.0,
-            volume: 0.0,
-            sweep_counter: None,
-            sweep_direction_sub: true,
-            sweep_step: 0,
-            envelope_sweep_length: 0,
-            envelope_direction_down: true,
-            waveform: 0.0,
-            length_enable: false,
-            length: 0,
-            speaker_left: true,
-            speaker_right: true,
-            global_volume_left: 0.5,
-            global_volume_right: 0.5,
-            period: 0,
-        }
-    }
-
-    #[must_use]
-    fn tick(&mut self, clock_overflow: bool, cpu_clocks: u32) -> Option<u16> {
-        if clock_overflow && self.length_enable && self.length > 0 {
-            self.length -= 1;
-            self.active = self.length > 0;
-        }
-
-        if let Some(sweep_counter) = self.sweep_counter.as_mut() {
-            sweep_counter.tick(cpu_clocks);
-            let mut overflow_count = sweep_counter.check_overflow_count();
-            let old_period = self.period;
-
-            while overflow_count > 0 {
-                overflow_count -= 1;
-
-                let dir: i16 = if self.sweep_direction_sub { -1 } else { 1 };
-                let new_period =
-                    self.period as i16 + dir * (self.period as i16 / (1 << self.sweep_step));
-
-                let new_period: u16 = if new_period < 0 {
-                    0
-                } else if new_period > 0b0000_0111_1111_1111 {
-                    self.sweep_counter = None;
-                    0b0000_0111_1111_1111
-                } else {
-                    new_period as u16
-                };
-                self.period = new_period;
-                self.freq = (CPU_HZ as f32 / 32.0) / (2048.0 - self.period as f32);
-            }
-
-            if old_period == self.period {
-                None
-            } else {
-                Some(self.period)
-            }
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug)]
 struct WaveSoundPacket {
     active: bool,
     length: u8,
@@ -177,57 +93,135 @@ impl NoiseSoundPacket {
 }
 
 struct PulseChannel {
-    freq: f32,
+    device_freq: f32,
     phase: f32,
     envelope_sweep_counter: usize,
-    packet: Arc<Mutex<PulseSoundPacket>>,
+    active: bool,
+    freq: f32,   // 1.0 .. ~k
+    volume: f32, // 0.0 .. 1.0
+    sweep_counter: Option<Counter>,
+    sweep_direction_sub: bool,
+    sweep_step: u8,
+    envelope_sweep_length: usize, // 22050 = 1s
+    envelope_direction_down: bool,
+    waveform: f32, // 0.0 .. 1.0
+    length_enable: bool,
+    length: u8,
+    speaker_left: bool,
+    speaker_right: bool,
+    global_volume_left: f32,
+    global_volume_right: f32,
+    period: u16,
 }
 
 impl PulseChannel {
-    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
-        let mut packet = self.packet.lock().expect("Cannot lock pocket");
+    fn new(device_freq: f32) -> PulseChannel {
+        PulseChannel {
+            device_freq,
+            phase: 0.0,
+            envelope_sweep_counter: 0,
+            active: false,
+            freq: 0.0,
+            volume: 0.0,
+            sweep_counter: None,
+            sweep_direction_sub: true,
+            sweep_step: 0,
+            envelope_sweep_length: 0,
+            envelope_direction_down: true,
+            waveform: 0.0,
+            length_enable: false,
+            length: 0,
+            speaker_left: true,
+            speaker_right: true,
+            global_volume_left: 0.5,
+            global_volume_right: 0.5,
+            period: 0,
+        }
+    }
 
-        if !packet.speaker_left && !packet.speaker_right {
+    #[must_use]
+    fn tick(&mut self, clock_overflow: bool, cpu_clocks: u32) -> Option<u16> {
+        if clock_overflow && self.length_enable && self.length > 0 {
+            self.length -= 1;
+            self.active = self.length > 0;
+        }
+
+        if let Some(sweep_counter) = self.sweep_counter.as_mut() {
+            sweep_counter.tick(cpu_clocks);
+            let mut overflow_count = sweep_counter.check_overflow_count();
+            let old_period = self.period;
+
+            while overflow_count > 0 {
+                overflow_count -= 1;
+
+                let dir: i16 = if self.sweep_direction_sub { -1 } else { 1 };
+                let new_period =
+                    self.period as i16 + dir * (self.period as i16 / (1 << self.sweep_step));
+
+                let new_period: u16 = if new_period < 0 {
+                    0
+                } else if new_period > 0b0000_0111_1111_1111 {
+                    self.sweep_counter = None;
+                    0b0000_0111_1111_1111
+                } else {
+                    new_period as u16
+                };
+                self.period = new_period;
+                self.freq = (CPU_HZ as f32 / 32.0) / (2048.0 - self.period as f32);
+            }
+
+            if old_period == self.period {
+                None
+            } else {
+                Some(self.period)
+            }
+        } else {
+            None
+        }
+    }
+
+    fn generate(&mut self, out: &mut [f32], volume_divider: f32) {
+        if !self.speaker_left && !self.speaker_right {
             return;
         }
 
         for chunk in out.chunks_exact_mut(2) {
-            let value = if !packet.active {
+            let value = if !self.active {
                 0.0
             } else {
-                if (*packet).envelope_sweep_length > 0 {
+                if self.envelope_sweep_length > 0 {
                     if self.envelope_sweep_counter > 0 {
                         self.envelope_sweep_counter -= 1;
                     } else {
-                        (*packet).volume += if (*packet).envelope_direction_down {
+                        self.volume += if self.envelope_direction_down {
                             -1f32 / 15f32
                         } else {
                             1f32 / 15f32
                         };
-                        self.envelope_sweep_counter = (*packet).envelope_sweep_length;
+                        self.envelope_sweep_counter = self.envelope_sweep_length;
                     }
                 }
 
-                if (*packet).volume < 0f32 {
-                    (*packet).volume = 0.0;
-                } else if (*packet).volume > 1f32 {
-                    (*packet).volume = 1.0;
+                if self.volume < 0f32 {
+                    self.volume = 0.0;
+                } else if self.volume > 1f32 {
+                    self.volume = 1.0;
                 }
 
-                self.phase = (self.phase + (packet.freq / self.freq)) % 1.0;
-                if self.phase <= packet.waveform {
-                    packet.volume
+                self.phase = (self.phase + (self.freq / self.device_freq)) % 1.0;
+                if self.phase <= self.waveform {
+                    self.volume
                 } else {
-                    -packet.volume
+                    -self.volume
                 }
             };
 
-            if packet.speaker_left {
-                chunk[0] += (value / volume_divider) * packet.global_volume_left;
+            if self.speaker_left {
+                chunk[0] += (value / volume_divider) * self.global_volume_left;
                 // Left speaker.
             }
-            if packet.speaker_right {
-                chunk[1] += (value / volume_divider) * packet.global_volume_right;
+            if self.speaker_right {
+                chunk[1] += (value / volume_divider) * self.global_volume_right;
                 // Right speaker.
             }
         }
@@ -370,24 +364,12 @@ struct DmgChannels {
 impl DmgChannels {
     fn new(
         freq: f32,
-        ch1_packet: Arc<Mutex<PulseSoundPacket>>,
-        ch2_packet: Arc<Mutex<PulseSoundPacket>>,
         ch3_packet: Arc<Mutex<WaveSoundPacket>>,
         ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
     ) -> DmgChannels {
         DmgChannels {
-            ch1_pulse: PulseChannel {
-                freq,
-                phase: 0.0,
-                envelope_sweep_counter: 0,
-                packet: ch1_packet,
-            },
-            ch2_pulse: PulseChannel {
-                freq,
-                phase: 0.0,
-                envelope_sweep_counter: 0,
-                packet: ch2_packet,
-            },
+            ch1_pulse: PulseChannel::new(freq),
+            ch2_pulse: PulseChannel::new(freq),
             ch3_wave: WaveChannel {
                 freq,
                 phase: 0.0,
@@ -448,9 +430,7 @@ pub struct Apu {
 
     wave_pattern_ram: [u8; 16],
 
-    _sound_device: AudioDevice<DmgChannels>,
-    ch1_packet: Arc<Mutex<PulseSoundPacket>>,
-    ch2_packet: Arc<Mutex<PulseSoundPacket>>,
+    sound_device: AudioDevice<DmgChannels>,
     ch3_packet: Arc<Mutex<WaveSoundPacket>>,
     ch4_packet: Arc<Mutex<NoiseSoundPacket>>,
 
@@ -467,27 +447,17 @@ impl Apu {
             samples: Some(256),
         };
 
-        let ch1_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
-        let ch2_packet = Arc::new(Mutex::new(PulseSoundPacket::new()));
         let ch3_packet = Arc::new(Mutex::new(WaveSoundPacket::new()));
         let ch4_packet = Arc::new(Mutex::new(NoiseSoundPacket::new()));
 
-        let _sound_device = sdl_context
+        let sound_device = sdl_context
             .audio()
             .unwrap()
             .open_playback(None, &desired_spec, |spec| {
-                DmgChannels::new(
-                    spec.freq as _,
-                    ch1_packet.clone(),
-                    ch2_packet.clone(),
-                    ch3_packet.clone(),
-                    ch4_packet.clone(),
-                )
+                DmgChannels::new(spec.freq as _, ch3_packet.clone(), ch4_packet.clone())
             })
             .unwrap();
-        if !disable_sound {
-            _sound_device.resume();
-        }
+        sound_device.resume();
 
         Apu {
             nr10: 0,
@@ -513,9 +483,7 @@ impl Apu {
             nr52: 0,
             wave_pattern_ram: [0; 16],
             // Just to keep the thread alive.
-            _sound_device,
-            ch1_packet,
-            ch2_packet,
+            sound_device,
             ch3_packet,
             ch4_packet,
             disable_sound,
@@ -524,20 +492,21 @@ impl Apu {
     }
 
     pub fn update(&mut self, cpu_clocks: u32) {
+        // TODO: Put this ticker entirely into the sound device.
         let clock_overflow = self.clock.tick_and_check_overflow(cpu_clocks);
 
         {
-            let mut ch1_packet = self.ch1_packet.lock().unwrap();
-            if let Some(new_period) = ch1_packet.tick(clock_overflow, cpu_clocks) {
+            let ref mut ch1 = self.sound_device.lock().ch1_pulse;
+            if let Some(new_period) = ch1.tick(clock_overflow, cpu_clocks) {
                 self.nr13 = (new_period & 0xff) as u8;
                 self.nr14 = (self.nr14 & !0b111) | ((new_period >> 8) & 0b111) as u8;
             }
         }
 
         let _ = self
-            .ch2_packet
+            .sound_device
             .lock()
-            .unwrap()
+            .ch2_pulse
             .tick(clock_overflow, cpu_clocks);
 
         self.ch3_packet.lock().unwrap().tick(clock_overflow);
@@ -555,7 +524,7 @@ impl Apu {
                 self.nr11 = byte;
 
                 let length = 64 - (self.nr11 & 0b11_1111);
-                self.ch1_packet.lock().unwrap().length = length;
+                self.sound_device.lock().ch1_pulse.length = length;
             }
             // NR12: Channel 1 volume & envelope
             MEM_LOC_NR12 => self.nr12 = byte,
@@ -571,7 +540,7 @@ impl Apu {
                 self.nr21 = byte;
 
                 let length = 64 - (self.nr21 & 0b11_1111);
-                self.ch2_packet.lock().unwrap().length = length;
+                self.sound_device.lock().ch2_pulse.length = length;
             }
             MEM_LOC_NR22 => self.nr22 = byte,
             MEM_LOC_NR23 => self.nr23 = byte,
@@ -625,12 +594,12 @@ impl Apu {
                 let volume_right = 8.0 / (volume_right_bits + 1) as f32;
 
                 {
-                    let mut packet = self.ch1_packet.lock().unwrap();
+                    let ref mut packet = self.sound_device.lock().ch1_pulse;
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
                 }
                 {
-                    let mut packet = self.ch2_packet.lock().unwrap();
+                    let ref mut packet = self.sound_device.lock().ch2_pulse;
                     packet.global_volume_left = volume_left;
                     packet.global_volume_right = volume_right;
                 }
@@ -655,8 +624,8 @@ impl Apu {
                 self.nr52 = byte & 0xF0;
 
                 if !self.audio_on() {
-                    self.ch1_packet.lock().unwrap().active = false;
-                    self.ch2_packet.lock().unwrap().active = false;
+                    self.sound_device.lock().ch1_pulse.active = false;
+                    self.sound_device.lock().ch2_pulse.active = false;
                     self.ch3_packet.lock().unwrap().active = false;
                     self.ch4_packet.lock().unwrap().active = false;
                 }
@@ -673,15 +642,15 @@ impl Apu {
         };
     }
 
-    pub fn read(&self, loc: u16) -> Result<u8, Error> {
+    pub fn read(&mut self, loc: u16) -> Result<u8, Error> {
         match loc {
             MEM_LOC_NR50 => Ok(self.nr50),
             MEM_LOC_NR51 => Ok(self.nr51),
             MEM_LOC_NR52 => {
                 let mut byte = self.nr52 & 0xF0;
 
-                byte = set_bit(byte, 0, self.ch1_packet.lock().unwrap().active);
-                byte = set_bit(byte, 1, self.ch2_packet.lock().unwrap().active);
+                byte = set_bit(byte, 0, self.sound_device.lock().ch1_pulse.active);
+                byte = set_bit(byte, 1, self.sound_device.lock().ch2_pulse.active);
                 byte = set_bit(byte, 2, self.ch3_packet.lock().unwrap().active);
                 byte = set_bit(byte, 3, self.ch4_packet.lock().unwrap().active);
 
@@ -713,7 +682,7 @@ impl Apu {
         let length_enable = is_bit(self.nr14, 6);
 
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr14, 7) {
-            self.ch1_packet.lock().unwrap().length_enable = length_enable;
+            self.sound_device.lock().ch1_pulse.length_enable = length_enable;
             return;
         }
 
@@ -754,7 +723,10 @@ impl Apu {
         let active = init_volume > 0 || is_envelope_direction_increase;
 
         {
-            let mut packet = self.ch1_packet.lock().unwrap();
+            let is_ch1_left = self.is_ch1_left();
+            let is_ch1_right = self.is_ch1_right();
+
+            let ref mut packet = self.sound_device.lock().ch1_pulse;
             packet.active = active;
             packet.freq = out_freq;
             packet.volume = out_volume;
@@ -766,8 +738,8 @@ impl Apu {
             packet.waveform = out_waveform;
             packet.length_enable = length_enable;
             packet.length = init_length_timer;
-            packet.speaker_left = self.is_ch1_left();
-            packet.speaker_right = self.is_ch1_right();
+            packet.speaker_left = is_ch1_left;
+            packet.speaker_right = is_ch1_right;
             packet.period = period;
         }
     }
@@ -776,7 +748,7 @@ impl Apu {
         let length_enable = is_bit(self.nr24, 6);
 
         if self.disable_sound || !self.audio_on() || !is_bit(self.nr24, 7) {
-            self.ch2_packet.lock().unwrap().length_enable = length_enable;
+            self.sound_device.lock().ch2_pulse.length_enable = length_enable;
             return;
         }
 
@@ -810,7 +782,10 @@ impl Apu {
         let active = init_volume > 0 || is_envelope_direction_increase;
 
         {
-            let mut packet = self.ch2_packet.lock().unwrap();
+            let is_ch2_left = self.is_ch2_left();
+            let is_ch2_right = self.is_ch2_right();
+
+            let ref mut packet = self.sound_device.lock().ch2_pulse;
             packet.active = active;
             packet.freq = out_freq;
             packet.volume = out_volume;
@@ -819,8 +794,8 @@ impl Apu {
             packet.waveform = out_waveform;
             packet.length_enable = length_enable;
             packet.length = init_length_timer;
-            packet.speaker_left = self.is_ch2_left();
-            packet.speaker_right = self.is_ch2_right();
+            packet.speaker_left = is_ch2_left;
+            packet.speaker_right = is_ch2_right;
         }
     }
 
