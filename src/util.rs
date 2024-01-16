@@ -143,11 +143,13 @@ impl<T> SizedQueue<T> {
     }
 }
 
+#[allow(unused)]
 pub struct Stats {
     queue: SizedQueue<i32>,
     window_counter: Counter,
 }
 
+#[allow(unused)]
 impl Stats {
     pub fn new(window: usize, freq: u32) -> Stats {
         Stats {
