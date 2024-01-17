@@ -60,10 +60,14 @@ impl ImguiService {
         platform.attach_window(
             imgui.io_mut(),
             window,
-            imgui_winit_support::HiDpiMode::Default,
+            // See bug below.
+            imgui_winit_support::HiDpiMode::Locked(1.0),
         );
 
-        let hidpi_factor = window.scale_factor();
+        // There is a bug in wgpu crate that messes up rendering. Something with HiDPI settings. For now it's locked.
+        // @link https://github.com/Yatekii/imgui-wgpu-rs/issues/77
+        // let hidpi_factor = window.scale_factor();
+        let hidpi_factor = 2.0;
         let font_size = (13.0 * hidpi_factor) as f32;
 
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
@@ -379,15 +383,18 @@ pub fn run(
                 buttons.write().expect("Cannot lock buttons").right = false;
             }
 
-            match video
+            let main_window_had_updates = match video
                 .read()
                 .unwrap()
                 .display_finished
                 .compare_exchange_weak(true, false, Ordering::Relaxed, Ordering::Relaxed)
             {
-                Ok(_) => main_window.request_redraw(),
-                Err(_) => (),
+                Ok(_) => true,
+                Err(_) => false,
             };
+            if main_window_had_updates || imgui_service.show_ui {
+                main_window.request_redraw();
+            }
 
             if show_tiles {
                 tile_window.request_redraw();

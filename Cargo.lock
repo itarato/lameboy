@@ -723,8 +723,9 @@ dependencies = [
 
 [[package]]
 name = "imgui-wgpu"
-version = "0.22.0"
-source = "git+https://github.com/Nelarius/imgui-wgpu-rs.git?rev=1cd675a79a605835c1ea996d68a943cd3c3b4af9#1cd675a79a605835c1ea996d68a943cd3c3b4af9"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "188a967820062cab6ad73bde372bb734bd446944a92453a857c789bd19d56c02"
 dependencies = [
  "bytemuck",
  "imgui",
