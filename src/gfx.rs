@@ -56,18 +56,19 @@ impl ImguiService {
         let mut imgui = imgui::Context::create();
         imgui.set_ini_filename(None);
 
+        // There is a bug in wgpu crate that messes up rendering. Something with HiDPI settings. For now it's locked.
+        // @link https://github.com/Yatekii/imgui-wgpu-rs/issues/77
+        let scale = window.scale_factor().round();
+
         let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
         platform.attach_window(
             imgui.io_mut(),
             window,
             // See bug below.
-            imgui_winit_support::HiDpiMode::Locked(2.0),
+            imgui_winit_support::HiDpiMode::Locked(scale),
         );
 
-        // There is a bug in wgpu crate that messes up rendering. Something with HiDPI settings. For now it's locked.
-        // @link https://github.com/Yatekii/imgui-wgpu-rs/issues/77
-        // let hidpi_factor = window.scale_factor();
-        let hidpi_factor = 2.0;
+        let hidpi_factor = scale;
         let font_size = (13.0 * hidpi_factor) as f32;
 
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
