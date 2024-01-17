@@ -61,7 +61,7 @@ impl ImguiService {
             imgui.io_mut(),
             window,
             // See bug below.
-            imgui_winit_support::HiDpiMode::Locked(1.0),
+            imgui_winit_support::HiDpiMode::Locked(2.0),
         );
 
         // There is a bug in wgpu crate that messes up rendering. Something with HiDPI settings. For now it's locked.
@@ -126,6 +126,7 @@ impl ImguiService {
 
         if self.show_ui {
             ui.window("VM Debug")
+                .position([0.0, 0.0], imgui::Condition::Once)
                 .size([220.0, 240.0], imgui::Condition::FirstUseEver)
                 .opened(&mut self.show_ui)
                 .build(|| {
@@ -261,8 +262,10 @@ pub fn run(
                     if let Some(pixels) = pixels_map.get_mut(window_id) {
                         if let Err(err) = pixels.resize_surface(size.width, size.height) {
                             error!("pixels.resize_surface error: {}", err);
-                            control_flow.set_exit();
-                            return;
+                            // This is likely a bug in OS-X + wgpu/pixels: pixels.resize_surface error: Texture width is invalid: 4294967295
+                            // However the program can run almost fine with this error. Allowing it for now.
+                            // control_flow.set_exit();
+                            // return;
                         }
                     }
                 }
