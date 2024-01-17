@@ -19,4 +19,4 @@ imgui-wgpu = "0.23.0"
 [dependencies.sdl2]
 version = "0.36"
 default-features = true
-features = ["mixer"]
+features = []
