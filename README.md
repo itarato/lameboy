@@ -64,3 +64,20 @@ Options:
 - Test roms:
   - https://github.com/retrio/gb-test-roms/tree/master
   - https://github.com/c-sp/gameboy-test-roms
+
+Missing:
+- using actual nes controller
+- more cartridge controller (mbc2, etc)
+- save to ram
+- debug snapshot
+- reset
+- serial port
+- devices (camera, printer, etc)
+
+Not 100%:
+- wave + noise channels
+- mode 3 + 0 length adjustments
+- dma spread on 160 clocks
+
+Bugs:
+- wgpu/pixels rendering on OS-X + HiDPI
